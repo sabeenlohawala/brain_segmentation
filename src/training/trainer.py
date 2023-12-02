@@ -48,12 +48,12 @@ class Trainer():
         print(f"Process {self.fabric.global_rank} starts training on {len(self.train_loader) // self.batch_size} batches per epoch over {epochs} epochs")
 
         for epoch in range(epochs):
-            
+
             self.model.train()
             for i, (image, mask) in enumerate(self.train_loader):
                 # mask[mask != 0] = 1 # uncomment for binary classification check
 
-                print(f'{self.fabric.global_rank}, batch {i}')
+                print(f'Process {self.fabric.global_rank}, batch {i}')
                 image = image.repeat((1,3,1,1)) # uncomment if pretrained = True
 
                 self.optimizer.zero_grad()
