@@ -11,7 +11,8 @@ from utils import load_brains, crop, mapping
 
 class Log_Images():
 
-    def __init__(self, fabric : L.Fabric, nr_of_classes: int = 112):
+    def __init__(self, fabric : L.Fabric, wandb_on: bool, nr_of_classes: int = 112):
+        self.wandb_on = wandb_on
 
         # color map to get always the same colors for classes
         colors = plt.cm.hsv(np.linspace(0, 1, nr_of_classes))
@@ -51,8 +52,8 @@ class Log_Images():
                 
                 # wandb.log({f"Image d{d} c{slice_id}": self.__create_plot(brain_slice, caption="Raw Image")}, step=1)
                 # wandb.log({f"True Mask d{d} c{slice_id}": self.__create_plot(mask_slice, caption="True Mask", cmap=self.cmap, norm=self.norm)}, step=1)
-                self.logging_dict[f"Image d{d} c{slice_id}"] = self.__create_plot(brain_slice, caption="Raw Image")
-                self.logging_dict[f"True Mask d{d} c{slice_id}"] = self.__create_plot(mask_slice, caption="True Mask", cmap=self.cmap, norm=self.norm)
+                self.logging_dict[f"Image d{d} c{slice_id}"] = self.__create_plot(self.wandb_on, brain_slice, caption="Raw Image")
+                self.logging_dict[f"True Mask d{d} c{slice_id}"] = self.__create_plot(self.wandb_on, mask_slice, caption="True Mask", cmap=self.cmap, norm=self.norm)
                 brain_slice = (brain_slice - normalization_constants[0]) / normalization_constants[1]
                 brain_slice = torch.from_numpy(brain_slice).to(torch.float32)
                 brain_slice = brain_slice[None, None]
@@ -69,7 +70,7 @@ class Log_Images():
         self.mask_slices = fabric.to_device(self.mask_slices)
 
     @staticmethod
-    def __create_plot(image : np.array, caption : str, cmap : str = 'gray', norm : plt.Normalize = None, fig_path : str = None):
+    def __create_plot(wandb_on: bool, image : np.array, caption : str, cmap : str = 'gray', norm : plt.Normalize = None, fig_path : str = None):
         '''
         Creates a pyplot and adds it to the wandb image list.
 
@@ -87,7 +88,8 @@ class Log_Images():
         if fig_path is not None:
             fig.savefig(fig_path)
         image = Image.frombytes('RGB', fig.canvas.get_width_height(),fig.canvas.tostring_rgb())
-        image = wandb.Image(image, caption=caption) # comment to not save to wandb
+        if wandb_on:
+            image = wandb.Image(image, caption=caption) # comment to not save to wandb
         plt.close()
 
         return image
@@ -105,7 +107,8 @@ class Log_Images():
         logging_dict = {}
         for d in range(3):
             for slice_id in self.slice_idx:
-                logging_dict[f"Predicted Mask d{d} c{slice_id}"] = self.__create_plot(probs[i], caption=f"Epoch {e}", cmap=self.cmap, norm=self.norm)
+                logging_dict[f"Predicted Mask d{d} c{slice_id}"] = self.__create_plot(self.wandb_on, probs[i], caption=f"Epoch {e}", cmap=self.cmap, norm=self.norm)
                 i += 1
         current_logging_dict = self.logging_dict | logging_dict
-        wandb.log(current_logging_dict, commit=commit) # comment to not save to wandb
+        if self.wandb_on:
+            wandb.log(current_logging_dict, commit=commit) # comment to not save to wandb

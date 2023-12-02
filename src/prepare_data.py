@@ -19,7 +19,7 @@ parser.add_argument("shardsize", help="Number of samples each shard should conta
                     type=int)
 args = parser.parse_args()
 
-SEED = 700
+SEED = 42
 TYPE = args.type
 SHARD_SIZE = args.shardsize
 HEIGHT = 162

@@ -20,10 +20,12 @@ parser = argparse.ArgumentParser(
                     prog='ProgramName',
                     description='What the program does',
                     epilog='Text at the bottom of help')
-parser.add_argument('wandb_description', help="Description add to the wandb run", type=str)
+
+parser.add_argument('--wandb_description', help="Description add to the wandb run", type=str, required=False)
 
 args = parser.parse_args()
 
+WANDB_ON = args.wandb_description is not None
 WANDB_RUN_DESCRIPTION = args.wandb_description
 WANDB_RUN_TITLE = "Brain Segmentation"
 
@@ -33,19 +35,20 @@ LEARNING_RATE = 6e-5 # 3e-6
 N_EPOCHS = 1
 DATASET = 'small'
 MODEL_NAME = "segformer"
-SEED = 700
+SEED = 42
 SAVE_EVERY = "epoch"
 PRECISION = '32-true' #"16-mixed"
 
 def main():
     
     fabric = init_fabric(precision=PRECISION, devices=2, strategy='ddp') # accelerator="gpu", devices=2, num_nodes=1
-    set_seed(SEED)
+    set_seed(SEED) # TODO: replace with seed_everything(SEED)?
     init_cuda()
 
     # model
     model = Segformer(NR_OF_CLASSES, pretrained=True)
-    # model = fabric.to_device(model)
+
+    # TODO: loading model from checkpoint
 
     # optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
@@ -73,9 +76,10 @@ def main():
 
     # init WandB
     if fabric.global_rank == 0:
-        init_wandb(WANDB_RUN_TITLE, fabric, model_params, WANDB_RUN_DESCRIPTION) # comment to not save to wandb
+        init_wandb(WANDB_ON, WANDB_RUN_TITLE, fabric, model_params, WANDB_RUN_DESCRIPTION) # comment to not save to wandb
         save_frequency = len(train_loader) if SAVE_EVERY == "epoch" else 1000
-        wandb.watch(model, log_freq=save_frequency) # comment to not save to wandb
+        if WANDB_ON:
+            wandb.watch(model, log_freq=save_frequency) # comment to not save to wandb
 
     trainer = Trainer(
          model=model,
@@ -86,6 +90,7 @@ def main():
          optimizer=optimizer,
          fabric=fabric,
          batch_size=BATCH_SIZE,
+         wandb_on=WANDB_ON
     )
     trainer.train(N_EPOCHS)
     print("Training Finished!")

@@ -24,7 +24,7 @@ NR_OF_CLASSES = 107 # set to 2 for binary classification
 LEARNING_RATE = 3e-6
 N_EPOCHS = 1
 MODEL_NAME = "segformer"
-SEED = 700
+SEED = 42
 SAVE_EVERY = "epoch"
 PRECISION = '32-true' #"16-mixed"
 

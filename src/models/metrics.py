@@ -87,11 +87,12 @@ class Dice(nn.Module):
 
 class Classification_Metrics():
 
-    def __init__(self, nr_of_classes: int, prefix: str):
+    def __init__(self, nr_of_classes: int, prefix: str, wandb_on: bool):
 
         # init
         self.nr_of_classes = nr_of_classes
         self.prefix = prefix
+        self.wandb_on = wandb_on
 
         self.loss = []
         self.classDice = []
@@ -168,8 +169,8 @@ class Classification_Metrics():
 
         # for i in range(len(self.classDice[-1])):
         #     logging_dict[f"{self.prefix}/SegDICE/{i}"] = self.classDice[-1][i]
-
-        wandb.log(logging_dict, commit=commit) # comment to not save to wandb
+        if self.wandb_on:
+            wandb.log(logging_dict, commit=commit) # comment to not save to wandb
 
     def reset(self):
 

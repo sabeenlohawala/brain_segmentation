@@ -12,7 +12,7 @@ import datetime
 from typing import Tuple
 import csv
 
-SEED = 42
+# SEED = 42
 
 def load_brains(image_file : str, mask_file : str, file_path : str):
 
@@ -47,7 +47,7 @@ def set_seed(seed : int = 0) -> None:
     # torch.cuda.manual_seed(seed)
     # random.seed(seed)
     # np.random.seed(seed)
-    seed_everything(SEED)
+    seed_everything(seed)
     
     if torch.cuda.is_available():
         # determines if cuda selects only deterministic algorithms or not
@@ -132,33 +132,33 @@ def init_cuda() -> None:
         print("Use the same CUDA algorithms for each forward pass: ", torch.backends.cudnn.benchmark)
 
 
-def init_wandb(project_name : str, fabric : L.fabric, model_params : dict, description : str) -> None:
+def init_wandb(wandb_on : bool, project_name : str, fabric : L.fabric, model_params : dict, description : str) -> None:
+    if wandb_on:
+        # check if staged artifacts exist:
+        if os.path.exists("/home/sabeen/.local/share/wandb"):
+            shutil.rmtree("/home/sabeen/.local/share/wandb")
 
-    # check if staged artifacts exist:
-    if os.path.exists("/home/sabeen/.local/share/wandb"):
-        shutil.rmtree("/home/sabeen/.local/share/wandb")
+        # print('\n','HERE:')
+        # print(f'{fabric.device}-{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}')
+        # print(f'{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}')
+        # print(project_name)
+        # print(description)
+        # print(**model_params)
+        # print()
 
-    # print('\n','HERE:')
-    # print(f'{fabric.device}-{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}')
-    # print(f'{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}')
-    # print(project_name)
-    # print(description)
-    # print(**model_params)
-    # print()
-
-    wandb.init(
-    name=f'{fabric.device}-{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',
-    group=f'test-multigpu-{datetime.datetime.now().month}-{datetime.datetime.now().day}',
-    # group=f'{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',
-    project=project_name,
-    entity="tissue-labeling-sabeen",
-    notes=description,
-    config={**model_params},
-    reinit=True,
-    dir="/om2/scratch/Fri",)
-    wandb.run.log_code("./data", include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"))
-    wandb.run.log_code("./models", include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"))
-    wandb.run.log_code("./trainer", include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"))
+        wandb.init(
+        name=f'{fabric.device}-{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',
+        group=f'test-multigpu-{datetime.datetime.now().month}-{datetime.datetime.now().day}',
+        # group=f'{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',
+        project=project_name,
+        entity="tissue-labeling-sabeen",
+        notes=description,
+        config={**model_params},
+        reinit=True,
+        dir="/om2/scratch/Fri",)
+        wandb.run.log_code("./data", include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"))
+        wandb.run.log_code("./models", include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"))
+        wandb.run.log_code("./trainer", include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"))
 
 def init_fabric(**kwargs) -> L.fabric:
 

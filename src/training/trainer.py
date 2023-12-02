@@ -22,6 +22,7 @@ class Trainer():
             optimizer : torch.optim.Optimizer,
             fabric : L.Fabric,
             batch_size : int,
+            wandb_on: bool,
             save_every : int = 100000,
             ) -> None:
         
@@ -34,16 +35,17 @@ class Trainer():
         self.save_every = save_every
         self.nr_of_classes = nr_of_classes
         self.batch_size = batch_size
+        self.wandb_on = wandb_on
 
         if self.fabric.global_rank == 0:
-            self.image_logger = Log_Images(self.fabric, nr_of_classes=nr_of_classes)
+            self.image_logger = Log_Images(self.fabric, wandb_on = self.wandb_on, nr_of_classes=nr_of_classes)
 
     def train(self, epochs : int) -> None:
         
         batch_idx = 0
 
-        self.train_metrics = Classification_Metrics(self.nr_of_classes, prefix="Train")
-        self.validation_metrics = Classification_Metrics(self.nr_of_classes, prefix=f"Validation")
+        self.train_metrics = Classification_Metrics(self.nr_of_classes, prefix="Train", wandb_on = self.wandb_on)
+        self.validation_metrics = Classification_Metrics(self.nr_of_classes, prefix=f"Validation", wandb_on = self.wandb_on)
 
         print(f"Process {self.fabric.global_rank} starts training on {len(self.train_loader) // self.batch_size} batches per epoch over {epochs} epochs")
 
@@ -96,7 +98,7 @@ class Trainer():
             }
         self.fabric.save(model_save_path, state)
 
-        if self.fabric.global_rank == 0:
+        if self.fabric.global_rank == 0 and self.wandb_on:
 
             print("final saving model state...")
             self._save_state(epoch, batch_idx, log=False, path=model_save_path)
