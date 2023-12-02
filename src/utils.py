@@ -41,12 +41,6 @@ def set_seed(seed : int = 0) -> None:
     Args:
         seed (int, optional): seed. Defaults to 0.
     '''
-
-    # torch.manual_seed(seed)
-    # torch.cuda.manual_seed_all(seed)
-    # torch.cuda.manual_seed(seed)
-    # random.seed(seed)
-    # np.random.seed(seed)
     seed_everything(seed)
     
     if torch.cuda.is_available():
@@ -137,14 +131,6 @@ def init_wandb(wandb_on : bool, project_name : str, fabric : L.fabric, model_par
         # check if staged artifacts exist:
         if os.path.exists("/home/sabeen/.local/share/wandb"):
             shutil.rmtree("/home/sabeen/.local/share/wandb")
-
-        # print('\n','HERE:')
-        # print(f'{fabric.device}-{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}')
-        # print(f'{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}')
-        # print(project_name)
-        # print(description)
-        # print(**model_params)
-        # print()
 
         wandb.init(
         name=f'{fabric.device}-{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',

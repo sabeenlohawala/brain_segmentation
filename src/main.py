@@ -22,6 +22,11 @@ parser = argparse.ArgumentParser(
                     epilog='Text at the bottom of help')
 
 parser.add_argument('--wandb_description', help="Description add to the wandb run", type=str, required=False)
+parser.add_argument('--batch_size', help="Batch size for training", type=int, required=False, default=64)
+parser.add_argument('--learning_rate', help="Learning for training", type=float, required=False, default=6e-5)
+parser.add_argument('--num_epochs', help="Number of epochs to train", type=int, required=False, default=20)
+parser.add_argument('--seed', help="Random seed value", type=int, required=False, default=42)
+parser.add_argument('--model_name', help="Name of model to use for segmentation", type=str, default='segformer')
 
 args = parser.parse_args()
 
@@ -30,12 +35,12 @@ WANDB_RUN_DESCRIPTION = args.wandb_description
 WANDB_RUN_TITLE = "Brain Segmentation"
 
 NR_OF_CLASSES = 107 # set to 2 for binary classification
-BATCH_SIZE = 10
-LEARNING_RATE = 6e-5 # 3e-6
-N_EPOCHS = 1
+BATCH_SIZE = args.batch_size
+LEARNING_RATE = args.learning_rate # 3e-6
+N_EPOCHS = args.num_epochs
 DATASET = 'small'
-MODEL_NAME = "segformer"
-SEED = 42
+MODEL_NAME = args.model_name
+SEED = args.seed
 SAVE_EVERY = "epoch"
 PRECISION = '32-true' #"16-mixed"
 
@@ -46,7 +51,11 @@ def main():
     init_cuda()
 
     # model
-    model = Segformer(NR_OF_CLASSES, pretrained=True)
+    if MODEL_NAME == 'segformer':
+        print('Model found!')
+        model = Segformer(NR_OF_CLASSES, pretrained=True)
+    else:
+        raise Exception('Invalid model name provided')
 
     # TODO: loading model from checkpoint
 

@@ -195,9 +195,6 @@ class Classification_Metrics():
         # self.last_dice = fabric.all_reduce(self.last_dice, reduce_op="sum")
         # dice_tensor = fabric.all_reduce(self.dice_coeff,reduce_op='sum')
         self.Assert = fabric.all_reduce(self.Assert, reduce_op="sum")
-        
-        # import pdb
-        # pdb.set_trace()
 
         # print('1 dice coeff:', type(self.dice_coeff))
         # print('dice tensor', dice_tensor)
