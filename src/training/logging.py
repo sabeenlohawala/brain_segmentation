@@ -51,8 +51,6 @@ class Log_Images():
                     brain_slice = crop(brain[:,:, slice_id], 162, 194)
                     mask_slice =  crop(mask[:,:, slice_id], 162, 194)
                 
-                # wandb.log({f"Image d{d} c{slice_id}": self.__create_plot(brain_slice, caption="Raw Image")}, step=1)
-                # wandb.log({f"True Mask d{d} c{slice_id}": self.__create_plot(mask_slice, caption="True Mask", cmap=self.cmap, norm=self.norm)}, step=1)
                 self.logging_dict[f"Image d{d} c{slice_id}"] = self.__create_plot(self.wandb_on, brain_slice, caption="Raw Image")
                 self.logging_dict[f"True Mask d{d} c{slice_id}"] = self.__create_plot(self.wandb_on, mask_slice, caption="True Mask", cmap=self.cmap, norm=self.norm)
                 brain_slice = (brain_slice - normalization_constants[0]) / normalization_constants[1]

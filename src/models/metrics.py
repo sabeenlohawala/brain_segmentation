@@ -43,9 +43,6 @@ class Dice(nn.Module):
 
         # send weights to GPU        
         self.weights = fabric.to_device(self.weights)
-
-        # self.classDice = None
-        # self.dice_coeff = None
         self.denom = None
 
     def forward(self, y_true: torch.tensor, y_pred: torch.tensor):
@@ -58,15 +55,12 @@ class Dice(nn.Module):
             float: differentiable dice loss
         '''
         # one-hot encode label tensor
-        # print(y_true.shape)
         y_true_oh = torch.nn.functional.one_hot(y_true.squeeze(1), num_classes=self.nr_of_classes).permute(0,3,1,2)
         
         # compute the generalized dice for each imamge
         class_intersect = torch.sum(self.weights.view(1,-1,1,1)*(y_true_oh * y_pred), axis=(2,3))
         class_denom = torch.sum(self.weights.view(1,-1,1,1)*(y_true_oh + y_pred), axis=(2,3))
 
-        # intersect = torch.sum(self.weights.view(1,-1,1,1)*(y_true_oh * y_pred), axis=(1,2,3))
-        # denom = torch.sum(self.weights.view(1,-1,1,1)*(y_true_oh + y_pred), axis=(1,2,3))
         intersect = torch.sum(class_intersect,axis=1)
         denom = torch.sum(class_denom,axis=1)
 
@@ -75,13 +69,6 @@ class Dice(nn.Module):
         # compute the average over the batch
         dice_coeff = torch.mean((2. * intersect / (denom + self.smooth)))
         dice_loss = 1 - dice_coeff
-
-        # y_pred_f = y_pred.flatten(start_dim=1)
-        # y_true_oh_f = y_true_oh.flatten(start_dim=1)
-        # intersect = torch.sum(y_true_oh_f * y_pred_f, axis=1)
-        # denom = torch.sum(y_true_oh_f + y_pred_f, axis=1)
-        # dice_coeff = torch.mean((2. * intersect / (denom + self.smooth)))
-        # dice_loss = 1-dice_coeff
         
         return dice_loss, classDice
 
@@ -96,7 +83,6 @@ class Classification_Metrics():
 
         self.loss = []
         self.classDice = []
-        # self.dice_coeff = []
         # self.TP, self.TN, self.FP, self.FN = torch.zeros(nr_of_classes),torch.zeros(nr_of_classes),torch.zeros(nr_of_classes),torch.zeros(nr_of_classes)
 
         self.Assert = torch.Tensor([1])
@@ -104,13 +90,10 @@ class Classification_Metrics():
     def compute(self, y_true: torch.tensor, y_pred: torch.tensor, loss: float, classDice):
 
         self.loss.append(loss)
-        # self.dice_coeff.append(dice)
         self.classDice.append(classDice.tolist())
 
         # y_pred_hard = y_pred.argmax(1, keepdim=True)
-
         # for i in range(self.nr_of_classes):
-            
         #     # TP
         #     self.TP[i] += (y_pred_hard[y_true == i] == i).sum().item()
         #     # TN
@@ -158,7 +141,6 @@ class Classification_Metrics():
     def log(self, commit: bool = False):
         logging_dict = {
             f"{self.prefix}/Loss": sum(self.loss)/len(self.loss),
-            # f"{self.prefix}/DICE/overall/new": sum(self.dice_coeff)/len(self.dice_coeff),
             f"{self.prefix}/DICE/overall": sum([1 - item for item in self.loss])/len(self.loss),
             # f"{self.prefix}/Accuracy": self.accuracy().item(),
             # f"{self.prefix}/F1": self.f1().item(),
@@ -176,7 +158,6 @@ class Classification_Metrics():
 
         # reset
         self.loss = []
-        # self.dice_coeff = []
         # self.TP, self.TN, self.FP, self.FN = torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes)
         self.Assert = torch.Tensor([1])
 
@@ -185,26 +166,7 @@ class Classification_Metrics():
         # self.TN = fabric.all_reduce(self.TN, reduce_op="sum")
         # self.FP = fabric.all_reduce(self.FP, reduce_op="sum")
         # self.FN = fabric.all_reduce(self.FN, reduce_op="sum")
-
-        # temp = fabric.all_gather(self.loss)
-        # print('loss', len(self.loss), self.loss)
-        # print('metrics', len(temp), temp)
-
-        # self.dice_coeff = torch.Tensor(self.dice_coeff)
-        # self.last_loss = fabric.all_reduce(self.last_loss, reduce_op="sum")
-        # self.last_dice = fabric.all_reduce(self.last_dice, reduce_op="sum")
-        # dice_tensor = fabric.all_reduce(self.dice_coeff,reduce_op='sum')
         self.Assert = fabric.all_reduce(self.Assert, reduce_op="sum")
 
-        # print('1 dice coeff:', type(self.dice_coeff))
-        # print('dice tensor', dice_tensor)
-        
-        # self.dice_coeff = dice_tensor.tolist()
-        # print('2 dice coeff:', type(self.dice_coeff))
-
-        # self.loss[-1] = self.last_loss
-        # self.dice[-1] = self.last_dice
-
-        # self.Assert equals one for each process. The sum must thus be equal to the number of processes
-        # print(self.Assert)
+        # self.Assert equals one for each process. The sum must thus be equal to the number of processes in ddp strategy
         # assert self.Assert.item() == torch.cuda.device_count(), f"Metrics Syncronization Did not Work. Assert: {self.Assert}, Devices {torch.cuda.device_count()}"

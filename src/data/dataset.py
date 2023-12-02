@@ -7,15 +7,11 @@
 @Date: 2023/04/03
 """
 
-import os
-import nibabel as nib
 import numpy as np
 from torch.utils.data import Dataset
 import torch
 import webdataset as wds
 from typing import Tuple
-import matplotlib.pyplot as plt
-import tarfile
 import glob
 
 DATA_USER = 'sabeen' # alternatively, 'matth406'
@@ -27,6 +23,7 @@ class NoBrainerDataset(Dataset):
         self.masks = glob.glob((f'{file_dir}/mask*.npy'))
         self.images = self.images[:100]
         self.masks = self.masks[:100]
+        # self.normalization_constants = np.load(f"{file_dir}/normalization_constants.npy")
         # self.keys = np.load(f'{file_dir}/keys.npy')
     
     def __getitem__(self,idx):
@@ -37,6 +34,12 @@ class NoBrainerDataset(Dataset):
     
     def __len__(self):
         return len(self.images)
+    
+    # def normalize(self,sample):
+    #     image = sample[0]
+    #     image = (image - self.normalization_constants[0]) / self.normalization_constants[1]
+    #     sample = (image, sample[1], sample[2])
+    #     return sample
 
 def get_data_loader(data_dir : str, batch_size : int, pretrained: bool, num_workers : int = 4*torch.cuda.device_count()) -> Tuple[wds.WebLoader, wds.WebLoader, wds.WebLoader]:
     if data_dir[-1] == '/':

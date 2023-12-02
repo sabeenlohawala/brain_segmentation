@@ -1,17 +1,10 @@
 
 import torch
-import numpy as np
-import csv
-import matplotlib.pyplot as plt
-import seaborn as sns
-import time
 import argparse
 import wandb
-from torch.utils.data import Dataset, DataLoader
-import glob
 
 from data.dataset import get_data_loader
-from utils import load_brains, set_seed, crop, init_cuda, init_fabric, init_wandb
+from utils import set_seed, init_cuda, init_fabric, init_wandb
 from models.metrics import Dice
 from models.segformer import Segformer
 from training.trainer import Trainer
@@ -63,7 +56,7 @@ def main():
 
     # TODO: loading model from checkpoint
     
-    fabric = init_fabric(precision=PRECISION, devices=2, strategy='ddp') # accelerator="gpu", devices=2, num_nodes=1
+    fabric = init_fabric(precision=PRECISION, devices=2, strategy='ddp')
     set_seed(SEED) # TODO: replace with seed_everything(SEED)?
     init_cuda()
 

@@ -3,9 +3,6 @@ import torch
 import webdataset as wds
 import lightning as L
 import wandb
-from collections import Counter
-from typing import Tuple
-import numpy as np
 
 from training.logging import Log_Images
 from models.metrics import Classification_Metrics
@@ -75,6 +72,7 @@ class Trainer():
             print("start validation...")
             # compute loss on validation data
             self._validation(self.val_loader)
+            self.train_metrics.sync(self.fabric)
 
             if self.fabric.global_rank == 0:
 
@@ -118,11 +116,8 @@ class Trainer():
             probs = self.model(image)
             
             # backward pass
-            # self.__backward(probs, mask.long(), train=False)
             loss, classDice = self.loss_fn(mask.long(), probs)
             self.validation_metrics.compute(mask.long(), probs, loss.item(), classDice)
-
-        # self.model.train()
     
     def _save_state(self, epoch : int, batch_idx : int, log: bool = False, path = "/home/sabeen/brain_segmentation/models/checkpoint.ckpt") -> None:
         '''
@@ -138,7 +133,6 @@ class Trainer():
             artifact = wandb.Artifact('Model', type='model')
             artifact.add_file(path)
             wandb.log_artifact(artifact)
-            # pass
 
     def finish_wandb(self, out_file : str) -> None:
         '''
