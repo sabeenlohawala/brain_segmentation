@@ -27,6 +27,7 @@ parser.add_argument('--learning_rate', help="Learning for training", type=float,
 parser.add_argument('--num_epochs', help="Number of epochs to train", type=int, required=False, default=20)
 parser.add_argument('--seed', help="Random seed value", type=int, required=False, default=42)
 parser.add_argument('--model_name', help="Name of model to use for segmentation", type=str, default='segformer')
+parser.add_argument('--dataset', help="Which dataset to train on", type=str, default='small')
 
 args = parser.parse_args()
 
@@ -38,17 +39,18 @@ NR_OF_CLASSES = 107 # set to 2 for binary classification
 BATCH_SIZE = args.batch_size
 LEARNING_RATE = args.learning_rate # 3e-6
 N_EPOCHS = args.num_epochs
-DATASET = 'small'
+DATASET = args.dataset
 MODEL_NAME = args.model_name
 SEED = args.seed
 SAVE_EVERY = "epoch"
 PRECISION = '32-true' #"16-mixed"
 
 def main():
-    
-    fabric = init_fabric(precision=PRECISION, devices=2, strategy='ddp') # accelerator="gpu", devices=2, num_nodes=1
-    set_seed(SEED) # TODO: replace with seed_everything(SEED)?
-    init_cuda()
+
+    if DATASET not in ['small', 'medium']:
+        raise Exception('Invalid dataset provided')
+    else:
+        print('Dataset found!')
 
     # model
     if MODEL_NAME == 'segformer':
@@ -58,6 +60,10 @@ def main():
         raise Exception('Invalid model name provided')
 
     # TODO: loading model from checkpoint
+    
+    fabric = init_fabric(precision=PRECISION, devices=2, strategy='ddp') # accelerator="gpu", devices=2, num_nodes=1
+    set_seed(SEED) # TODO: replace with seed_everything(SEED)?
+    init_cuda()
 
     # optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
@@ -66,7 +72,7 @@ def main():
     loss_fn = Dice(NR_OF_CLASSES, fabric)
 
     # get data loader
-    train_loader, val_loader, _ = get_data_loader('/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_small', batch_size=BATCH_SIZE)
+    train_loader, val_loader, _ = get_data_loader(f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{DATASET}', batch_size=BATCH_SIZE)
 
     # fabric setup
     train_loader, val_loader = fabric.setup_dataloaders(train_loader,val_loader)
