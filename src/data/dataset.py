@@ -21,7 +21,8 @@ import glob
 DATA_USER = 'sabeen' # alternatively, 'matth406'
 
 class NoBrainerDataset(Dataset):
-    def __init__(self,file_dir):
+    def __init__(self,file_dir,pretrained):
+        self.pretrained=pretrained
         self.images = glob.glob(f'{file_dir}/brain*.npy')
         self.masks = glob.glob((f'{file_dir}/mask*.npy'))
         self.images = self.images[:100]
@@ -30,17 +31,19 @@ class NoBrainerDataset(Dataset):
     
     def __getitem__(self,idx):
         # returns (image, mask)
+        if self.pretrained:
+            return torch.from_numpy(np.load(self.images[idx])).repeat((3,1,1)), torch.from_numpy(np.load(self.masks[idx]))
         return torch.from_numpy(np.load(self.images[idx])), torch.from_numpy(np.load(self.masks[idx]))
     
     def __len__(self):
         return len(self.images)
 
-def get_data_loader(data_dir : str, batch_size : int, num_workers : int = 4*torch.cuda.device_count()) -> Tuple[wds.WebLoader, wds.WebLoader, wds.WebLoader]:
+def get_data_loader(data_dir : str, batch_size : int, pretrained: bool, num_workers : int = 4*torch.cuda.device_count()) -> Tuple[wds.WebLoader, wds.WebLoader, wds.WebLoader]:
     if data_dir[-1] == '/':
         data_dir = data_dir[:-1]
-    train_dataset = NoBrainerDataset(f'{data_dir}/train/extracted_tensors')
-    val_dataset = NoBrainerDataset(f'{data_dir}/validation/extracted_tensors')
-    test_dataset = NoBrainerDataset(f'{data_dir}/test/extracted_tensors')
+    train_dataset = NoBrainerDataset(f'{data_dir}/train/extracted_tensors', pretrained=pretrained)
+    val_dataset = NoBrainerDataset(f'{data_dir}/validation/extracted_tensors', pretrained=pretrained)
+    test_dataset = NoBrainerDataset(f'{data_dir}/test/extracted_tensors', pretrained=pretrained)
     train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=batch_size)
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=batch_size)
     test_loader = torch.utils.data.DataLoader(test_dataset,batch_size=batch_size)

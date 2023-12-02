@@ -11,8 +11,9 @@ from utils import load_brains, crop, mapping
 
 class Log_Images():
 
-    def __init__(self, fabric : L.Fabric, wandb_on: bool, nr_of_classes: int = 112):
+    def __init__(self, fabric : L.Fabric, wandb_on: bool, pretrained: bool, nr_of_classes: int = 112):
         self.wandb_on = wandb_on
+        self.pretrained = pretrained
 
         # color map to get always the same colors for classes
         colors = plt.cm.hsv(np.linspace(0, 1, nr_of_classes))
@@ -65,7 +66,8 @@ class Log_Images():
                 i += 1
 
         # send all slices to device
-        self.brain_slices = self.brain_slices.repeat((1,3,1,1)) # uncomment if pretrained = True
+        if self.pretrained:
+            self.brain_slices = self.brain_slices.repeat((1,3,1,1))
         self.brain_slices = fabric.to_device(self.brain_slices)
         self.mask_slices = fabric.to_device(self.mask_slices)
 
@@ -89,7 +91,7 @@ class Log_Images():
             fig.savefig(fig_path)
         image = Image.frombytes('RGB', fig.canvas.get_width_height(),fig.canvas.tostring_rgb())
         if wandb_on:
-            image = wandb.Image(image, caption=caption) # comment to not save to wandb
+            image = wandb.Image(image, caption=caption)
         plt.close()
 
         return image
@@ -111,4 +113,4 @@ class Log_Images():
                 i += 1
         current_logging_dict = self.logging_dict | logging_dict
         if self.wandb_on:
-            wandb.log(current_logging_dict, commit=commit) # comment to not save to wandb
+            wandb.log(current_logging_dict, commit=commit)

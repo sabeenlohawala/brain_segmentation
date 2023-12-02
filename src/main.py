@@ -28,6 +28,7 @@ parser.add_argument('--num_epochs', help="Number of epochs to train", type=int, 
 parser.add_argument('--seed', help="Random seed value", type=int, required=False, default=42)
 parser.add_argument('--model_name', help="Name of model to use for segmentation", type=str, default='segformer')
 parser.add_argument('--dataset', help="Which dataset to train on", type=str, default='small')
+parser.add_argument('--pretrained', help="Whether to use pretrained model", type=bool, required=False, default=True)
 
 args = parser.parse_args()
 
@@ -44,6 +45,7 @@ MODEL_NAME = args.model_name
 SEED = args.seed
 SAVE_EVERY = "epoch"
 PRECISION = '32-true' #"16-mixed"
+PRETRAINED = args.pretrained
 
 def main():
 
@@ -55,7 +57,7 @@ def main():
     # model
     if MODEL_NAME == 'segformer':
         print('Model found!')
-        model = Segformer(NR_OF_CLASSES, pretrained=True)
+        model = Segformer(NR_OF_CLASSES, pretrained=PRETRAINED)
     else:
         raise Exception('Invalid model name provided')
 
@@ -72,7 +74,7 @@ def main():
     loss_fn = Dice(NR_OF_CLASSES, fabric)
 
     # get data loader
-    train_loader, val_loader, _ = get_data_loader(f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{DATASET}', batch_size=BATCH_SIZE)
+    train_loader, val_loader, _ = get_data_loader(f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{DATASET}', batch_size=BATCH_SIZE, pretrained=PRETRAINED)
 
     # fabric setup
     train_loader, val_loader = fabric.setup_dataloaders(train_loader,val_loader)
@@ -91,10 +93,10 @@ def main():
 
     # init WandB
     if fabric.global_rank == 0:
-        init_wandb(WANDB_ON, WANDB_RUN_TITLE, fabric, model_params, WANDB_RUN_DESCRIPTION) # comment to not save to wandb
+        init_wandb(WANDB_ON, WANDB_RUN_TITLE, fabric, model_params, WANDB_RUN_DESCRIPTION)
         save_frequency = len(train_loader) if SAVE_EVERY == "epoch" else 1000
         if WANDB_ON:
-            wandb.watch(model, log_freq=save_frequency) # comment to not save to wandb
+            wandb.watch(model, log_freq=save_frequency)
 
     trainer = Trainer(
          model=model,
@@ -105,7 +107,8 @@ def main():
          optimizer=optimizer,
          fabric=fabric,
          batch_size=BATCH_SIZE,
-         wandb_on=WANDB_ON
+         wandb_on=WANDB_ON,
+         pretrained=PRETRAINED
     )
     trainer.train(N_EPOCHS)
     print("Training Finished!")

@@ -170,7 +170,7 @@ class Classification_Metrics():
         # for i in range(len(self.classDice[-1])):
         #     logging_dict[f"{self.prefix}/SegDICE/{i}"] = self.classDice[-1][i]
         if self.wandb_on:
-            wandb.log(logging_dict, commit=commit) # comment to not save to wandb
+            wandb.log(logging_dict, commit=commit)
 
     def reset(self):
 

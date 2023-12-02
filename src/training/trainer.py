@@ -23,6 +23,7 @@ class Trainer():
             fabric : L.Fabric,
             batch_size : int,
             wandb_on: bool,
+            pretrained: bool,
             save_every : int = 100000,
             ) -> None:
         
@@ -36,9 +37,10 @@ class Trainer():
         self.nr_of_classes = nr_of_classes
         self.batch_size = batch_size
         self.wandb_on = wandb_on
+        self.pretrained = pretrained
 
         if self.fabric.global_rank == 0:
-            self.image_logger = Log_Images(self.fabric, wandb_on = self.wandb_on, nr_of_classes=nr_of_classes)
+            self.image_logger = Log_Images(self.fabric, wandb_on = self.wandb_on, pretrained = self.pretrained, nr_of_classes=nr_of_classes)
 
     def train(self, epochs : int) -> None:
         
@@ -56,7 +58,6 @@ class Trainer():
                 # mask[mask != 0] = 1 # uncomment for binary classification check
 
                 print(f'Process {self.fabric.global_rank}, batch {i}')
-                image = image.repeat((1,3,1,1)) # uncomment if pretrained = True
 
                 self.optimizer.zero_grad()
                 probs = self.model(image)
@@ -104,7 +105,7 @@ class Trainer():
             self._save_state(epoch, batch_idx, log=False, path=model_save_path)
 
             # add .out file to wandb and terminate
-            self.finish_wandb('/om2/user/sabeen/brain_segmentation/jobs/job_train.out') # comment to not save to wandb
+            self.finish_wandb('/om2/user/sabeen/brain_segmentation/jobs/job_train.out')
 
     @torch.no_grad()
     def _validation(self, data_loader : wds.WebLoader) -> None:
@@ -114,7 +115,6 @@ class Trainer():
             # mask[mask != 0] = 1 # uncomment for binary classification check
 
             # forward pass
-            image = image.repeat((1,3,1,1)) # uncomment if pretrained = True
             probs = self.model(image)
             
             # backward pass
@@ -135,9 +135,9 @@ class Trainer():
         '''
 
         if log:
-            artifact = wandb.Artifact('Model', type='model') # comment to not save to wandb
-            artifact.add_file(path) # comment to not save to wandb
-            wandb.log_artifact(artifact) # comment to not save to wandb
+            artifact = wandb.Artifact('Model', type='model')
+            artifact.add_file(path)
+            wandb.log_artifact(artifact)
             # pass
 
     def finish_wandb(self, out_file : str) -> None:
