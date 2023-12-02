@@ -5,11 +5,14 @@ import torch
 import random
 import numpy as np
 import lightning as L
+from lightning.fabric import Fabric, seed_everything
 import shutil
 import wandb
 import datetime
 from typing import Tuple
 import csv
+
+SEED = 42
 
 def load_brains(image_file : str, mask_file : str, file_path : str):
 
@@ -39,11 +42,12 @@ def set_seed(seed : int = 0) -> None:
         seed (int, optional): seed. Defaults to 0.
     '''
 
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.cuda.manual_seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
+    # torch.manual_seed(seed)
+    # torch.cuda.manual_seed_all(seed)
+    # torch.cuda.manual_seed(seed)
+    # random.seed(seed)
+    # np.random.seed(seed)
+    seed_everything(SEED)
     
     if torch.cuda.is_available():
         # determines if cuda selects only deterministic algorithms or not
@@ -144,7 +148,8 @@ def init_wandb(project_name : str, fabric : L.fabric, model_params : dict, descr
 
     wandb.init(
     name=f'{fabric.device}-{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',
-    group=f'{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',
+    group=f'test-multigpu-{datetime.datetime.now().month}-{datetime.datetime.now().day}',
+    # group=f'{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',
     project=project_name,
     entity="tissue-labeling-sabeen",
     notes=description,
@@ -157,7 +162,7 @@ def init_wandb(project_name : str, fabric : L.fabric, model_params : dict, descr
 
 def init_fabric(**kwargs) -> L.fabric:
 
-    fabric = L.Fabric(**kwargs)
+    fabric = Fabric(**kwargs)
     fabric.launch()
     
     if torch.cuda.device_count() > 1:

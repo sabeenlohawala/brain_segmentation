@@ -64,6 +64,7 @@ class Log_Images():
                 i += 1
 
         # send all slices to device
+        self.brain_slices = self.brain_slices.repeat((1,3,1,1)) # uncomment if pretrained = True
         self.brain_slices = fabric.to_device(self.brain_slices)
         self.mask_slices = fabric.to_device(self.mask_slices)
 
@@ -86,7 +87,7 @@ class Log_Images():
         if fig_path is not None:
             fig.savefig(fig_path)
         image = Image.frombytes('RGB', fig.canvas.get_width_height(),fig.canvas.tostring_rgb())
-        image = wandb.Image(image, caption=caption)
+        image = wandb.Image(image, caption=caption) # comment to not save to wandb
         plt.close()
 
         return image
@@ -107,4 +108,4 @@ class Log_Images():
                 logging_dict[f"Predicted Mask d{d} c{slice_id}"] = self.__create_plot(probs[i], caption=f"Epoch {e}", cmap=self.cmap, norm=self.norm)
                 i += 1
         current_logging_dict = self.logging_dict | logging_dict
-        wandb.log(current_logging_dict, commit=commit)
+        wandb.log(current_logging_dict, commit=commit) # comment to not save to wandb
