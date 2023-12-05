@@ -23,14 +23,20 @@ class NoBrainerDataset(Dataset):
         self.masks = glob.glob((f'{file_dir}/mask*.npy'))
         self.images = self.images[:100]
         self.masks = self.masks[:100]
-        # self.normalization_constants = np.load(f"{file_dir}/normalization_constants.npy")
+        self.normalization_constants = np.load(f"{file_dir}/../../normalization_constants.npy")
         # self.keys = np.load(f'{file_dir}/keys.npy')
     
     def __getitem__(self,idx):
         # returns (image, mask)
+        image = torch.from_numpy(np.load(self.images[idx]))
+        mask = torch.from_numpy(np.load(self.masks[idx]))
+
+        # normalize image
+        image = (image - self.normalization_constants[0]) / self.normalization_constants[1]
+
         if self.pretrained:
-            return torch.from_numpy(np.load(self.images[idx])).repeat((3,1,1)), torch.from_numpy(np.load(self.masks[idx]))
-        return torch.from_numpy(np.load(self.images[idx])), torch.from_numpy(np.load(self.masks[idx]))
+            return image.repeat((3,1,1)), mask
+        return image, mask
     
     def __len__(self):
         return len(self.images)
