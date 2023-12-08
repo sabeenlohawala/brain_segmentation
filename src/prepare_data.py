@@ -15,17 +15,19 @@ from utils import load_brains, brain_coord, mapping
 parser = argparse.ArgumentParser()
 parser.add_argument("type", help="which dataset to build: 'small', 'medium' or 'large'",
                     type=str)
-parser.add_argument("shardsize", help="Number of samples each shard should contain",
-                    type=int)
+# parser.add_argument("shardsize", help="Number of samples each shard should contain",
+#                     type=int)
+parser.add_argument('dataset_name', help="name of dataset, gives name of folder where data is saved", type=str)
 args = parser.parse_args()
 
 SEED = 42
 TYPE = args.type
-SHARD_SIZE = args.shardsize
+# SHARD_SIZE = args.shardsize
 HEIGHT = 162
 WIDTH = 194
 NR_OF_CLASSES = 107
 AUG_ANGLES =list(range(15,180 + 15, 15))
+DATASET_NAME = args.dataset_name
 # POSSIBLE_AUGMENTATIONS = ['rotation'] # ['rotation','null','zoom']
 
 def main():
@@ -33,7 +35,14 @@ def main():
     # create and store train/val/test split of ALL files once and save it
     file_path = '/om2/user/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs'
     idx_path = "/om2/user/matth406/nobrainer_data/data/SharedData/segmentation/idx.dat"
-    save_path_basic = f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{TYPE}_3'
+    # save_path_basic = f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{TYPE}_3'
+    save_path_basic = f'/om2/user/sabeen/nobrainer_data_norm/{DATASET_NAME}'
+    # for mode in ['train','validation','test']:
+    #     save_path_mode = f'{save_path_basic}/{mode}'
+
+    #     if not os.path.exists(save_path_mode):
+    #         os.makedirs(save_path_mode)
+
     if os.path.exists(idx_path):
         # load existing file names
         print("Loading existing file names...")
@@ -81,7 +90,12 @@ def main():
         image_files = images_files_splitted[mode_idx]
         mask_files = mask_files_splitted[mode_idx]
 
-        sink = wds.ShardWriter(f"{save_path_basic}/{mode}/{mode}-%06d.tar", maxcount = SHARD_SIZE)
+        save_path_mode = f'{save_path_basic}/{mode}'
+
+        # if not os.path.exists(save_path_mode):
+        #     os.makedirs(save_path_mode)
+
+        # sink = wds.ShardWriter(f"{save_path_basic}/{mode}/{mode}-%06d.tar", maxcount = SHARD_SIZE)
 
         idx = 0
         dataset_mean, dataset_std = 0, 0
@@ -233,92 +247,101 @@ def main():
                     # get final brain location coordinates
                     (cut_top_temp, cut_bottom_temp, cut_left_temp, cut_right_temp) = brain_coord(brain_slice)
 
-                    sink.write({
-                        "__key__": str(idx), # key used to identify the object
-                        'image_nr.id': image_nr, # image number stored as id --> integer
-                        'slice_nr.id': i, # slice number stored as id --> integer
-                        'slice_direction.id': d, # slice direction stored as id --> integer
-                        'slice_augmentation_1.txt': 'None',
-                        'slice_augmentation_2.txt': 'None',
-                        'slice_augmentation_3.txt': 'None',
-                        'slice_rot.id': 0, # angle of rotation for augmentation
-                        'slice_null.txt': 'None',
-                        "brain.pth": brain_slice.unsqueeze(0), # brain slice stored as pth --> tensor
-                        "mask.pth": mask_slice.unsqueeze(0), # mask slice stored as pth --> tensor
-                        # "standardize.pth": standardize, # image-wise mean and std stored as pth --> tensor
-                        "batch_idx_bottom.id": cut_bottom_temp, # bottom index of the batch --> integer
-                        "batch_idx_top.id": cut_top_temp, # top index of the batch --> integer
-                        "batch_idx_left.id": cut_left_temp, # left index of the batch --> integer
-                        "batch_idx_right.id": cut_right_temp, # right index of the batch --> integer
-                    })
+                    # sink.write({
+                    #     "__key__": str(idx), # key used to identify the object
+                    #     'image_nr.id': image_nr, # image number stored as id --> integer
+                    #     'slice_nr.id': i, # slice number stored as id --> integer
+                    #     'slice_direction.id': d, # slice direction stored as id --> integer
+                    #     'slice_augmentation_1.txt': 'None',
+                    #     'slice_augmentation_2.txt': 'None',
+                    #     'slice_augmentation_3.txt': 'None',
+                    #     'slice_rot.id': 0, # angle of rotation for augmentation
+                    #     'slice_null.txt': 'None',
+                    #     "brain.pth": brain_slice.unsqueeze(0), # brain slice stored as pth --> tensor
+                    #     "mask.pth": mask_slice.unsqueeze(0), # mask slice stored as pth --> tensor
+                    #     # "standardize.pth": standardize, # image-wise mean and std stored as pth --> tensor
+                    #     "batch_idx_bottom.id": cut_bottom_temp, # bottom index of the batch --> integer
+                    #     "batch_idx_top.id": cut_top_temp, # top index of the batch --> integer
+                    #     "batch_idx_left.id": cut_left_temp, # left index of the batch --> integer
+                    #     "batch_idx_right.id": cut_right_temp, # right index of the batch --> integer
+                    # })
+
+                    brain_filename = f'{save_path_mode}/brain_{idx}.npy'
+                    mask_filename = f'{save_path_mode}/mask_{idx}.npy'
+                    np.save(brain_filename,brain_slice.unsqueeze(0))
+                    np.save(mask_filename,mask_slice.unsqueeze(0))
 
                     idx += 1
+                    # TODO: add augmentations
+                    # if mode == "train":
+                    #     # num_augmentations = random.randint(1,len(POSSIBLE_AUGMENTATIONS))
+                    #     # augmentations_to_apply = random.sample(POSSIBLE_AUGMENTATIONS,num_augmentations)
+                    #     # angle = 0
+                    #     # null_side = 'None'
+                    #     # for augmentation in augmentations_to_apply:
+                    #     #     if augmentation == 'rotate':
+                    #     #         angle = random.choice(AUG_ANGLES)
+                    #     #         brain_slice = torch.from_numpy(rotate(brain_slice,angle,reshape=False)).to(torch.float32)
+                    #     #         mask_slice = torch.from_numpy(rotate(mask_slice,angle,reshape=False,order=0)).to(torch.float32)
+                    #     #     elif augmentation == 'null':
+                    #     #         null_side = ['left','right','top','down']
+                    #     #         if null_side == 'left':
+                    #     #             mid = brain_slice.shape[0] // 2
+                    #     #             brain_slice[:mid,:] = 0
+                    #     #             mask_slice[:mid,:] = 0
+                    #     #         elif null_side == 'right':
+                    #     #             mid = brain_slice.shape[0] // 2
+                    #     #             brain_slice[mid:,:] = 0
+                    #     #             mask_slice[mid:,:] = 0
+                    #     #         elif null_side == 'top':
+                    #     #             mid = brain_slice.shape[1] // 2
+                    #     #             brain_slice[:,:mid] = 0
+                    #     #             mask_slice[:,:mid] = 0
+                    #     #         elif null_side == 'down':
+                    #     #             mid = brain_slice.shape[1] // 2
+                    #     #             brain_slice[:,mid:] = 0
+                    #     #             mask_slice[:,mid] = 0
+                    #     #         else:
+                    #     #             raise Exception(f'{null_side} is not a valid option for null_side')
+                    #     #     elif augmentation == 'zoom':
+                    #     #         pass
 
-                    if mode == "train":
-                        # # TODO: add augmentations
-                        # num_augmentations = random.randint(1,len(POSSIBLE_AUGMENTATIONS))
-                        # augmentations_to_apply = random.sample(POSSIBLE_AUGMENTATIONS,num_augmentations)
-                        # angle = 0
-                        # null_side = 'None'
-                        # for augmentation in augmentations_to_apply:
-                        #     if augmentation == 'rotate':
-                        #         angle = random.choice(AUG_ANGLES)
-                        #         brain_slice = torch.from_numpy(rotate(brain_slice,angle,reshape=False)).to(torch.float32)
-                        #         mask_slice = torch.from_numpy(rotate(mask_slice,angle,reshape=False,order=0)).to(torch.float32)
-                        #     elif augmentation == 'null':
-                        #         null_side = ['left','right','top','down']
-                        #         if null_side == 'left':
-                        #             mid = brain_slice.shape[0] // 2
-                        #             brain_slice[:mid,:] = 0
-                        #             mask_slice[:mid,:] = 0
-                        #         elif null_side == 'right':
-                        #             mid = brain_slice.shape[0] // 2
-                        #             brain_slice[mid:,:] = 0
-                        #             mask_slice[mid:,:] = 0
-                        #         elif null_side == 'top':
-                        #             mid = brain_slice.shape[1] // 2
-                        #             brain_slice[:,:mid] = 0
-                        #             mask_slice[:,:mid] = 0
-                        #         elif null_side == 'down':
-                        #             mid = brain_slice.shape[1] // 2
-                        #             brain_slice[:,mid:] = 0
-                        #             mask_slice[:,mid] = 0
-                        #         else:
-                        #             raise Exception(f'{null_side} is not a valid option for null_side')
-                        #     elif augmentation == 'zoom':
-                        #         pass
+                    #     # rotation augmentation
+                    #     augmentations_to_apply = ['rotation']
+                    #     null_side = 'None'
+                    #     angle = random.choice(AUG_ANGLES)
+                    #     rotated_brain = torch.from_numpy(rotate(brain_slice,angle,reshape=False)).to(torch.float32)
+                    #     rotated_slice = torch.from_numpy(rotate(mask_slice,angle,reshape=False,order=0)).to(torch.float32)
 
-                        # rotation augmentation
-                        augmentations_to_apply = ['rotation']
-                        null_side = 'None'
-                        angle = random.choice(AUG_ANGLES)
-                        rotated_brain = torch.from_numpy(rotate(brain_slice,angle,reshape=False)).to(torch.float32)
-                        rotated_slice = torch.from_numpy(rotate(mask_slice,angle,reshape=False,order=0)).to(torch.float32)
+                    #     # (cut_top_temp, cut_bottom_temp, cut_left_temp, cut_right_temp) = brain_coord(rotated_brain)
+                    #     while len(augmentations_to_apply) < 3:
+                    #         augmentations_to_apply.append('None')
 
-                        # (cut_top_temp, cut_bottom_temp, cut_left_temp, cut_right_temp) = brain_coord(rotated_brain)
-                        while len(augmentations_to_apply) < 3:
-                            augmentations_to_apply.append('None')
+                    #     sink.write({
+                    #         "__key__": str(idx), # key used to identify the object
+                    #         'image_nr.id': image_nr, # image number stored as id --> integer
+                    #         'slice_nr.id': i, # slice number stored as id --> integer
+                    #         'slice_direction.id': d, # slice direction stored as id --> integer
+                    #         'slice_augmentation_1.txt': augmentations_to_apply[0], # 1st in list of augmentations --> string?
+                    #         'slice_augmentation_2.txt': augmentations_to_apply[1], # 2nd in list of augmentations --> string?
+                    #         'slice_augmentation_3.txt': augmentations_to_apply[2], # 3rd in list of augmentations --> string?
+                    #         'slice_rot.id': angle, # angle of rotation for augmentation --> integer
+                    #         'slice_null.txt': null_side, # which side of the image was null (or None if no null) --> string
+                    #         "brain.pth": rotated_brain.unsqueeze(0), # brain slice stored as pth --> tensor
+                    #         "mask.pth": rotated_slice.unsqueeze(0), # mask slice stored as pth --> tensor
+                    #         # "standardize.pth": standardize, # image-wise mean and std stored as pth --> tensor
+                    #         "batch_idx_bottom.id": cut_bottom_temp, # bottom index of the batch --> integer
+                    #         "batch_idx_top.id": cut_top_temp, # top index of the batch --> integer
+                    #         "batch_idx_left.id": cut_left_temp, # left index of the batch --> integer
+                    #         "batch_idx_right.id": cut_right_temp, # right index of the batch --> integer
+                    #     })
 
-                        sink.write({
-                            "__key__": str(idx), # key used to identify the object
-                            'image_nr.id': image_nr, # image number stored as id --> integer
-                            'slice_nr.id': i, # slice number stored as id --> integer
-                            'slice_direction.id': d, # slice direction stored as id --> integer
-                            'slice_augmentation_1.txt': augmentations_to_apply[0], # 1st in list of augmentations --> string?
-                            'slice_augmentation_2.txt': augmentations_to_apply[1], # 2nd in list of augmentations --> string?
-                            'slice_augmentation_3.txt': augmentations_to_apply[2], # 3rd in list of augmentations --> string?
-                            'slice_rot.id': angle, # angle of rotation for augmentation --> integer
-                            'slice_null.txt': null_side, # which side of the image was null (or None if no null) --> string
-                            "brain.pth": rotated_brain.unsqueeze(0), # brain slice stored as pth --> tensor
-                            "mask.pth": rotated_slice.unsqueeze(0), # mask slice stored as pth --> tensor
-                            # "standardize.pth": standardize, # image-wise mean and std stored as pth --> tensor
-                            "batch_idx_bottom.id": cut_bottom_temp, # bottom index of the batch --> integer
-                            "batch_idx_top.id": cut_top_temp, # top index of the batch --> integer
-                            "batch_idx_left.id": cut_left_temp, # left index of the batch --> integer
-                            "batch_idx_right.id": cut_right_temp, # right index of the batch --> integer
-                        })
+                    #     brain_filename = f'{save_path_mode}/brain_{idx}.npy'
+                    #     mask_filename = f'{save_path_mode}/mask_{idx}.npy'
+                    #     np.save(brain_filename,rotated_brain.unsqueeze(0))
+                    #     np.save(mask_filename,rotated_slice.unsqueeze(0))
 
-                        idx += 1
+                    #     idx += 1
 
         if mode == "train":
             dataset_mean /= idx
@@ -327,7 +350,7 @@ def main():
             print("Dataset mean: ", dataset_mean, "Dataset std: ", dataset_std)
             np.save(f"{save_path_basic}/pixel_counts.npy", np.array(list(pixel_counts.values())))
 
-        sink.close()
+        # sink.close()
 
     print("Number of patches too small: ", too_small)
 

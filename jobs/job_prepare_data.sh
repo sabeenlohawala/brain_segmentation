@@ -10,4 +10,4 @@ conda init bash
 
 # -u ensures that the output is unbuffered, and written immediately to stdout.
 cd src
-srun python -u prepare_data.py small 1000
+srun python -u prepare_data.py small new_small_no_aug
