@@ -1,6 +1,7 @@
 
 import torch
 from torch import nn
+from torchinfo import summary
 
 from transformers import SegformerForSemanticSegmentation, SegformerConfig
 
@@ -33,3 +34,14 @@ class Segformer(nn.Module):
         self.probs = self.softmax(self.logits)
 
         return self.probs
+
+if __name__ == "__main__":
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    model = Segformer(51, pretrained=True)
+
+    summary(
+        model,
+        input_size=[(512+256+128+64, 3, 162, 194)],
+        col_names=["input_size", "output_size", "num_params"],
+    )

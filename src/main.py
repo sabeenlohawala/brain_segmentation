@@ -7,6 +7,7 @@ from data.dataset import get_data_loader
 from utils import set_seed, init_cuda, init_fabric, init_wandb
 from models.metrics import Dice
 from models.segformer import Segformer
+from models.unet import Unet
 from training.trainer import Trainer
 
 parser = argparse.ArgumentParser(
@@ -51,8 +52,16 @@ def main():
 
     # model
     if MODEL_NAME == 'segformer':
-        print('Model found!')
+        print('Segformer model found!')
         model = Segformer(NR_OF_CLASSES, pretrained=PRETRAINED)
+    if MODEL_NAME == 'unet':
+        print('Unet model found!')
+        model = Unet(
+            dim=16,
+            channels=1,
+            dim_mults=(2, 4, 8, 16, 32, 64),
+        )
+        print(model)
     else:
         raise Exception('Invalid model name provided')
 
