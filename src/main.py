@@ -8,6 +8,7 @@ from utils import set_seed, init_cuda, init_fabric, init_wandb
 from models.metrics import Dice
 from models.segformer import Segformer
 from training.trainer import Trainer
+from training.trainer import auto_train
 
 parser = argparse.ArgumentParser(
                     prog='ProgramName',
@@ -39,6 +40,22 @@ SEED = args.seed
 SAVE_EVERY = "epoch"
 PRECISION = '32-true' #"16-mixed"
 PRETRAINED = args.pretrained
+
+@auto_train
+def my_train(model, nr_of_classes, train_loader, val_loader, loss_fn, optimizer, fabric, batch_size, wandb_on, pretrained, n_epochs):
+    trainer = Trainer(
+        model=model,
+        nr_of_classes=nr_of_classes,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        loss_fn=loss_fn,
+        optimizer=optimizer,
+        fabric=fabric,
+        batch_size=batch_size,
+        wandb_on=wandb_on,
+        pretrained=pretrained
+)
+    trainer.train(n_epochs)
 
 def main():
 
@@ -91,7 +108,7 @@ def main():
         if WANDB_ON:
             wandb.watch(model, log_freq=save_frequency)
 
-    trainer = Trainer(
+    my_train(
          model=model,
          nr_of_classes=NR_OF_CLASSES,
          train_loader=train_loader,
@@ -101,9 +118,9 @@ def main():
          fabric=fabric,
          batch_size=BATCH_SIZE,
          wandb_on=WANDB_ON,
-         pretrained=PRETRAINED
+         pretrained=PRETRAINED,
+         n_epochs=N_EPOCHS
     )
-    trainer.train(N_EPOCHS)
     print("Training Finished!")
 
 if __name__ == "__main__":
