@@ -21,8 +21,8 @@ class NoBrainerDataset(Dataset):
         self.pretrained=pretrained
         self.images = glob.glob(f'{file_dir}/brain*.npy')
         self.masks = glob.glob((f'{file_dir}/mask*.npy'))
-        # self.images = self.images[:100]
-        # self.masks = self.masks[:100]
+        self.images = self.images[:100]
+        self.masks = self.masks[:100]
         self.normalization_constants = np.load(f"{file_dir}/../normalization_constants.npy")
         # self.keys = np.load(f'{file_dir}/keys.npy')
     

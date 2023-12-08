@@ -23,7 +23,7 @@ class Trainer():
             batch_size : int,
             wandb_on: bool,
             pretrained: bool,
-            tensorboard_dir: str = '',
+            logdir: str = '',
             save_every : int = 100000,
             ) -> None:
         
@@ -38,15 +38,15 @@ class Trainer():
         self.batch_size = batch_size
         self.wandb_on = wandb_on
         self.pretrained = pretrained
-        self.tensorboard_dir = tensorboard_dir
+        self.logdir = logdir
 
         if self.fabric.global_rank == 0:
             self.image_logger = Log_Images(self.fabric, wandb_on = self.wandb_on, pretrained = self.pretrained, nr_of_classes=nr_of_classes)
         
-        if self.tensorboard_dir:
-            if not os.path.isdir(self.tensorboard_dir):
-                os.makedirs(self.tensorboard_dir)
-            self.writer = SummaryWriter(self.tensorboard_dir)
+        if self.logdir:
+            if not os.path.isdir(self.logdir):
+                os.makedirs(self.logdir)
+            self.writer = SummaryWriter(self.logdir)
         else:
             self.writer = None
 

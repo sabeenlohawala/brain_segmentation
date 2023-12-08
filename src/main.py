@@ -2,6 +2,7 @@
 import torch
 import argparse
 import wandb
+import os
 
 from data.dataset import get_data_loader
 from utils import set_seed, init_cuda, init_fabric, init_wandb
@@ -14,16 +15,18 @@ parser = argparse.ArgumentParser(
                     prog='ProgramName',
                     description='What the program does',
                     epilog='Text at the bottom of help')
-
+parser.add_argument('--logdir', help="Tensorboard directory", type=str,required=False)
 parser.add_argument('--wandb_description', help="Description add to the wandb run", type=str, required=False)
+
+parser.add_argument('--model_name', help="Name of model to use for segmentation", type=str, default='segformer')
+parser.add_argument('--num_epochs', help="Number of epochs to train", type=int, required=False, default=20)
 parser.add_argument('--batch_size', help="Batch size for training", type=int, required=False, default=64)
 parser.add_argument('--learning_rate', help="Learning for training", type=float, required=False, default=6e-5)
-parser.add_argument('--num_epochs', help="Number of epochs to train", type=int, required=False, default=20)
-parser.add_argument('--seed', help="Random seed value", type=int, required=False, default=42)
-parser.add_argument('--model_name', help="Name of model to use for segmentation", type=str, default='segformer')
-parser.add_argument('--dataset', help="Which dataset to train on", type=str, default='small')
+
+parser.add_argument('--data_dir', help="Directory of which dataset to train on", type=str, default='/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51')
 parser.add_argument('--pretrained', help="Whether to use pretrained model", type=bool, required=False, default=True)
-parser.add_argument('--tensorboard_dir', help="Tensorboard directory", type=str,required=False)
+parser.add_argument('--seed', help="Random seed value", type=int, required=False, default=42)
+
 
 args = parser.parse_args()
 
@@ -35,26 +38,24 @@ NR_OF_CLASSES = 51 # set to 2 for binary classification
 BATCH_SIZE = args.batch_size
 LEARNING_RATE = args.learning_rate # 3e-6
 N_EPOCHS = args.num_epochs
-DATASET = args.dataset
+DATA_DIR = args.data_dir
 MODEL_NAME = args.model_name
 SEED = args.seed
 SAVE_EVERY = "epoch"
 PRECISION = '32-true' #"16-mixed"
 PRETRAINED = args.pretrained
-TENSORBOARD_DIR = args.tensorboard_dir
+LOGDIR = args.logdir
 
 def main():
 
-    if DATASET not in ['small', 'medium']:
-        raise Exception('Invalid dataset provided')
-    else:
-        print('Dataset found!')
+    if not os.path.exists(DATA_DIR):
+        raise Exception('Dataset not found')
 
     # model
     if MODEL_NAME == 'segformer':
         print('Segformer model found!')
         model = Segformer(NR_OF_CLASSES, pretrained=PRETRAINED)
-    if MODEL_NAME == 'unet':
+    elif MODEL_NAME == 'unet':
         print('Unet model found!')
         model = Unet(
             dim=16,
@@ -63,6 +64,7 @@ def main():
         )
         print(model)
     else:
+        print(MODEL_NAME)
         raise Exception('Invalid model name provided')
 
     # TODO: loading model from checkpoint
@@ -75,11 +77,11 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
     # loss function
-    loss_fn = Dice(NR_OF_CLASSES, fabric)
+    loss_fn = Dice(NR_OF_CLASSES, fabric, DATA_DIR)
 
     # get data loader
     # train_loader, val_loader, _ = get_data_loader(f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{DATASET}', batch_size=BATCH_SIZE, pretrained=PRETRAINED)
-    train_loader, val_loader, _ = get_data_loader(f'/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51', batch_size=BATCH_SIZE, pretrained=PRETRAINED)
+    train_loader, val_loader, _ = get_data_loader(DATA_DIR, batch_size=BATCH_SIZE, pretrained=PRETRAINED)
 
     # fabric setup
     train_loader, val_loader = fabric.setup_dataloaders(train_loader,val_loader)
@@ -91,7 +93,7 @@ def main():
         '# epochs': N_EPOCHS,
         'batch size': BATCH_SIZE,
         'model': MODEL_NAME,
-        'dataset': DATASET,
+        'data_dir': DATA_DIR,
         'validation frequency': SAVE_EVERY,
         'precision': PRECISION
         }
@@ -114,7 +116,7 @@ def main():
          batch_size=BATCH_SIZE,
          wandb_on=WANDB_ON,
          pretrained=PRETRAINED,
-         tensorboard_dir = TENSORBOARD_DIR
+         logdir = LOGDIR
     )
     trainer.train(N_EPOCHS)
     print("Training Finished!")

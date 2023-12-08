@@ -5,12 +5,12 @@ from torch import nn
 import numpy as np
 import lightning as L
 
-DATA_USER = 'sabeen' # alternatively, 'matth406'
+DATA_DIR = 'sabeen' # alternatively, 'matth406'
 # DATASET = 'medium'
 
 class Dice(nn.Module):
 
-    def __init__(self, nr_of_classes: int, fabric: L.Fabric, smooth: float = 1e-7) -> None:
+    def __init__(self, nr_of_classes: int, fabric: L.Fabric, data_dir:str, smooth: float = 1e-7) -> None:
         super(Dice, self).__init__()
         '''
         Compute the multi-class generlized dice loss as suggested here:
@@ -26,7 +26,7 @@ class Dice(nn.Module):
         self.nr_of_classes = nr_of_classes
         self.smooth = smooth
 
-        pixel_counts = np.load(f'/om2/user/{DATA_USER}/nobrainer_data_norm/new_small_no_aug_51/pixel_counts.npy')
+        pixel_counts = np.load(f'{data_dir}/pixel_counts.npy')
         # NR_OF_CLASSES = 6
         # pixel_counts = np.load(f'/om2/user/sabeen/nobrainer_data_norm/matth406_medium_6_classes/pixel_counts.npy')
         pixel_counts = torch.from_numpy(pixel_counts)
