@@ -2,11 +2,11 @@
 #SBATCH -t 24:00:00
 #SBATCH -N 1
 #SBATCH -c 4
-#SBATCH --ntasks-per-node=1
-#SBATCH --gres=gpu:a100:1
+#SBATCH --ntasks-per-node=4
+#SBATCH --gres=gpu:a100:4
 #SBATCH --mem=40G # per node memory
 #SBATCH -p gablab
-#SBATCH -o ./slurm_outputs/test-small-old.out
+#SBATCH -o ./slurm_outputs/test-small-50seg.out
 
 export PATH="/om2/user/sabeen/miniconda/bin:$PATH"
 conda init bash
@@ -15,7 +15,7 @@ conda init bash
 # 24 batch size per A100 GPU
 # For multi GPU training
 cd src
-srun python -u main.py $wandb_description
+srun python -u main.py --num_epochs=100 --batch_size=512 --wandb_description=$wandb_description
 
 # to run:
 # sbatch --export=ALL,wandb_description='testrun' jobs/job.sh

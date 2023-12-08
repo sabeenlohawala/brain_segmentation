@@ -218,28 +218,47 @@ def brain_area(slice : torch.tensor) -> torch.tensor:
   return slice[cut_top_temp:cut_bottom_temp+1, cut_left_temp:cut_right_temp+1]
 
 def mapping(mask: np.array):
-    labels = []
+    class_mapping = {}
+    # labels = []
     with open('/home/matth406/unsupervised_brain/data/class-mapping.csv', newline='') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         # skip header
         next(spamreader, None)
         for row in spamreader:
-            labels.append(int(row[1]))
-    labels = np.array(labels)
-    # labels = torch.tensor([   0, 1024,    2,    3,    4,    5, 1025,    7,    8, 1026,   10,   11,
-    #       12,   13,   14,   15,   16,   17,   18, 1034, 1035,   24,   26,   28,
-    #       30,   31,   41,   42,   43,   44,   46,   47, 1027,   49,   50,   51,
-    #       52,   53,   54, 1028,   58, 1029,   60,   62,   63, 1030, 1031,   72,
-    #     1032,   77, 1033,   80,   85,  251,  252,  253,  254,  255, 1009, 1010,
-    #     1011, 2034, 1012, 1013, 1014, 2035, 1015, 1007, 2033, 2000, 2001, 2002,
-    #     2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
-    #     2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 1000, 2025, 1002, 1003,
-    #     2024, 1005, 1006, 2031, 2032, 1008, 1001, 2026, 2027, 2028, 2029, 2030,
-    #     1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023])
-    class_mapping = {value.item(): index for index, value in enumerate(labels)}
+            class_mapping[int(row[1])] = int(row[4])
+    #         labels.append(int(row[1]))
+    # labels = np.array(labels)
+
+    # labels = []
+    # with open('/home/matth406/unsupervised_brain/data/class-mapping.csv', newline='') as csvfile:
+    #     spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+    #     # skip header
+    #     next(spamreader, None)
+    #     for row in spamreader:
+    #         labels.append(int(row[1]))
+    # labels = np.array(labels)
+    # # labels = torch.tensor([   0, 1024,    2,    3,    4,    5, 1025,    7,    8, 1026,   10,   11,
+    # #       12,   13,   14,   15,   16,   17,   18, 1034, 1035,   24,   26,   28,
+    # #       30,   31,   41,   42,   43,   44,   46,   47, 1027,   49,   50,   51,
+    # #       52,   53,   54, 1028,   58, 1029,   60,   62,   63, 1030, 1031,   72,
+    # #     1032,   77, 1033,   80,   85,  251,  252,  253,  254,  255, 1009, 1010,
+    # #     1011, 2034, 1012, 1013, 1014, 2035, 1015, 1007, 2033, 2000, 2001, 2002,
+    # #     2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
+    # #     2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 1000, 2025, 1002, 1003,
+    # #     2024, 1005, 1006, 2031, 2032, 1008, 1001, 2026, 2027, 2028, 2029, 2030,
+    # #     1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023])
+
+    # class_mapping = {value.item(): index for index, value in enumerate(labels)}
     u, inv = np.unique(mask, return_inverse=True)
+    num_classes = 50 #len(class_mapping)
+    for x in u:
+        if x not in class_mapping:
+            class_mapping[x] = num_classes
     
-    # we collect all classes not in the mapping table as an additional "other" class
-    mask = np.array([class_mapping[int(x)] if x in labels else len(labels) for x in u])[inv].reshape(mask.shape)
+    # # we collect all classes not in the mapping table as an additional "other" class
+    # mask = np.array([class_mapping[int(x)] if x in labels else len(labels) for x in u])[inv].reshape(mask.shape)
+    for old,new in class_mapping.items():
+        mask[mask == old] = -1*new
+    mask = mask * -1
     
     return mask

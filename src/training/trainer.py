@@ -3,6 +3,8 @@ import torch
 import webdataset as wds
 import lightning as L
 import wandb
+from torch.utils.tensorboard import SummaryWriter
+import os
 
 from training.logging import Log_Images
 from models.metrics import Classification_Metrics
@@ -21,6 +23,7 @@ class Trainer():
             batch_size : int,
             wandb_on: bool,
             pretrained: bool,
+            tensorboard_dir: str = '',
             save_every : int = 100000,
             ) -> None:
         
@@ -35,9 +38,17 @@ class Trainer():
         self.batch_size = batch_size
         self.wandb_on = wandb_on
         self.pretrained = pretrained
+        self.tensorboard_dir = tensorboard_dir
 
         if self.fabric.global_rank == 0:
             self.image_logger = Log_Images(self.fabric, wandb_on = self.wandb_on, pretrained = self.pretrained, nr_of_classes=nr_of_classes)
+        
+        if self.tensorboard_dir:
+            if not os.path.isdir(self.tensorboard_dir):
+                os.makedirs(self.tensorboard_dir)
+            self.writer = SummaryWriter(self.tensorboard_dir)
+        else:
+            self.writer = None
 
     def train(self, epochs : int) -> None:
         
@@ -78,8 +89,8 @@ class Trainer():
 
                 print("Rank:", self.fabric.global_rank)
 
-                self.train_metrics.log(commit=False)
-                self.validation_metrics.log(commit=False)
+                self.train_metrics.log(commit=False,writer=self.writer)
+                self.validation_metrics.log(commit=False,writer=self.writer)
 
                 print("saving image...")        
                 self.image_logger.logging(self.model, epoch, commit=True)
@@ -88,7 +99,7 @@ class Trainer():
             self.validation_metrics.reset()
 
         # save model and log to wandb
-        model_save_path = "/home/sabeen/brain_segmentation/models/checkpoint.ckpt"
+        model_save_path = f"/home/sabeen/brain_segmentation/models/checkpoint.ckpt"
         state = {
             'epoch': epoch,
             'batch_idx': batch_idx,
@@ -96,6 +107,9 @@ class Trainer():
             'optimizer': self.optimizer,
             }
         self.fabric.save(model_save_path, state)
+
+        if self.writer is not None:
+            self.writer.close()
 
         if self.fabric.global_rank == 0 and self.wandb_on:
 

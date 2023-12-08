@@ -6,7 +6,7 @@ import numpy as np
 import lightning as L
 
 DATA_USER = 'sabeen' # alternatively, 'matth406'
-DATASET = 'small'
+# DATASET = 'medium'
 
 class Dice(nn.Module):
 
@@ -26,7 +26,7 @@ class Dice(nn.Module):
         self.nr_of_classes = nr_of_classes
         self.smooth = smooth
 
-        pixel_counts = np.load(f'/om2/user/{DATA_USER}/nobrainer_data_norm/data_prepared_segmentation_{DATASET}/pixel_counts.npy')
+        pixel_counts = np.load(f'/om2/user/{DATA_USER}/nobrainer_data_norm/new_small_no_aug_51/pixel_counts.npy')
         # NR_OF_CLASSES = 6
         # pixel_counts = np.load(f'/om2/user/sabeen/nobrainer_data_norm/matth406_medium_6_classes/pixel_counts.npy')
         pixel_counts = torch.from_numpy(pixel_counts)
@@ -138,7 +138,7 @@ class Classification_Metrics():
 
     #     return macro_precision
     
-    def log(self, commit: bool = False):
+    def log(self, commit: bool = False, writer=None):
         logging_dict = {
             f"{self.prefix}/Loss": sum(self.loss)/len(self.loss),
             f"{self.prefix}/DICE/overall": sum([1 - item for item in self.loss])/len(self.loss),
@@ -153,6 +153,9 @@ class Classification_Metrics():
         #     logging_dict[f"{self.prefix}/SegDICE/{i}"] = self.classDice[-1][i]
         if self.wandb_on:
             wandb.log(logging_dict, commit=commit)
+        if writer is not None:
+            writer.add_scalar(f"{self.prefix}/Loss", sum(self.loss)/len(self.loss))
+            writer.add_scalar(f"{self.prefix}/DICE/overall", sum([1 - item for item in self.loss])/len(self.loss))
 
     def reset(self):
 

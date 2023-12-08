@@ -1,4 +1,3 @@
-
 import os
 import numpy as np
 import torch
@@ -25,7 +24,7 @@ TYPE = args.type
 # SHARD_SIZE = args.shardsize
 HEIGHT = 162
 WIDTH = 194
-NR_OF_CLASSES = 107
+NR_OF_CLASSES = 51
 AUG_ANGLES =list(range(15,180 + 15, 15))
 DATASET_NAME = args.dataset_name
 # POSSIBLE_AUGMENTATIONS = ['rotation'] # ['rotation','null','zoom']

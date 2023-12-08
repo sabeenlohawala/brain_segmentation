@@ -22,6 +22,7 @@ parser.add_argument('--seed', help="Random seed value", type=int, required=False
 parser.add_argument('--model_name', help="Name of model to use for segmentation", type=str, default='segformer')
 parser.add_argument('--dataset', help="Which dataset to train on", type=str, default='small')
 parser.add_argument('--pretrained', help="Whether to use pretrained model", type=bool, required=False, default=True)
+parser.add_argument('--tensorboard_dir', help="Tensorboard directory", type=str,required=False)
 
 args = parser.parse_args()
 
@@ -29,7 +30,7 @@ WANDB_ON = args.wandb_description is not None
 WANDB_RUN_DESCRIPTION = args.wandb_description
 WANDB_RUN_TITLE = "Brain Segmentation"
 
-NR_OF_CLASSES = 107 # set to 2 for binary classification
+NR_OF_CLASSES = 51 # set to 2 for binary classification
 BATCH_SIZE = args.batch_size
 LEARNING_RATE = args.learning_rate # 3e-6
 N_EPOCHS = args.num_epochs
@@ -39,6 +40,7 @@ SEED = args.seed
 SAVE_EVERY = "epoch"
 PRECISION = '32-true' #"16-mixed"
 PRETRAINED = args.pretrained
+TENSORBOARD_DIR = args.tensorboard_dir
 
 def main():
 
@@ -56,7 +58,7 @@ def main():
 
     # TODO: loading model from checkpoint
     
-    fabric = init_fabric(precision=PRECISION, devices=2, strategy='ddp')
+    fabric = init_fabric(precision=PRECISION)#, devices=2, strategy='ddp')
     set_seed(SEED) # TODO: replace with seed_everything(SEED)?
     init_cuda()
 
@@ -67,7 +69,8 @@ def main():
     loss_fn = Dice(NR_OF_CLASSES, fabric)
 
     # get data loader
-    train_loader, val_loader, _ = get_data_loader(f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{DATASET}', batch_size=BATCH_SIZE, pretrained=PRETRAINED)
+    # train_loader, val_loader, _ = get_data_loader(f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{DATASET}', batch_size=BATCH_SIZE, pretrained=PRETRAINED)
+    train_loader, val_loader, _ = get_data_loader(f'/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51', batch_size=BATCH_SIZE, pretrained=PRETRAINED)
 
     # fabric setup
     train_loader, val_loader = fabric.setup_dataloaders(train_loader,val_loader)
@@ -101,7 +104,8 @@ def main():
          fabric=fabric,
          batch_size=BATCH_SIZE,
          wandb_on=WANDB_ON,
-         pretrained=PRETRAINED
+         pretrained=PRETRAINED,
+         tensorboard_dir = TENSORBOARD_DIR
     )
     trainer.train(N_EPOCHS)
     print("Training Finished!")

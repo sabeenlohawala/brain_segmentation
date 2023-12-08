@@ -21,9 +21,9 @@ class NoBrainerDataset(Dataset):
         self.pretrained=pretrained
         self.images = glob.glob(f'{file_dir}/brain*.npy')
         self.masks = glob.glob((f'{file_dir}/mask*.npy'))
-        self.images = self.images[:100]
-        self.masks = self.masks[:100]
-        self.normalization_constants = np.load(f"{file_dir}/../../normalization_constants.npy")
+        # self.images = self.images[:100]
+        # self.masks = self.masks[:100]
+        self.normalization_constants = np.load(f"{file_dir}/../normalization_constants.npy")
         # self.keys = np.load(f'{file_dir}/keys.npy')
     
     def __getitem__(self,idx):
@@ -50,9 +50,9 @@ class NoBrainerDataset(Dataset):
 def get_data_loader(data_dir : str, batch_size : int, pretrained: bool, num_workers : int = 4*torch.cuda.device_count()) -> Tuple[wds.WebLoader, wds.WebLoader, wds.WebLoader]:
     if data_dir[-1] == '/':
         data_dir = data_dir[:-1]
-    train_dataset = NoBrainerDataset(f'{data_dir}/train/extracted_tensors', pretrained=pretrained)
-    val_dataset = NoBrainerDataset(f'{data_dir}/validation/extracted_tensors', pretrained=pretrained)
-    test_dataset = NoBrainerDataset(f'{data_dir}/test/extracted_tensors', pretrained=pretrained)
+    train_dataset = NoBrainerDataset(f'{data_dir}/train', pretrained=pretrained)
+    val_dataset = NoBrainerDataset(f'{data_dir}/validation', pretrained=pretrained)
+    test_dataset = NoBrainerDataset(f'{data_dir}/test', pretrained=pretrained)
     train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=batch_size)
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=batch_size)
     test_loader = torch.utils.data.DataLoader(test_dataset,batch_size=batch_size)
