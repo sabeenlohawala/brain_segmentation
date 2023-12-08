@@ -47,6 +47,7 @@ class Trainer():
             if not os.path.isdir(self.logdir):
                 os.makedirs(self.logdir)
             self.writer = SummaryWriter(self.logdir)
+            print('SummaryWriter created')
         else:
             self.writer = None
 
