@@ -1,27 +1,32 @@
-
-import torch
-import numpy as np
-import csv
-import matplotlib.pyplot as plt
-import seaborn as sns
-import time
 import argparse
-import wandb
-from torch.utils.data import Dataset, DataLoader
+import csv
 import glob
+import time
 
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+import torch
+import wandb
 from data.dataset import get_data_loader
-from utils import load_brains, set_seed, crop, init_cuda, init_fabric, init_wandb
 from models.metrics import Dice
 from models.segformer import Segformer
+from torch.utils.data import DataLoader, Dataset
 from training.trainer import Trainer
+from utils import crop, init_cuda, init_fabric, init_wandb, load_brains, set_seed
 
 parser = argparse.ArgumentParser(
-                    prog='ProgramName',
-                    description='What the program does',
-                    epilog='Text at the bottom of help')
+    prog="ProgramName",
+    description="What the program does",
+    epilog="Text at the bottom of help",
+)
 
-parser.add_argument('--wandb_description', help="Description add to the wandb run", type=str,required=False)
+parser.add_argument(
+    "--wandb_description",
+    help="Description add to the wandb run",
+    type=str,
+    required=False,
+)
 
 args = parser.parse_args()
 
