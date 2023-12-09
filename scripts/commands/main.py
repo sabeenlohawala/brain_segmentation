@@ -15,7 +15,7 @@ import sys
 import torch
 
 from TissueLabeling.config import Configuration
-from TissueLabeling.data.dataset import NoBrainerDataset
+from TissueLabeling.data.dataset import get_data_loader
 from TissueLabeling.models.metrics import Dice
 from TissueLabeling.models.segformer import Segformer
 from TissueLabeling.models.unet import Unet
@@ -56,7 +56,7 @@ def update_config(config):
     Updates the config file based on the command line arguments.
     """
     if sys.argv[1] == "train":
-        config = Configuration(args)
+        config = Configuration(config)
 
     elif sys.argv[1] == "resume-train":
         chkpt_folder = config.logdir
@@ -102,29 +102,27 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
 
     # loss function
+    if config.nr_of_classes == 107:
+        config.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_aug_107"
+    elif config.nr_of_classes == 51:
+        config.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51"
+
     loss_fn = Dice(config.nr_of_classes, fabric, config.data_dir)
 
     # get data loader
-    train_dataset = NoBrainerDataset(
-        "/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_small/train/extracted_tensors"
-    )
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=config.batch_size,
-        shuffle=True,
-        num_workers=2,
-        pin_memory=True,
+    train_loader, val_loader, _ = get_data_loader(
+        config.data_dir, batch_size=config.batch_size, pretrained=config.pretrained
     )
 
     # fabric setup
-    train_loader = fabric.setup_dataloaders(train_loader)
+    train_loader, val_loader = fabric.setup_dataloaders(train_loader, val_loader)
     model, optimizer = fabric.setup(model, optimizer)
 
     trainer = Trainer(
         model=model,
         nr_of_classes=config.nr_of_classes,
         train_loader=train_loader,
-        val_loader=None,
+        val_loader=val_loader,
         loss_fn=loss_fn,
         optimizer=optimizer,
         fabric=fabric,

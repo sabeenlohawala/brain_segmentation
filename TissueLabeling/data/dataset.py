@@ -41,7 +41,7 @@ class NoBrainerDataset(Dataset):
 
         # Load the normalization constants from the file directory
         self.normalization_constants = np.load(
-            f"{file_dir}/../../normalization_constants.npy"
+            f"/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_small/normalization_constants.npy"
         )
 
         if os.path.exists(f"{file_dir}/keys.npy"):
@@ -71,3 +71,19 @@ class NoBrainerDataset(Dataset):
         ) / self.normalization_constants[1]
         sample = (image, sample[1], sample[2])
         return sample
+
+
+def get_data_loader(
+    data_dir: str,
+    batch_size: int,
+    pretrained: bool,
+    num_workers: int = 4 * torch.cuda.device_count(),
+):
+    train_dataset = NoBrainerDataset(f"{data_dir}//train", pretrained=pretrained)
+    val_dataset = NoBrainerDataset(f"{data_dir}/validation", pretrained=pretrained)
+    test_dataset = NoBrainerDataset(f"{data_dir}/test", pretrained=pretrained)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size)
+
+    return (train_loader, val_loader, test_loader)

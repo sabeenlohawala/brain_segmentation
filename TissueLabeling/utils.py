@@ -12,6 +12,22 @@ import torch
 import wandb
 from lightning.fabric import Fabric, seed_everything
 
+def main_timer(func):
+    """Decorator to time any function"""
+
+    def function_wrapper():
+        start_time = datetime.now()
+        # print(f'Start Time: {start_time.strftime("%A %m/%d/%Y %H:%M:%S")}')
+
+        func()
+
+        end_time = datetime.now()
+        # print(f'End Time: {end_time.strftime("%A %m/%d/%Y %H:%M:%S")}')
+        print(
+            f"Function: {func.__name__} Total runtime: {end_time - start_time} (HH:MM:SS)"
+        )
+
+    return function_wrapper
 
 def load_brains(image_file: str, mask_file: str, file_path: str):
     # ensure that mask and image numbers match
