@@ -1,5 +1,5 @@
 import csv
-import datetime
+from datetime import datetime
 import os
 import random
 import shutil
@@ -162,9 +162,9 @@ def init_wandb(
             shutil.rmtree("/home/sabeen/.local/share/wandb")
 
         wandb.init(
-            name=f"{fabric.device}-{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}",
-            group=f"test-multigpu-{datetime.datetime.now().month}-{datetime.datetime.now().day}",
-            # group=f'{datetime.datetime.now().month}-{datetime.datetime.now().day}-{datetime.datetime.now().hour}:{datetime.datetime.now().minute}',
+            name=f"{fabric.device}-{datetime.now().month}-{datetime.now().day}-{datetime.now().hour}:{datetime.now().minute}",
+            group=f"test-multigpu-{datetime.now().month}-{datetime.now().day}",
+            # group=f'{datetime.now().month}-{datetime.now().day}-{datetime.now().hour}:{datetime.now().minute}',
             project=project_name,
             entity="tissue-labeling-sabeen",
             notes=description,

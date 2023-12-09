@@ -85,6 +85,9 @@ def get_args():
     train.add_argument(
         "--seed", help="Random seed value", type=int, required=False, default=42
     )
+    train.add_argument(
+        "--debug", help='Flag for whether code is being debugged', type=bool, required=False, default=False
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

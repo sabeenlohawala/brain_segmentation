@@ -21,7 +21,7 @@ from TissueLabeling.models.segformer import Segformer
 from TissueLabeling.models.unet import Unet
 from TissueLabeling.parser import get_args
 from TissueLabeling.training.trainer import Trainer
-from TissueLabeling.utils import init_cuda, init_fabric, set_seed
+from TissueLabeling.utils import init_cuda, init_fabric, set_seed, main_timer
 
 # NR_OF_CLASSES = 51 # set to 2 for binary classification
 # DATA_DIR = args.data_dir
@@ -84,7 +84,7 @@ def update_config(config):
 
     return config
 
-
+@main_timer
 def main():
     """
     The main function that executes the entire program.
@@ -111,7 +111,7 @@ def main():
 
     # get data loader
     train_loader, val_loader, _ = get_data_loader(
-        config.data_dir, batch_size=config.batch_size, pretrained=config.pretrained
+        config.data_dir, batch_size=config.batch_size, pretrained=config.pretrained, debug=config.debug
     )
 
     # fabric setup

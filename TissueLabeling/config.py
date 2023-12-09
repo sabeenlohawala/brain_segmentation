@@ -48,6 +48,7 @@ class Configuration:
         self.save_every = "epoch"
         self.precision = "32-true"  # "16-mixed"
         self.pretrained = getattr(args, "pretrained", True)
+        self.debug = getattr(args, "debug", False)
 
         self._commit_hash = ext_utils.get_git_revision_short_hash()
         self._created_on = f'{datetime.now().strftime("%A %m/%d/%Y %H:%M:%S")}'

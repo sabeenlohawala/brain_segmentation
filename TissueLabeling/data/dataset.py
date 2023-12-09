@@ -15,7 +15,7 @@ from torch.utils.data import Dataset
 
 
 class NoBrainerDataset(Dataset):
-    def __init__(self, file_dir: str, pretrained: bool = True) -> None:
+    def __init__(self, file_dir: str, pretrained: bool = True, debug: bool = False) -> None:
         """
         Initializes the object with the given `file_dir` and `pretrained` parameters.
 
@@ -35,13 +35,14 @@ class NoBrainerDataset(Dataset):
         # Get a list of all the mask files in the specified directory
         self.masks = glob.glob(f"{file_dir}/mask*.npy")
 
-        # Limit the number of images and masks to the first 100
-        self.images = self.images[:100]
-        self.masks = self.masks[:100]
+        # Limit the number of images and masks to the first 100 during debugging
+        if debug:
+            self.images = self.images[:100]
+            self.masks = self.masks[:100]
 
         # Load the normalization constants from the file directory
         self.normalization_constants = np.load(
-            f"/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_small/normalization_constants.npy"
+            os.path.join(file_dir,'..','normalization_constants.npy')
         )
 
         if os.path.exists(f"{file_dir}/keys.npy"):
@@ -77,11 +78,12 @@ def get_data_loader(
     data_dir: str,
     batch_size: int,
     pretrained: bool,
+    debug: bool = False,
     num_workers: int = 4 * torch.cuda.device_count(),
 ):
-    train_dataset = NoBrainerDataset(f"{data_dir}//train", pretrained=pretrained)
-    val_dataset = NoBrainerDataset(f"{data_dir}/validation", pretrained=pretrained)
-    test_dataset = NoBrainerDataset(f"{data_dir}/test", pretrained=pretrained)
+    train_dataset = NoBrainerDataset(f"{data_dir}/train", pretrained=pretrained, debug=debug)
+    val_dataset = NoBrainerDataset(f"{data_dir}/validation", pretrained=pretrained, debug=debug)
+    test_dataset = NoBrainerDataset(f"{data_dir}/test", pretrained=pretrained, debug=debug)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size)
