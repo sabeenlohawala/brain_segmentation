@@ -1,10 +1,10 @@
 """
 Filename: tissue_labeling/scripts/main.py
 Created Date: Friday, December 8th 2023
-Author: Sabeen Lohawal
+Author: Sabeen Lohawala
 Description: Training code of TissueLabeling
 
-Copyright (c) 2023, Sabeen Lohawal. MIT
+Copyright (c) 2023, Sabeen Lohawala. MIT
 """
 import os
 
