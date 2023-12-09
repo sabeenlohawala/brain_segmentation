@@ -2,8 +2,10 @@ import os
 
 import lightning as L
 import torch
-from TissueLabeling.models.metrics import Classification_Metrics
+import wandb
 from torch.utils.tensorboard import SummaryWriter
+
+from TissueLabeling.models.metrics import Classification_Metrics
 from TissueLabeling.training.logging import Log_Images
 
 
@@ -18,6 +20,7 @@ class Trainer:
         optimizer: torch.optim.Optimizer,
         fabric: L.Fabric,
         batch_size: int,
+        wandb_on: bool,
         pretrained: bool,
         logdir: str = "",
         save_every: int = 100000,
@@ -31,12 +34,14 @@ class Trainer:
         self.save_every = save_every
         self.nr_of_classes = nr_of_classes
         self.batch_size = batch_size
+        self.wandb_on = wandb_on
         self.pretrained = pretrained
         self.logdir = logdir
 
         if self.fabric.global_rank == 0:
             self.image_logger = Log_Images(
                 self.fabric,
+                wandb_on=self.wandb_on,
                 pretrained=self.pretrained,
                 nr_of_classes=nr_of_classes,
             )
@@ -78,7 +83,6 @@ class Trainer:
                 self.train_metrics.compute(mask.long(), probs, loss.item(), classDice)
 
                 batch_idx += 1
-                # print(batch_idx)
 
             print(f"Process {self.fabric.global_rank} finished epoch {epoch}...")
 
@@ -101,7 +105,7 @@ class Trainer:
             self.validation_metrics.reset()
 
         # save model and log to wandb
-        model_save_path = f"/home/sabeen/brain_segmentation/models/checkpoint.ckpt"
+        model_save_path = f"{self.logdir}/checkpoint.ckpt"
         state = {
             "epoch": epoch,
             "batch_idx": batch_idx,
@@ -168,41 +172,3 @@ class Trainer:
         wandb.log_artifact(artifact_out)
         # finish wandb
         wandb.finish(quiet=True)
-
-    # def __forward(self, image : torch.Tensor) -> Tuple[torch.Tensor]:
-
-    #     # combine image and coordinates
-    #     probs = self.model(image)
-
-    #     return probs
-
-    # def __backward(self, probs : torch.Tensor, mask : torch.Tensor, train : bool) -> torch.Tensor:
-
-    #     # compute loss
-    #     loss, dice_coeff, classDice = self.loss_fn(mask, probs)
-
-    #     if train:
-    #         # optim step
-    #         self.optim_step(loss)
-    #         self.train_metrics.compute(mask, probs, loss.item(), dice_coeff, classDice)
-    #     else:
-    #         self.validation_metrics.compute(mask, probs, loss.item(), dice_coeff, classDice)
-
-    # def optim_step(self, loss : torch.Tensor) -> None:
-    #     '''
-    #     One step of the optimizer
-
-    #     Args:
-    #         loss (torch.Tensor): computed loss for minibatch
-    #     '''
-
-    #     # faster than optimizer.zero_grad()
-    #     for param in self.model.parameters():
-    #         param.grad = None
-
-    #     # optimizer step
-    #     if torch.isnan(loss) or torch.isinf(loss):
-    #         raise ValueError("Loss is NaN or Inf")
-    #     else:
-    #         self.fabric.backward(loss)
-    #         self.optimizer.step()

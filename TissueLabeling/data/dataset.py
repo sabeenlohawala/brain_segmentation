@@ -6,8 +6,8 @@
 @File: dataset.py
 @Date: 2023/04/03
 """
-
 import glob
+import os
 
 import numpy as np
 import torch
@@ -41,11 +41,11 @@ class NoBrainerDataset(Dataset):
 
         # Load the normalization constants from the file directory
         self.normalization_constants = np.load(
-            f"{file_dir}/../normalization_constants.npy"
+            f"{file_dir}/../../normalization_constants.npy"
         )
 
-        # Uncomment the following line if the 'keys.npy' file is present in the file directory
-        # self.keys = np.load(f"{file_dir}/keys.npy")
+        if os.path.exists(f"{file_dir}/keys.npy"):
+            self.keys = np.load(f"{file_dir}/keys.npy")
 
     def __getitem__(self, idx):
         # returns (image, mask)
@@ -64,8 +64,10 @@ class NoBrainerDataset(Dataset):
     def __len__(self):
         return len(self.images)
 
-    # def normalize(self,sample):
-    #     image = sample[0]
-    #     image = (image - self.normalization_constants[0]) / self.normalization_constants[1]
-    #     sample = (image, sample[1], sample[2])
-    #     return sample
+    def normalize(self, sample):
+        image = sample[0]
+        image = (
+            image - self.normalization_constants[0]
+        ) / self.normalization_constants[1]
+        sample = (image, sample[1], sample[2])
+        return sample

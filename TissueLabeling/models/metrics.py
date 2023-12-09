@@ -22,7 +22,6 @@ class Dice(nn.Module):
         """
         super(Dice, self).__init__()
 
-
         # init
         self.nr_of_classes = nr_of_classes
         self.smooth = smooth
