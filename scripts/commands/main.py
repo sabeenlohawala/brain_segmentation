@@ -56,7 +56,7 @@ def update_config(config):
     Updates the config file based on the command line arguments.
     """
     if sys.argv[1] == "train":
-        config = Configuration(args)
+        config = Configuration(config)
 
     elif sys.argv[1] == "resume-train":
         chkpt_folder = config.logdir
