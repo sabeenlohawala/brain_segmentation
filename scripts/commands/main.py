@@ -6,6 +6,9 @@ Description: Training code of TissueLabeling
 
 Copyright (c) 2023, Sabeen Lohawala. MIT
 """
+import argparse
+import glob
+import json
 import os
 import sys
 
@@ -30,12 +33,6 @@ from TissueLabeling.utils import init_cuda, init_fabric, set_seed
 def select_model(config):
     """
     Selects the model based on the model name provided in the config file.
-
-    Parameters:
-    - None
-
-    Return:
-    - None
     """
     if config.model_name == "segformer":
         print("Segformer model found!")
@@ -51,20 +48,50 @@ def select_model(config):
         print(f"Invalid model name provided: {config.model_name}")
         sys.exit()
 
+    return model
+
+
+def update_config(config):
+    """
+    Updates the config file based on the command line arguments.
+    """
+    if sys.argv[1] == "train":
+        config = Configuration(args)
+
+    elif sys.argv[1] == "resume-train":
+        chkpt_folder = config.logdir
+
+        config_file = os.path.join(chkpt_folder, "config.json")
+        if not os.path.exists(config_file):
+            sys.exit(f"Configuration file not found at {config_file}")
+
+        with open(config_file) as json_file:
+            data = json.load(json_file)
+        assert isinstance(data, dict), "Invalid Object Type"
+
+        dice_list = sorted(glob.glob(os.path.join(chkpt_folder, "model*")))
+        if not dice_list:
+            sys.exit("No checkpoints exist to resume training")
+
+        data["checkpoint"] = dice_list[-1]
+        data["start_epoch"] = int(os.path.basename(dice_list[-1]).split("_")[-1])
+
+        args = argparse.Namespace(**data)
+        config = Configuration(args, "config_resume.json")
+
+    else:
+        sys.exit("Invalid Sub-command")
+
+    return config
+
 
 def main():
     """
     The main function that executes the entire program.
-
-    Parameters:
-    - None
-
-    Return:
-    - None
     """
     args = get_args()
 
-    config = Configuration(args)
+    config = update_config(args)
     model = select_model(config)
 
     fabric = init_fabric(precision=config.precision)  # , devices=2, strategy='ddp')

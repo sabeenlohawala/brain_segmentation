@@ -22,7 +22,7 @@ def get_args():
         "resume-train", help="Use this sub-command for resuming training"
     )
     resume.add_argument(
-        "logdir",
+        "--logdir",
         type=str,
         help="Folder containing previous checkpoints",
     )
