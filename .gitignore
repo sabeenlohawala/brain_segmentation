@@ -4,3 +4,4 @@ TODO.txt
 **/*.pyc
 *.out
 logs
+!.gitkeep

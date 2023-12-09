@@ -1,39 +1,41 @@
+import csv
 import os
+import tarfile
+from typing import Tuple
+
+import lightning as L
+import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
-from torch.utils.data import Dataset
 import torch
 import webdataset as wds
-from typing import Tuple
-import matplotlib.pyplot as plt
-import tarfile
-import csv
-import lightning as L
-
 from data.dataset import get_data_loader
 from models.metrics import Dice
 from models.segformer import Segformer
+from torch.utils.data import Dataset
 from training.trainer import Trainer
-from utils import load_brains, set_seed, crop, init_cuda, init_fabric, init_wandb
+from utils import crop, init_cuda, init_fabric, init_wandb, load_brains, set_seed
 
-DATASET = dataset = 'medium'
+DATASET = dataset = "medium"
 BATCH_SIZE = 64
 NR_OF_CLASSES = 6
 
-NR_OF_CLASSES = 107 # set to 2 for binary classification
+NR_OF_CLASSES = 107  # set to 2 for binary classification
 LEARNING_RATE = 3e-6
 N_EPOCHS = 1
 MODEL_NAME = "segformer"
 SEED = 42
 SAVE_EVERY = "epoch"
-PRECISION = '32-true' #"16-mixed"
+PRECISION = "32-true"  # "16-mixed"
 
-train_path = ''
-save_path = '/om2/user/sabeen/nobrainer_data_norm/matth406_medium_6_classes/'
+train_path = ""
+save_path = "/om2/user/sabeen/nobrainer_data_norm/matth406_medium_6_classes/"
 
 set_seed(SEED)
-    
-fabric = init_fabric(precision=PRECISION)#,devices=2,num_nodes=1,strategy='ddp') # accelerator="gpu", devices=2, num_nodes=1
+
+fabric = init_fabric(
+    precision=PRECISION
+)  # ,devices=2,num_nodes=1,strategy='ddp') # accelerator="gpu", devices=2, num_nodes=1
 init_cuda()
 
 # model
@@ -77,7 +79,7 @@ model, optimizer = fabric.setup(model, optimizer)
 #         unique, counts = np.unique(mask_slice, return_counts=True)
 #         for i,j in zip(unique, counts):
 #             pixel_counts[i] += j
-        
+
 #         idx += 1
 
 # dataset_mean /= idx
@@ -139,7 +141,7 @@ model, optimizer = fabric.setup(model, optimizer)
 #             image = Image.frombytes('RGB', fig.canvas.get_width_height(),fig.canvas.tostring_rgb())
 #             # image = wandb.Image(image, caption=caption)
 #             plt.close()
-        
+
 #         # save_image(brain_slice, 'brain_slice_3.png')
 #         # save_image(mask_slice, 'mask_slice_3.png')
 
@@ -151,7 +153,7 @@ model, optimizer = fabric.setup(model, optimizer)
 #         # unique, counts = np.unique(mask_slice, return_counts=True)
 #         # for i,j in zip(unique, counts):
 #         #     pixel_counts[i] += j
-        
+
 #         # idx += 1
 #         break
 #     break

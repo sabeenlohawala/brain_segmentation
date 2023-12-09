@@ -1,29 +1,31 @@
-
-import torch
 from typing import Tuple
-import webdataset as wds
-import lightning as L
 
-from utils import set_seed, init_cuda, init_fabric
+import lightning as L
+import torch
+import webdataset as wds
+from data.dataset import get_data_loader, mapping
 from models.metrics import Dice
 from models.segformer import Segformer
-from data.dataset import get_data_loader, mapping
+from utils import init_cuda, init_fabric, set_seed
 
 NR_OF_CLASSES = 116
 BATCH_SIZE = 64
 LEARNING_RATE = 3e-6
 N_EPOCHS = 1
-DATASET = 'medium'
+DATASET = "medium"
 MODEL_NAME = "segformer"
 SEED = 42
 SAVE_EVERY = "epoch"
 MASK_MAPPING = True
-PRECISION = '32-true' #"16-mixed"
+PRECISION = "32-true"  # "16-mixed"
+
 
 def main():
     set_seed(SEED)
 
-    fabric = init_fabric(precision=PRECISION) # accelerator="gpu", devices=2, num_nodes=1
+    fabric = init_fabric(
+        precision=PRECISION
+    )  # accelerator="gpu", devices=2, num_nodes=1
     init_cuda()
 
     # model
@@ -55,21 +57,20 @@ def main():
     )
     trainer.train(N_EPOCHS)
 
-class Trainer():
 
+class Trainer:
     def __init__(
-            self,
-            model : torch.nn.Module,
-            nr_of_classes: int,
-            train_loader : wds.WebLoader,
-            val_loader : wds.WebLoader,
-            loss_fn : torch.nn.Module,
-            optimizer : torch.optim.Optimizer,
-            fabric : L.Fabric,
-            save_every : int = 100000,
-            mask_mapping: bool = False,
-            ) -> None:
-        
+        self,
+        model: torch.nn.Module,
+        nr_of_classes: int,
+        train_loader: wds.WebLoader,
+        val_loader: wds.WebLoader,
+        loss_fn: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        fabric: L.Fabric,
+        save_every: int = 100000,
+        mask_mapping: bool = False,
+    ) -> None:
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -82,37 +83,37 @@ class Trainer():
         # if self.fabric.global_rank == 0:
         #     self.image_logger = Log_Images(self.fabric, nr_of_classes=nr_of_classes, mask_mapping=mask_mapping)
 
-    def _save_state(self, epoch : int, batch_idx : int) -> None:
-        '''
+    def _save_state(self, epoch: int, batch_idx: int) -> None:
+        """
         Save the pytorch model and the optimizer state
 
         Args:
             epoch (int): epoch number
             batch_idx (int): training batch index
-        '''
+        """
 
         PATH = "/home/matth406/brain_segmentation/models/checkpoint.ckpt"
 
         state = {
-            'epoch': epoch,
-            'batch_idx': batch_idx,
-            'model': self.model,
-            'optimizer': self.optimizer,
-            }
-        
+            "epoch": epoch,
+            "batch_idx": batch_idx,
+            "model": self.model,
+            "optimizer": self.optimizer,
+        }
+
         self.fabric.save(PATH, state)
 
         # artifact = wandb.Artifact('Model', type='model')
         # artifact.add_file(PATH)
         # wandb.log_artifact(artifact)
 
-    def optim_step(self, loss : torch.Tensor) -> None:
-        '''
+    def optim_step(self, loss: torch.Tensor) -> None:
+        """
         One step of the optimizer
 
         Args:
             loss (torch.Tensor): computed loss for minibatch
-        '''
+        """
 
         # faster than optimizer.zero_grad()
         for param in self.model.parameters():
@@ -125,25 +126,24 @@ class Trainer():
             self.fabric.backward(loss)
             self.optimizer.step()
 
-    def train(self, epochs : int) -> None:
-        
+    def train(self, epochs: int) -> None:
         batch_idx = 0
 
         # self.train_metrics = Classification_Metrics(self.nr_of_classes)
         # self.validation_metrics = Classification_Metrics(self.nr_of_classes)
 
-        print(f"Process {self.fabric.global_rank} starts training on {self.train_loader.length} batches per epoch over {epochs} epochs")
+        print(
+            f"Process {self.fabric.global_rank} starts training on {self.train_loader.length} batches per epoch over {epochs} epochs"
+        )
 
         for epoch in range(epochs):
-
             for i, (image, mask, _) in enumerate(self.train_loader):
-
                 # forward pass
                 mask = mapping(mask)
                 image = self.fabric.to_device(image)
                 mask = self.fabric.to_device(mask)
                 probs = self.__forward(image)
-                
+
                 # backward pass
                 self.__backward(probs, mask.long(), train=True)
 
@@ -180,18 +180,16 @@ class Trainer():
         # self.finish_wandb('/home/matth406/brain_segmentation/jobs/job.out')
 
     @torch.no_grad()
-    def _validation(self, data_loader : wds.WebLoader) -> None:
-
+    def _validation(self, data_loader: wds.WebLoader) -> None:
         self.model.eval()
 
         for i, (image, mask, _) in enumerate(data_loader):
-
             # forward pass
             mask = mapping(mask)
             image = self.fabric.to_device(image)
             mask = self.fabric.to_device(mask)
             probs = self.__forward(image)
-            
+
             # backward pass
             self.__backward(probs, mask.long(), train=False)
 
@@ -201,15 +199,15 @@ class Trainer():
 
         self.model.train()
 
-    def __forward(self, image : torch.Tensor) -> Tuple[torch.Tensor]:
-
+    def __forward(self, image: torch.Tensor) -> Tuple[torch.Tensor]:
         # combine image and coordinates
         probs = self.model(image)
 
         return probs
-    
-    def __backward(self, probs : torch.Tensor, mask : torch.Tensor, train : bool) -> torch.Tensor:
 
+    def __backward(
+        self, probs: torch.Tensor, mask: torch.Tensor, train: bool
+    ) -> torch.Tensor:
         # compute loss
         loss = self.loss_fn(mask, probs)
 
@@ -218,9 +216,8 @@ class Trainer():
             self.optim_step(loss)
             # self.train_metrics.compute(mask, probs, loss.item())
         # else:
-            # self.validation_metrics.compute(mask, probs, loss.item())
+        # self.validation_metrics.compute(mask, probs, loss.item())
 
-    
     # # train
     # for i, (image, mask,_) in enumerate(train_loader):
 
@@ -265,6 +262,7 @@ class Trainer():
     #         break
 
     # print(f"Process {fabric.global_rank} finished validation")
+
 
 if __name__ == "__main__":
     main()
