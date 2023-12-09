@@ -112,8 +112,6 @@ def main():
         train_dataset,
         batch_size=config.batch_size,
         shuffle=True,
-        num_workers=2,
-        pin_memory=True,
     )
 
     # fabric setup

@@ -76,6 +76,13 @@ def get_args():
         default=True,
     )
     train.add_argument(
+        "--nr_of_classes",
+        help="Number of classes in the dataset",
+        type=int,
+        required=False,
+        default=51,
+    )
+    train.add_argument(
         "--seed", help="Random seed value", type=int, required=False, default=42
     )
 
