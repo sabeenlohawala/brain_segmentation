@@ -3,5 +3,6 @@
 TODO.txt
 **/*.pyc
 *.out
-logs
+logs/*
 !.gitkeep
+.vscode

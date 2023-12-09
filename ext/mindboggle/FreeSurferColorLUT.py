@@ -2,6 +2,8 @@
 """
 Copy of freesurfer/FreeSurferColorLUT.txt file.
 """
+
+
 def lut_text():
     lut = """
 
