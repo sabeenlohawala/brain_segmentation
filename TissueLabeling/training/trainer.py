@@ -90,6 +90,7 @@ class Trainer:
             print("start validation...")
             # compute loss on validation data
             self._validation(self.val_loader)
+            self.fabric.barrier()
             self.train_metrics.sync(self.fabric)
 
             if self.fabric.global_rank == 0:

@@ -27,6 +27,7 @@ class Dice(nn.Module):
         self.smooth = smooth
 
         pixel_counts = np.load(f"{data_dir}/pixel_counts.npy")
+
         # NR_OF_CLASSES = 6
         # pixel_counts = np.load(f'/om2/user/sabeen/nobrainer_data_norm/matth406_medium_6_classes/pixel_counts.npy')
         pixel_counts = torch.from_numpy(pixel_counts)
