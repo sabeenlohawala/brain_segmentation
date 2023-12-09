@@ -37,7 +37,7 @@ tl-train:
 	for model in $(model_idx); do \
 		for loss in $(loss_type); do \
 			logdir=M$$model\T$(time_steps)$$schedule\L$$loss\G$(group_labels)J$(jei_flag)D$(downsampled)
-			sbatch --job-name=$$logdir submit.sh python -u scripts/main.py train \
+			sbatch --job-name=$$logdir submit.sh python -u scripts/commands/main.py train \
 				--model_idx $$model \
 				--logdir $$logdir \
 				--epochs $(epochs) \
@@ -56,7 +56,7 @@ tl-resume:
 		for schedule in $(beta_schedule); do \
 			for loss in $(loss_type); do \
 				logdir=test-M$$model\T$(time_steps)$$schedule\L$$loss\G$(group_labels)J$(jei_flag)D1
-				sbatch --job-name=$$logdir --open-mode=append submit.sh python -u scripts/main.py resume-train \
+				sbatch --job-name=$$logdir --open-mode=append submit.sh python -u scripts/commands/main.py resume-train \
 					/space/calico/1/users/Harsha/ddpm-labels/logs/$$logdir; \
 			done; \
 		done; \

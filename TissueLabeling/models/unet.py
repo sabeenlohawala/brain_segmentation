@@ -65,9 +65,7 @@ class SinusoidalPositionEmbeddings(nn.Module):
         device = time.device
         half_dim = self.dim // 2
         embeddings = math.log(10000) / (half_dim - 1)
-        embeddings = torch.exp(
-            torch.arange(half_dim, device=device) * -embeddings
-        )
+        embeddings = torch.exp(torch.arange(half_dim, device=device) * -embeddings)
         embeddings = time[:, None] * embeddings[None, :]
         embeddings = torch.cat((embeddings.sin(), embeddings.cos()), dim=-1)
         return embeddings
@@ -84,9 +82,7 @@ class WeightStandardizedConv2d(nn.Conv2d):
 
         weight = self.weight
         mean = reduce(weight, "o ... -> o 1 1 1", "mean")
-        var = reduce(
-            weight, "o ... -> o 1 1 1", partial(torch.var, unbiased=False)
-        )
+        var = reduce(weight, "o ... -> o 1 1 1", partial(torch.var, unbiased=False))
         normalized_weight = (weight - mean) * (var + eps).rsqrt()
 
         return F.conv2d(
@@ -132,9 +128,7 @@ class ResnetBlock(nn.Module):
 
         self.block1 = Block(dim, dim_out, groups=groups)
         self.block2 = Block(dim_out, dim_out, groups=groups)
-        self.res_conv = (
-            nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
-        )
+        self.res_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
 
     def forward(self, x, time_emb=None):
         scale_shift = None
@@ -183,9 +177,7 @@ class LinearAttention(nn.Module):
         hidden_dim = dim_head * heads
         self.to_qkv = nn.Conv2d(dim, hidden_dim * 3, 1, bias=False)
 
-        self.to_out = nn.Sequential(
-            nn.Conv2d(hidden_dim, dim, 1), nn.GroupNorm(1, dim)
-        )
+        self.to_out = nn.Sequential(nn.Conv2d(hidden_dim, dim, 1), nn.GroupNorm(1, dim))
 
     def forward(self, x):
         b, c, h, w = x.shape
@@ -202,9 +194,7 @@ class LinearAttention(nn.Module):
         context = torch.einsum("b h d n, b h e n -> b h d e", k, v)
 
         out = torch.einsum("b h d e, b h d n -> b h e n", context, q)
-        out = rearrange(
-            out, "b h c (x y) -> b (h c) x y", h=self.heads, x=h, y=w
-        )
+        out = rearrange(out, "b h c (x y) -> b (h c) x y", h=self.heads, x=h, y=w)
         return self.to_out(out)
 
 
@@ -292,12 +282,8 @@ class Unet(nn.Module):
             self.ups.append(
                 nn.ModuleList(
                     [
-                        block_klass(
-                            dim_out + dim_in, dim_out, time_emb_dim=time_dim
-                        ),
-                        block_klass(
-                            dim_out + dim_in, dim_out, time_emb_dim=time_dim
-                        ),
+                        block_klass(dim_out + dim_in, dim_out, time_emb_dim=time_dim),
+                        block_klass(dim_out + dim_in, dim_out, time_emb_dim=time_dim),
                         Residual(PreNorm(dim_out, LinearAttention(dim_out))),
                         Upsample(dim_out, dim_in)
                         if not is_last
@@ -361,9 +347,7 @@ if __name__ == "__main__":
     dim_mults = (2, 4, 8, 16, 32)  # (2, 4, 8, 16, 32, 64), (1, 2, 4)
     batch_size = 1
 
-    model = Unet(dim=16, channels=image_channels, dim_mults=dim_mults).to(
-        device
-    )
+    model = Unet(dim=16, channels=image_channels, dim_mults=dim_mults).to(device)
 
     summary(
         model,
