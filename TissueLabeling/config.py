@@ -42,8 +42,16 @@ class Configuration:
         self.lr = getattr(args, "lr", 6e-5)
 
         self.data_dir = getattr(
-            args, "data_dir", "/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51"
+            args, "data_dir"
         )
+        if self.data_dir is None:
+            if self.nr_of_classes == 107:
+                self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_aug_107"
+            elif self.nr_of_classes == 51:
+                self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51"
+            else:
+                raise Exception(f'No dataset found for nr_of_classes = {self.nr_of_classes}')
+
         self.seed = getattr(args, "seed", 42)
         self.save_every = "epoch"
         self.precision = "32-true"  # "16-mixed"

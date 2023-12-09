@@ -102,11 +102,6 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
 
     # loss function
-    if config.nr_of_classes == 107:
-        config.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_aug_107"
-    elif config.nr_of_classes == 51:
-        config.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51"
-
     loss_fn = Dice(config.nr_of_classes, fabric, config.data_dir)
 
     # get data loader
