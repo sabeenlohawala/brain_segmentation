@@ -150,40 +150,38 @@ def init_cuda() -> None:
 
 
 def init_wandb(
-    wandb_on: bool,
     project_name: str,
     fabric: L.fabric,
     model_params: dict,
     description: str,
 ) -> None:
-    if wandb_on:
-        # check if staged artifacts exist:
-        if os.path.exists("/home/sabeen/.local/share/wandb"):
-            shutil.rmtree("/home/sabeen/.local/share/wandb")
+    # check if staged artifacts exist:
+    if os.path.exists("/home/sabeen/.local/share/wandb"):
+        shutil.rmtree("/home/sabeen/.local/share/wandb")
 
-        wandb.init(
-            name=f"{fabric.device}-{datetime.now().month}-{datetime.now().day}-{datetime.now().hour}:{datetime.now().minute}",
-            group=f"test-multigpu-{datetime.now().month}-{datetime.now().day}",
-            # group=f'{datetime.now().month}-{datetime.now().day}-{datetime.now().hour}:{datetime.now().minute}',
-            project=project_name,
-            entity="tissue-labeling-sabeen",
-            notes=description,
-            config={**model_params},
-            reinit=True,
-            dir="/om2/scratch/Fri",
-        )
-        wandb.run.log_code(
-            "./data",
-            include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
-        )
-        wandb.run.log_code(
-            "./models",
-            include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
-        )
-        wandb.run.log_code(
-            "./trainer",
-            include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
-        )
+    wandb.init(
+        name=f"{fabric.device}-{datetime.now().month}-{datetime.now().day}-{datetime.now().hour}:{datetime.now().minute}",
+        group=f"test-multigpu-{datetime.now().month}-{datetime.now().day}",
+        # group=f'{datetime.now().month}-{datetime.now().day}-{datetime.now().hour}:{datetime.now().minute}',
+        project=project_name,
+        entity="tissue-labeling-sabeen",
+        notes=description,
+        config={**model_params},
+        reinit=True,
+        dir="/om2/scratch/Fri",
+    )
+    wandb.run.log_code(
+        "./data",
+        include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
+    )
+    wandb.run.log_code(
+        "./models",
+        include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
+    )
+    wandb.run.log_code(
+        "./trainer",
+        include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
+    )
 
 
 def init_fabric(**kwargs) -> L.fabric:

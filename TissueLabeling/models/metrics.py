@@ -2,6 +2,7 @@ import lightning as L
 import numpy as np
 import torch
 from torch import nn
+import wandb
 
 DATA_DIR = "sabeen"  # alternatively, 'matth406'
 # DATASET = 'medium'

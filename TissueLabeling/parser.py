@@ -88,6 +88,9 @@ def get_args():
     train.add_argument(
         "--debug", help='Flag for whether code is being debugged', type=int, required=False, default=0
     )
+    train.add_argument(
+        "--wandb_description", help='Description for wandb run', type=str, required=False
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

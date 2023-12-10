@@ -13,6 +13,7 @@ import os
 import sys
 
 import torch
+import wandb
 
 from TissueLabeling.config import Configuration
 from TissueLabeling.data.dataset import get_data_loader
@@ -22,7 +23,7 @@ from TissueLabeling.models.unet import Unet
 from TissueLabeling.models.simple_unet import SimpleUnet
 from TissueLabeling.parser import get_args
 from TissueLabeling.training.trainer import Trainer
-from TissueLabeling.utils import init_cuda, init_fabric, set_seed, main_timer
+from TissueLabeling.utils import init_cuda, init_fabric, init_wandb, set_seed, main_timer
 
 def select_model(config):
     """
@@ -108,6 +109,23 @@ def main():
     train_loader, val_loader = fabric.setup_dataloaders(train_loader, val_loader)
     model, optimizer = fabric.setup(model, optimizer)
 
+    # model params to track with wandb
+    model_params = {
+        'learning rate': config.lr,
+        '# epochs': config.num_epochs,
+        'batch size': config.batch_size,
+        'model': config.model_name,
+        'dataset': config.data_dir,
+        'validation frequency': "epoch",
+        'precision': config.precision
+        }
+
+    # init WandB
+    if fabric.global_rank == 0 and config.wandb_on:
+        init_wandb("Brain Segmentation", fabric, model_params, config.wandb_description)
+        save_frequency = len(train_loader) if model_params['validation frequency'] == "epoch" else 1000
+        wandb.watch(model, log_freq=save_frequency)
+
     trainer = Trainer(
         model=model,
         train_loader=train_loader,
@@ -115,7 +133,6 @@ def main():
         loss_fn=loss_fn,
         optimizer=optimizer,
         fabric=fabric,
-        wandb_on=False,
         config=config,
     )
     trainer.train(config.num_epochs)

@@ -20,7 +20,7 @@ class Trainer:
         optimizer: torch.optim.Optimizer,
         fabric: L.Fabric,
         # batch_size: int,
-        wandb_on: bool,
+        # wandb_on: bool,
         # pretrained: bool,
         config,
         # logdir: str = "",
@@ -35,16 +35,13 @@ class Trainer:
         self.save_every = save_every
         self.nr_of_classes = config.nr_of_classes
         self.batch_size = config.batch_size
-        self.wandb_on = wandb_on
+        self.wandb_on = config.wandb_on
         self.pretrained = config.pretrained
         self.logdir = config.logdir
 
         if self.fabric.global_rank == 0:
             self.image_logger = Log_Images(
                 self.fabric,
-                wandb_on=self.wandb_on,
-                # pretrained=self.pretrained,
-                # nr_of_classes=nr_of_classes,
                 config=config,
             )
 

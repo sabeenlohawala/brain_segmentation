@@ -13,10 +13,10 @@ class Log_Images:
     def __init__(
         self,
         fabric: L.Fabric,
-        wandb_on: bool,
+        # wandb_on: bool,
         config,
     ):
-        self.wandb_on = wandb_on
+        self.wandb_on = config.wandb_on
         self.pretrained = config.pretrained
         self.model_name = config.model_name
         if self.model_name == 'simple_unet':

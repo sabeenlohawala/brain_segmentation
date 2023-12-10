@@ -31,6 +31,9 @@ class Configuration:
                 "logs",
                 self.logdir,
             )
+        
+        self.wandb_description = getattr(args, "wandb_description")
+        self.wandb_on = self.wandb_description is not None
 
         if not os.path.isdir(self.logdir):
             os.makedirs(self.logdir)
