@@ -19,16 +19,10 @@ from TissueLabeling.data.dataset import get_data_loader
 from TissueLabeling.models.metrics import Dice
 from TissueLabeling.models.segformer import Segformer
 from TissueLabeling.models.unet import Unet
+from TissueLabeling.models.simple_unet import SimpleUnet
 from TissueLabeling.parser import get_args
 from TissueLabeling.training.trainer import Trainer
 from TissueLabeling.utils import init_cuda, init_fabric, set_seed, main_timer
-
-# NR_OF_CLASSES = 51 # set to 2 for binary classification
-# DATA_DIR = args.data_dir
-# SAVE_EVERY = "epoch"
-# PRECISION = '32-true' #"16-mixed"
-# PRETRAINED = args.pretrained
-
 
 def select_model(config):
     """
@@ -44,6 +38,9 @@ def select_model(config):
             channels=1,
             dim_mults=(2, 4, 8, 16, 32, 64),
         )
+    elif config.model_name == "simple_unet":
+        print('Simple Unet model found!')
+        model = SimpleUnet(1)
     else:
         print(f"Invalid model name provided: {config.model_name}")
         sys.exit()
@@ -105,9 +102,7 @@ def main():
     loss_fn = Dice(config.nr_of_classes, fabric, config.data_dir)
 
     # get data loader
-    train_loader, val_loader, _ = get_data_loader(
-        config.data_dir, batch_size=config.batch_size, pretrained=config.pretrained, debug=config.debug
-    )
+    train_loader, val_loader, _ = get_data_loader(config)
 
     # fabric setup
     train_loader, val_loader = fabric.setup_dataloaders(train_loader, val_loader)
@@ -115,16 +110,13 @@ def main():
 
     trainer = Trainer(
         model=model,
-        nr_of_classes=config.nr_of_classes,
         train_loader=train_loader,
         val_loader=val_loader,
         loss_fn=loss_fn,
         optimizer=optimizer,
         fabric=fabric,
-        batch_size=config.batch_size,
         wandb_on=False,
-        pretrained=config.pretrained,
-        logdir=config.logdir,
+        config=config,
     )
     trainer.train(config.num_epochs)
     print("Training Finished!")

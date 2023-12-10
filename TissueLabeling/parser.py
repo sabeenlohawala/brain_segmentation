@@ -71,9 +71,9 @@ def get_args():
     train.add_argument(
         "--pretrained",
         help="Whether to use pretrained model",
-        type=bool,
+        type=int,
         required=False,
-        default=True,
+        default=1,
     )
     train.add_argument(
         "--nr_of_classes",
@@ -86,7 +86,7 @@ def get_args():
         "--seed", help="Random seed value", type=int, required=False, default=42
     )
     train.add_argument(
-        "--debug", help='Flag for whether code is being debugged', type=bool, required=False, default=False
+        "--debug", help='Flag for whether code is being debugged', type=int, required=False, default=0
     )
 
     # Parse the command line arguments

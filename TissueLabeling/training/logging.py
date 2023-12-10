@@ -14,18 +14,22 @@ class Log_Images:
         self,
         fabric: L.Fabric,
         wandb_on: bool,
-        pretrained: bool,
-        nr_of_classes: int = 112,
+        config,
     ):
         self.wandb_on = wandb_on
-        self.pretrained = pretrained
+        self.pretrained = config.pretrained
+        self.model_name = config.model_name
+        if self.model_name == 'simple_unet':
+            self.image_shape = (160,192)
+        else:
+            self.image_shape = (162,194)
 
         # color map to get always the same colors for classes
-        colors = plt.cm.hsv(np.linspace(0, 1, nr_of_classes))
+        colors = plt.cm.hsv(np.linspace(0, 1, config.nr_of_classes))
         # new plt cmap
         self.cmap = ListedColormap(colors)
         # new plt norm
-        bounds = np.arange(0, nr_of_classes + 1)
+        bounds = np.arange(0, config.nr_of_classes + 1)
         self.norm = BoundaryNorm(bounds, self.cmap.N)
 
         # load always the same image from validation set
@@ -42,21 +46,21 @@ class Log_Images:
         normalization_constants = np.load(
             "/om2/user/matth406/nobrainer_data_norm/data_prepared_medium/normalization_constants.npy"
         )
-        self.brain_slices = torch.empty((len(self.slice_idx) * 3, 1, 162, 194))
-        self.mask_slices = torch.empty((len(self.slice_idx) * 3, 1, 162, 194))
+        self.brain_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]))
+        self.mask_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]))
         i = 0
         self.logging_dict = {}
         for d in range(3):
             for slice_id in self.slice_idx:
                 if d == 0:
-                    brain_slice = crop(brain[slice_id, :, :], 162, 194)
-                    mask_slice = crop(mask[slice_id, :, :], 162, 194)
+                    brain_slice = crop(brain[slice_id, :, :], self.image_shape[0], self.image_shape[1])
+                    mask_slice = crop(mask[slice_id, :, :], self.image_shape[0], self.image_shape[1])
                 if d == 1:
-                    brain_slice = crop(brain[:, slice_id, :], 162, 194)
-                    mask_slice = crop(mask[:, slice_id, :], 162, 194)
+                    brain_slice = crop(brain[:, slice_id, :], self.image_shape[0], self.image_shape[1])
+                    mask_slice = crop(mask[:, slice_id, :], self.image_shape[0], self.image_shape[1])
                 if d == 2:
-                    brain_slice = crop(brain[:, :, slice_id], 162, 194)
-                    mask_slice = crop(mask[:, :, slice_id], 162, 194)
+                    brain_slice = crop(brain[:, :, slice_id], self.image_shape[0], self.image_shape[1])
+                    mask_slice = crop(mask[:, :, slice_id], self.image_shape[0], self.image_shape[1])
 
                 self.logging_dict[f"Image d{d} c{slice_id}"] = self.__create_plot(
                     self.wandb_on, brain_slice, caption="Raw Image"

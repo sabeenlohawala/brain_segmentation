@@ -15,7 +15,7 @@ from torch.utils.data import Dataset
 
 
 class NoBrainerDataset(Dataset):
-    def __init__(self, file_dir: str, pretrained: bool = True, debug: bool = False) -> None:
+    def __init__(self, file_dir: str, config) -> None:
         """
         Initializes the object with the given `file_dir` and `pretrained` parameters.
 
@@ -26,8 +26,11 @@ class NoBrainerDataset(Dataset):
         Returns:
             None
         """
+        # Set the model name
+        self.model_name = config.model_name
+
         # Set the pretrained attribute
-        self.pretrained = pretrained
+        self.pretrained = config.pretrained
 
         # Get a list of all the brain image files in the specified directory
         self.images = glob.glob(f"{file_dir}/brain*.npy")
@@ -36,7 +39,8 @@ class NoBrainerDataset(Dataset):
         self.masks = glob.glob(f"{file_dir}/mask*.npy")
 
         # Limit the number of images and masks to the first 100 during debugging
-        if debug:
+        if config.debug == 0:
+            print('debug mode')
             self.images = self.images[:100]
             self.masks = self.masks[:100]
 
@@ -52,6 +56,9 @@ class NoBrainerDataset(Dataset):
         # returns (image, mask)
         image = torch.from_numpy(np.load(self.images[idx]))
         mask = torch.from_numpy(np.load(self.masks[idx]))
+        if self.model_name == 'simple_unet':
+            image = image[:,1:161,1:193]
+            mask = mask[:,1:161,1:193]
 
         # normalize image
         image = (
@@ -75,17 +82,15 @@ class NoBrainerDataset(Dataset):
 
 
 def get_data_loader(
-    data_dir: str,
-    batch_size: int,
-    pretrained: bool,
-    debug: bool = False,
+    # data_dir: str,
+    config,
     num_workers: int = 4 * torch.cuda.device_count(),
 ):
-    train_dataset = NoBrainerDataset(f"{data_dir}/train", pretrained=pretrained, debug=debug)
-    val_dataset = NoBrainerDataset(f"{data_dir}/validation", pretrained=pretrained, debug=debug)
-    test_dataset = NoBrainerDataset(f"{data_dir}/test", pretrained=pretrained, debug=debug)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size)
+    train_dataset = NoBrainerDataset(f"{config.data_dir}/train", config)
+    val_dataset = NoBrainerDataset(f"{config.data_dir}/validation", config)
+    test_dataset = NoBrainerDataset(f"{config.data_dir}/test", config)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch_size)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.batch_size)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch_size)
 
     return (train_loader, val_loader, test_loader)
