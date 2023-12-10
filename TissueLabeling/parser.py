@@ -91,6 +91,9 @@ def get_args():
     train.add_argument(
         "--wandb_description", help='Description for wandb run', type=str, required=False
     )
+    train.add_argument(
+        "--augment", help='Flag for whether to train on augmented data', type=int, required=False, default=0
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

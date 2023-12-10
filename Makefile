@@ -24,41 +24,39 @@ DT := $(shell date +"%Y%m%d")
 # | 2 | 240 | 3 | 96 |
 
 # Training parameters
-model_idx = 1 2
-epochs = 500
+model_name = segformer
+loss_type = dice
+num_epochs = 1
 augment = 0
 lr = 5e-5
-im_size = (192, 224)
-batch_size = 512
+debug = 1
+batch_size = 50
 
 
 ## ddpm-train: train a model from scratch
 tl-train:
-	for model in $(model_idx); do \
+	for model in $(model_name); do \
 		for loss in $(loss_type); do \
-			logdir=M$$model\T$(time_steps)$$schedule\L$$loss\G$(group_labels)J$(jei_flag)D$(downsampled)
+			logdir=test-20231209-M$$model\L$$loss\A$(augment)
 			sbatch --job-name=$$logdir submit.sh python -u scripts/commands/main.py train \
-				--model_idx $$model \
+				--model_name $$model \
 				--logdir $$logdir \
-				--epochs $(epochs) \
+				--num_epochs $(num_epochs) \
 				--batch_size $(batch_size) \
 				--augment $(augment) \
 				--lr $(lr) \
-				--im_size '$(im_size)' \
-				--downsample; \
+				--debug $(debug); \
 		done; \
 	done;
 
 
 ## ddpm-resume: resume training
 tl-resume:
-	for model in $(model_idx); do \
-		for schedule in $(beta_schedule); do \
-			for loss in $(loss_type); do \
-				logdir=test-M$$model\T$(time_steps)$$schedule\L$$loss\G$(group_labels)J$(jei_flag)D1
-				sbatch --job-name=$$logdir --open-mode=append submit.sh python -u scripts/commands/main.py resume-train \
-					/space/calico/1/users/Harsha/ddpm-labels/logs/$$logdir; \
-			done; \
+	for model in $(model_name); do \
+		for loss in $(loss_type); do \
+			logdir=test-M$$model\L$$loss\A$(augment)
+			sbatch --job-name=$$logdir --open-mode=append submit.sh python -u scripts/commands/main.py resume-train \
+				/space/calico/1/users/Harsha/ddpm-labels/logs/$$logdir; \
 		done; \
 	done;
 
@@ -66,13 +64,10 @@ tl-resume:
 ## tl-test: test changes to code using fashion-mnist data
 tl-test:
 	python -u scripts/main.py train \
-		--model_idx 1 \
-		--time_steps 30 \
-		--beta_schedule linear \
+		--model_name segformer \
 		--logdir mnist \
-		--epochs 10 \
-		--im_size '(28, 28)' \
-		--debug \
+		--num_epochs 10 \
+		--debug 1\
 		;
 
 
