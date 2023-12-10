@@ -92,7 +92,7 @@ def main():
     config = update_config(args)
     model = select_model(config)
 
-    fabric = init_fabric(precision=config.precision)  # , devices=2, strategy='ddp')
+    fabric = init_fabric(precision=config.precision)
     set_seed(config.seed)
     init_cuda()
 
@@ -100,7 +100,7 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
 
     # loss function
-    loss_fn = Dice(config.nr_of_classes, fabric, config.data_dir)
+    loss_fn = Dice(fabric, config)
 
     # get data loader
     train_loader, val_loader, _ = get_data_loader(config)

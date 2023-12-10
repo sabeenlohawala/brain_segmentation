@@ -13,7 +13,6 @@ class Log_Images:
     def __init__(
         self,
         fabric: L.Fabric,
-        # wandb_on: bool,
         config,
     ):
         self.wandb_on = config.wandb_on

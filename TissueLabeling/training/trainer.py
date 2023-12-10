@@ -13,18 +13,12 @@ class Trainer:
     def __init__(
         self,
         model: torch.nn.Module,
-        # nr_of_classes: int,
         train_loader,
         val_loader,
         loss_fn: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         fabric: L.Fabric,
-        # batch_size: int,
-        # wandb_on: bool,
-        # pretrained: bool,
         config,
-        # logdir: str = "",
-        save_every: int = 100000,
     ) -> None:
         self.model = model
         self.train_loader = train_loader
@@ -32,7 +26,6 @@ class Trainer:
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.fabric = fabric
-        self.save_every = save_every
         self.nr_of_classes = config.nr_of_classes
         self.batch_size = config.batch_size
         self.wandb_on = config.wandb_on
@@ -139,8 +132,6 @@ class Trainer:
 
     def _save_state(
         self,
-        epoch: int,
-        batch_idx: int,
         log: bool = False,
         path="/home/sabeen/brain_segmentation/models/checkpoint.ckpt",
     ) -> None:

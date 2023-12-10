@@ -4,13 +4,10 @@ import torch
 from torch import nn
 import wandb
 
-DATA_DIR = "sabeen"  # alternatively, 'matth406'
-# DATASET = 'medium'
-
 
 class Dice(nn.Module):
     def __init__(
-        self, nr_of_classes: int, fabric: L.Fabric, data_dir: str, smooth: float = 1e-7
+        self, fabric: L.Fabric, config, smooth: float = 1e-7
     ) -> None:
         """
         Compute the multi-class generlized dice loss as suggested here:
@@ -24,10 +21,10 @@ class Dice(nn.Module):
         super(Dice, self).__init__()
 
         # init
-        self.nr_of_classes = nr_of_classes
+        self.nr_of_classes = config.nr_of_classes
         self.smooth = smooth
 
-        pixel_counts = np.load(f"{data_dir}/pixel_counts.npy")
+        pixel_counts = np.load(f"{config.data_dir}/pixel_counts.npy")
 
         # NR_OF_CLASSES = 6
         # pixel_counts = np.load(f'/om2/user/sabeen/nobrainer_data_norm/matth406_medium_6_classes/pixel_counts.npy')
