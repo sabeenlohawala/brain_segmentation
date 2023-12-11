@@ -145,7 +145,7 @@ class Classification_Metrics:
 
     #     return macro_precision
 
-    def log(self, commit: bool = False, writer=None):
+    def log(self, epoch, commit: bool = False, writer=None):
         logging_dict = {
             f"{self.prefix}/Loss": sum(self.loss) / len(self.loss),
             f"{self.prefix}/DICE/overall": sum([1 - item for item in self.loss])
@@ -162,10 +162,10 @@ class Classification_Metrics:
         if self.wandb_on:
             wandb.log(logging_dict, commit=commit)
         if writer is not None:
-            writer.add_scalar(f"{self.prefix}/Loss", sum(self.loss) / len(self.loss))
+            writer.add_scalar(f"{self.prefix}/Loss", sum(self.loss) / len(self.loss),epoch)
             writer.add_scalar(
                 f"{self.prefix}/DICE/overall",
-                sum([1 - item for item in self.loss]) / len(self.loss),
+                sum([1 - item for item in self.loss]) / len(self.loss), epoch,
             )
 
     def reset(self):

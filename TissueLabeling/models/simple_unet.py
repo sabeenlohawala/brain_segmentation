@@ -85,7 +85,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     image_channels = 1
     image_size = (160, 192)  # (28, 28)
-    batch_size = 1
+    batch_size = 1024 + 256 + 128 + 64 + 32
 
     # Note: For (28, 28), remove 2 up/down channels.
 

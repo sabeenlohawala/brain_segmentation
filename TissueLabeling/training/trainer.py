@@ -3,6 +3,7 @@ import os
 import lightning as L
 import torch
 import wandb
+import math
 from torch.utils.tensorboard import SummaryWriter
 
 from TissueLabeling.models.metrics import Classification_Metrics
@@ -26,11 +27,14 @@ class Trainer:
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.fabric = fabric
-        self.nr_of_classes = config.nr_of_classes
-        self.batch_size = config.batch_size
-        self.wandb_on = config.wandb_on
-        self.pretrained = config.pretrained
-        self.logdir = config.logdir
+        # self.nr_of_classes = config.nr_of_classes
+        # self.batch_size = config.batch_size
+        # self.wandb_on = config.wandb_on
+        # self.pretrained = config.pretrained
+        # self.logdir = config.logdir
+        # self.checkpoint_freq = config.checkpoint_freq
+        # self.start_epoch = config.start_epoch + 1
+        self.config = config
 
         if self.fabric.global_rank == 0:
             self.image_logger = Log_Images(
@@ -38,29 +42,29 @@ class Trainer:
                 config=config,
             )
 
-        if self.logdir:
-            if not os.path.isdir(self.logdir):
-                os.makedirs(self.logdir)
-            self.writer = SummaryWriter(self.logdir)
+        if self.config.logdir:
+            # if not os.path.isdir(config.logdir):
+            #     os.makedirs(config.logdir)
+            self.writer = SummaryWriter(self.config.logdir)
             print("SummaryWriter created")
         else:
             self.writer = None
 
-    def train(self, epochs: int) -> None:
+    def train(self) -> None:
         batch_idx = 0
 
         self.train_metrics = Classification_Metrics(
-            self.nr_of_classes, prefix="Train", wandb_on=self.wandb_on
+            self.config.nr_of_classes, prefix="Train", wandb_on=self.config.wandb_on
         )
         self.validation_metrics = Classification_Metrics(
-            self.nr_of_classes, prefix=f"Validation", wandb_on=self.wandb_on
+            self.config.nr_of_classes, prefix=f"Validation", wandb_on=self.config.wandb_on
         )
 
         print(
-            f"Process {self.fabric.global_rank} starts training on {len(self.train_loader) // self.batch_size} batches per epoch over {epochs} epochs"
+            f"Process {self.fabric.global_rank} starts training on {len(self.train_loader) // self.config.batch_size} batches per epoch over {self.config.num_epochs} epochs"
         )
 
-        for epoch in range(epochs):
+        for epoch in range(self.config.start_epoch + 1, self.config.num_epochs + 1):
             self.model.train()
             for i, (image, mask) in enumerate(self.train_loader):
                 # mask[mask != 0] = 1 # uncomment for binary classification check
@@ -88,8 +92,8 @@ class Trainer:
             if self.fabric.global_rank == 0:
                 print("Rank:", self.fabric.global_rank)
 
-                self.train_metrics.log(commit=False, writer=self.writer)
-                self.validation_metrics.log(commit=False, writer=self.writer)
+                self.train_metrics.log(epoch, commit=False, writer=self.writer)
+                self.validation_metrics.log(epoch, commit=False, writer=self.writer)
 
                 print("saving image...")
                 self.image_logger.logging(self.model, epoch, commit=True)
@@ -98,8 +102,9 @@ class Trainer:
             self.validation_metrics.reset()
 
             # save model checkpoint
-            if epoch % 10 == 0:
-                model_save_path = f"{self.logdir}/checkpoint_{epoch}.ckpt"
+            num_digits = int(math.log10(self.config.num_epochs)) + 1
+            if self.config.save_checkpoint and (epoch == 1 or epoch % self.config.checkpoint_freq == 0):
+                model_save_path = f"{self.config.logdir}/checkpoint_{epoch:0{num_digits}d}.ckpt"
                 state = {
                     "epoch": epoch,
                     "batch_idx": batch_idx,
@@ -112,7 +117,7 @@ class Trainer:
             self.writer.close()
 
         # log to wandb
-        if self.fabric.global_rank == 0 and self.wandb_on:
+        if self.fabric.global_rank == 0 and self.config.wandb_on:
             print("final saving model state...")
             self._save_state(epoch, batch_idx, log=False, path=model_save_path)
 
