@@ -57,7 +57,7 @@ def update_config(config):
         config = Configuration(config)
 
     elif sys.argv[1] == "resume-train":
-        chkpt_folder = config.logdir
+        chkpt_folder = os.path.join('logs/', config.logdir)
 
         config_file = os.path.join(chkpt_folder, "config.json")
         if not os.path.exists(config_file):
@@ -67,13 +67,15 @@ def update_config(config):
             data = json.load(json_file)
         assert isinstance(data, dict), "Invalid Object Type"
 
-        dice_list = sorted(glob.glob(os.path.join(chkpt_folder, "model*")))
+        dice_list = sorted(glob.glob(os.path.join(chkpt_folder, "checkpoint*")))
         if not dice_list:
             sys.exit("No checkpoints exist to resume training")
 
         data["checkpoint"] = dice_list[-1]
-        data["start_epoch"] = int(os.path.basename(dice_list[-1]).split("_")[-1])
-
+        data["start_epoch"] = int(os.path.basename(dice_list[-1]).split('.')[0].split('_')[-1])
+        data["num_epochs"] = max(data["num_epochs"],getattr(config,'num_epochs',0))
+        data["checkpoint_freq"] = getattr(config,'checkpoint_freq',10)
+        
         args = argparse.Namespace(**data)
         config = Configuration(args, "config_resume.json")
 
@@ -135,7 +137,7 @@ def main():
         fabric=fabric,
         config=config,
     )
-    trainer.train(config.num_epochs)
+    trainer.train()
     print("Training Finished!")
 
 
