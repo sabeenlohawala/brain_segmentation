@@ -54,12 +54,12 @@ class Configuration:
                 self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51"
             else:
                 raise Exception(f'No dataset found for nr_of_classes = {self.nr_of_classes}')
-        self.augment = getattr(args, "augment", 0)
+        self.augment = getattr(args, "augment", False)
         self.seed = getattr(args, "seed", 42)
         self.save_every = "epoch"
         self.precision = "32-true"  # "16-mixed"
-        self.pretrained = getattr(args, "pretrained", 1)
-        self.debug = getattr(args, "debug", 0)
+        self.pretrained = getattr(args, "pretrained", True) and self.model_name == 'segformer'
+        self.debug = getattr(args, "debug", False)
 
         self._commit_hash = ext_utils.get_git_revision_short_hash()
         self._created_on = f'{datetime.now().strftime("%A %m/%d/%Y %H:%M:%S")}'

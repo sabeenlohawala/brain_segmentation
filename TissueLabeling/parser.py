@@ -70,7 +70,7 @@ def get_args():
     )
     train.add_argument(
         "--pretrained",
-        help="Whether to use pretrained model",
+        help="Flag for whether to use pretrained model",
         type=int,
         required=False,
         default=1,

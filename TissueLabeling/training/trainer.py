@@ -97,19 +97,21 @@ class Trainer:
             self.train_metrics.reset()
             self.validation_metrics.reset()
 
-        # save model and log to wandb
-        model_save_path = f"{self.logdir}/checkpoint.ckpt"
-        state = {
-            "epoch": epoch,
-            "batch_idx": batch_idx,
-            "model": self.model,
-            "optimizer": self.optimizer,
-        }
-        self.fabric.save(model_save_path, state)
+            # save model checkpoint
+            if epoch % 10 == 0:
+                model_save_path = f"{self.logdir}/checkpoint_{epoch}.ckpt"
+                state = {
+                    "epoch": epoch,
+                    "batch_idx": batch_idx,
+                    "model": self.model,
+                    "optimizer": self.optimizer,
+                }
+                self.fabric.save(model_save_path, state)
 
         if self.writer is not None:
             self.writer.close()
 
+        # log to wandb
         if self.fabric.global_rank == 0 and self.wandb_on:
             print("final saving model state...")
             self._save_state(epoch, batch_idx, log=False, path=model_save_path)

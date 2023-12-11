@@ -2,12 +2,12 @@
 #SBATCH -t 1-00:00:00
 #SBATCH -N 1
 #SBATCH -c 4
-#SBATCH --ntasks-per-node=1
-#SBATCH --gres=gpu:a100:1
+#SBATCH --ntasks-per-node=4
+#SBATCH --gres=gpu:a100:4
 #SBATCH --mem=40G # per node memory
 #SBATCH -p gablab
-#SBATCH -o ./slurm_outputs/test-small-50seg.out
-#SBATCH -o ./slurm_outputs/test-small-50seg.err
+#SBATCH -o ./slurm_outputs/test-small-51seg.out
+#SBATCH -o ./slurm_outputs/test-small-51seg.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 

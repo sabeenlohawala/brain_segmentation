@@ -24,28 +24,29 @@ DT := $(shell date +"%Y%m%d")
 # | 2 | 240 | 3 | 96 |
 
 # Training parameters
-model_name = segformer
+model_name = simple_unet segformer
 loss_type = dice
-num_epochs = 1
+num_epochs = 100
 augment = 0
 lr = 5e-5
-debug = 1
-batch_size = 50
+# debug = 0
+batch_size = 512
+nr_of_classes = 51 107
 
 
 ## ddpm-train: train a model from scratch
 tl-train:
 	for model in $(model_name); do \
 		for loss in $(loss_type); do \
-			logdir=test-20231209-M$$model\L$$loss\A$(augment)
+			logdir=20231211-M$$model\L$$loss\C$(nr_of_classes)\B$(batch_size)\A$(augment)
 			sbatch --job-name=$$logdir submit.sh python -u scripts/commands/main.py train \
 				--model_name $$model \
+				--nr_of_classes $(nr_of_classes) \
 				--logdir $$logdir \
 				--num_epochs $(num_epochs) \
 				--batch_size $(batch_size) \
 				--augment $(augment) \
-				--lr $(lr) \
-				--debug $(debug); \
+				--lr $(lr); \
 		done; \
 	done;
 

@@ -39,7 +39,7 @@ class NoBrainerDataset(Dataset):
         self.masks = glob.glob(f"{file_dir}/mask*.npy")
 
         # Limit the number of images and masks to the first 100 during debugging
-        if config.debug == 0:
+        if config.debug:
             print('debug mode')
             self.images = self.images[:100]
             self.masks = self.masks[:100]
