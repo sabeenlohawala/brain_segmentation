@@ -104,8 +104,6 @@ class Trainer:
             if self.config.save_checkpoint and (epoch == 1 or epoch % self.config.checkpoint_freq == 0):
                 model_save_path = f"{self.config.logdir}/checkpoint_{epoch:0{num_digits}d}.ckpt"
                 state = {
-                    "epoch": epoch,
-                    "batch_idx": batch_idx,
                     "model": self.model,
                     "optimizer": self.optimizer,
                 }
