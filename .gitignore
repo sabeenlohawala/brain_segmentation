@@ -3,3 +3,7 @@
 TODO.txt
 **/*.pyc
 *.out
+logs/*
+!.gitkeep
+.vscode
+slurm_outputs
