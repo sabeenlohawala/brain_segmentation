@@ -40,17 +40,7 @@ class Configuration:
         self.batch_size = getattr(args, "batch_size", 64)
         self.lr = getattr(args, "lr", 6e-5)
 
-        self.data_dir = getattr(
-            args, "data_dir"
-        )
-        if self.data_dir is None:
-            if self.nr_of_classes == 107:
-                self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_aug_107"
-            elif self.nr_of_classes == 51:
-                self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51"
-            else:
-                raise Exception(f'No dataset found for nr_of_classes = {self.nr_of_classes}')
-        
+        self.data_dir = getattr(args, "data_dir")
         self.augment = getattr(args, "augment", 1)
         self.debug = getattr(args, "debug", 0)
 
@@ -69,6 +59,7 @@ class Configuration:
         self._commit_hash = ext_utils.get_git_revision_short_hash()
         self._created_on = f'{datetime.now().strftime("%A %m/%d/%Y %H:%M:%S")}'
 
+        self.update_data_dir()
         self.write_config(config_file_name)
 
     def write_config(self, file_name=None):
@@ -103,6 +94,15 @@ class Configuration:
             config_dict = json.load(fh)
 
         return argparse.Namespace(**config_dict)
+
+    def update_data_dir(self):
+        if self.data_dir is None:
+            if self.nr_of_classes == 107:
+                self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_aug_107"
+            elif self.nr_of_classes == 51:
+                self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51"
+            else:
+                raise Exception(f'No dataset found for nr_of_classes = {self.nr_of_classes}')
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@
 #SBATCH --mem=40G # per node memory
 #SBATCH -p gablab
 #SBATCH -o ./slurm_outputs/test-small-51seg.out
-#SBATCH -o ./slurm_outputs/test-small-51seg.err
+#SBATCH -e ./slurm_outputs/test-small-51seg.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 
