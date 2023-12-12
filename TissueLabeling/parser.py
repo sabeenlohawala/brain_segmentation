@@ -26,16 +26,6 @@ def get_args():
         type=str,
         help="Folder containing previous checkpoints",
     )
-    resume.add_argument(
-        "--num_epochs",
-        type=int,
-        help="Number of epochs to train for",
-        required=False,
-        default=0
-    )
-    resume.add_argument(
-        "--checkpoint_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
-    )
     resume.add_argument("--debug", action="store_true", dest="debug")
 
     # create subparser for "train" command

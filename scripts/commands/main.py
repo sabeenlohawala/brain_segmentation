@@ -71,8 +71,6 @@ def update_config(config):
 
         data["checkpoint"] = dice_list[-1]
         data["start_epoch"] = int(os.path.basename(dice_list[-1]).split('.')[0].split('_')[-1])
-        data["num_epochs"] = max(data["num_epochs"],getattr(config,'num_epochs',0))
-        data["checkpoint_freq"] = getattr(config,'checkpoint_freq',10)
         
         args = argparse.Namespace(**data)
         config = Configuration(args, "config_resume.json")
