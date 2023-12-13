@@ -6,4 +6,4 @@ TODO.txt
 logs/*
 !.gitkeep
 .vscode
-slurm_outputs
+results

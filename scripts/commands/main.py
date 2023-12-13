@@ -58,7 +58,7 @@ def update_config(config):
         config = Configuration(config)
 
     elif sys.argv[1] == "resume-train":
-        chkpt_folder = os.path.join('logs/', config.logdir)
+        chkpt_folder = os.path.join('results/', config.logdir)
 
         config_file = os.path.join(chkpt_folder, "config.json")
         if not os.path.exists(config_file):

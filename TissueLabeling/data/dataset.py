@@ -33,10 +33,10 @@ class NoBrainerDataset(Dataset):
         self.pretrained = config.pretrained
 
         # Get a list of all the brain image files in the specified directory
-        self.images = glob.glob(f"{file_dir}/brain*.npy")
+        self.images = sorted(glob.glob(f"{file_dir}/brain*.npy"))
 
         # Get a list of all the mask files in the specified directory
-        self.masks = glob.glob(f"{file_dir}/mask*.npy")
+        self.masks = sorted(glob.glob(f"{file_dir}/mask*.npy"))
 
         # Limit the number of images and masks to the first 100 during debugging
         if config.debug:
