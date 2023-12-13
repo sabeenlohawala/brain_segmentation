@@ -40,13 +40,13 @@ class SimpleUnet(nn.Module):
 
     def __init__(self, image_channels):
         super().__init__()
-        image_channels = image_channels
+        self.image_channels = image_channels
         down_channels = (64, 128, 256, 512, 1024)
         up_channels = (1024, 512, 256, 128, 64)
         out_dim = 1
 
         # Initial projection
-        self.conv0 = nn.Conv2d(image_channels, down_channels[0], 3, padding=1)
+        self.conv0 = nn.Conv2d(self.image_channels, down_channels[0], 3, padding=1)
 
         # Downsample
         self.downs = nn.ModuleList(
@@ -63,9 +63,9 @@ class SimpleUnet(nn.Module):
             ]
         )
 
-        self.output = nn.Conv2d(up_channels[-1], image_channels, out_dim)
+        self.output = nn.Conv2d(up_channels[-1], self.image_channels, out_dim)
 
-    def forward(self, x, timestep=None):
+    def forward(self, x):
         # Initial conv
         x = self.conv0(x)
         # Unet
