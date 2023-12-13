@@ -44,6 +44,9 @@ def select_model(config):
         sys.exit()
 
     print(f"{config.model_name} found")
+    if config.checkpoint:
+        print(f"Loading from checkpoint...")
+        model.load_state_dict(torch.load(config.checkpoint)['model'])
     return model
 
 
@@ -69,8 +72,8 @@ def update_config(config):
         if not dice_list:
             sys.exit("No checkpoints exist to resume training")
 
-        data["checkpoint"] = dice_list[-1]
-        data["start_epoch"] = int(os.path.basename(dice_list[-1]).split('.')[0].split('_')[-1])
+        data["checkpoint"] = dice_list[0]
+        data["start_epoch"] = int(os.path.basename(dice_list[0]).split('.')[0].split('_')[-1])
         
         args = argparse.Namespace(**data)
         config = Configuration(args, "config_resume.json")
