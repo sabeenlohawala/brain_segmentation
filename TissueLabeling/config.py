@@ -43,7 +43,7 @@ class Configuration:
         self.batch_size = getattr(args, "batch_size", 64)
         self.lr = getattr(args, "lr", 6e-5)
 
-        self.data_dir = getattr(args, "data_dir")
+        self.data_dir = getattr(args, "data_dir",'')
         self.augment = getattr(args, "augment", 1)
         self.debug = getattr(args, "debug", 0)
 
