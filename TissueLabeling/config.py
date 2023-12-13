@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 from datetime import datetime
 
 import numpy as np
@@ -31,10 +32,12 @@ class Configuration:
                 self.logdir,
             )
         if not os.path.isdir(self.logdir):
-            os.makedirs(self.logdir, exist_ok = True)
+            os.makedirs(self.logdir, exist_ok=True)
 
         self.model_name = getattr(args, "model_name", "segformer")
-        self.pretrained = getattr(args, "pretrained", 1) == 1 and self.model_name == 'segformer'
+        self.pretrained = (
+            getattr(args, "pretrained", 1) == 1 and self.model_name == "segformer"
+        )
         self.nr_of_classes = getattr(args, "nr_of_classes", 51)
         self.num_epochs = getattr(args, "num_epochs", 20)
         self.batch_size = getattr(args, "batch_size", 64)
@@ -47,7 +50,7 @@ class Configuration:
         self.seed = getattr(args, "seed", 42)
         self.precision = "32-true"  # "16-mixed"
 
-        self.save_checkpoint = getattr(args, "save_checkpoint",True)
+        self.save_checkpoint = getattr(args, "save_checkpoint", True)
         self.checkpoint_freq = getattr(args, "checkpoint_freq", 10)
         self.checkpoint = getattr(args, "checkpoint", None)
         self.start_epoch = getattr(args, "start_epoch", 0)
@@ -59,7 +62,7 @@ class Configuration:
         self._commit_hash = ext_utils.get_git_revision_short_hash()
         self._created_on = f'{datetime.now().strftime("%A %m/%d/%Y %H:%M:%S")}'
 
-        self.update_data_dir()
+        self._update_data_dir()
         self.write_config(config_file_name)
 
     def write_config(self, file_name=None):
@@ -81,8 +84,6 @@ class Configuration:
 
         config_file = os.path.join(dictionary["logdir"], file_name)
 
-        print("CONFIG", config_file)
-
         with open(config_file, "w", encoding="utf-8") as outfile:
             print("writing config file...")
             outfile.write(json_object)
@@ -95,14 +96,17 @@ class Configuration:
 
         return argparse.Namespace(**config_dict)
 
-    def update_data_dir(self):
-        if self.data_dir is None:
-            if self.nr_of_classes == 107:
-                self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_aug_107"
-            elif self.nr_of_classes == 51:
-                self.data_dir = "/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51"
-            else:
-                raise Exception(f'No dataset found for nr_of_classes = {self.nr_of_classes}')
+    def _update_data_dir(self):
+        """Update the data directory based on the number of classes"""
+
+        root_dir = "/om2/user/sabeen/nobrainer_data_norm"
+
+        folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51"}
+
+        if self.nr_of_classes in folder_map:
+            self.data_dir = os.path.join(root_dir, folder_map[self.nr_of_classes])
+        else:
+            sys.exit(f"No dataset found for {self.nr_of_classes} classes")
 
 
 if __name__ == "__main__":
