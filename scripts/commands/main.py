@@ -135,7 +135,7 @@ def main():
         fabric=fabric,
         config=config,
     )
-    trainer.train()
+    trainer.train_and_validate()
     print("Training Finished!")
 
 

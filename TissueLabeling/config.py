@@ -28,7 +28,7 @@ class Configuration:
         if not os.path.isabs(self.logdir):
             self.logdir = os.path.join(
                 os.getcwd(),
-                "logs",
+                "results",
                 self.logdir,
             )
         if not os.path.isdir(self.logdir):

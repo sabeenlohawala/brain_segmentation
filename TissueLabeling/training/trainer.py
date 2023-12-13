@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from TissueLabeling.metrics.metrics import Classification_Metrics
 from TissueLabeling.training.logging import Log_Images
-
+from TissueLabeling.utils import finish_wandb
 
 class Trainer:
     def __init__(
@@ -48,9 +48,7 @@ class Trainer:
         else:
             self.writer = None
 
-    def train(self) -> None:
-        batch_idx = 0
-
+    def train_and_validate(self) -> None:
         self.train_metrics = Classification_Metrics(
             self.config.nr_of_classes, prefix="Train", wandb_on=self.config.wandb_on
         )
@@ -63,67 +61,49 @@ class Trainer:
         )
 
         for epoch in range(self.config.start_epoch + 1, self.config.num_epochs + 1):
-            self.model.train()
-            for i, (image, mask) in enumerate(self.train_loader):
-                # mask[mask != 0] = 1 # uncomment for binary classification check
+            self._train()
 
-                print(f"Process {self.fabric.global_rank}, batch {i}")
+            self._validation()
 
-                self.optimizer.zero_grad()
-                probs = self.model(image)
-                loss, classDice = self.loss_fn(mask.long(), probs)
-                self.fabric.backward(loss)
-                self.optimizer.step()
-                self.train_metrics.compute(mask.long(), probs, loss.item(), classDice)
-
-                batch_idx += 1
-
-            print(f"Process {self.fabric.global_rank} finished epoch {epoch}...")
-
-            # evaluation
-            print("start validation...")
-            # compute loss on validation data
-            self._validation(self.val_loader)
+            # TODO: syncing class-specific dice scores
             self.fabric.barrier()
             self.train_metrics.sync(self.fabric)
 
-            if self.fabric.global_rank == 0:
-                print("Rank:", self.fabric.global_rank)
-
-                self.train_metrics.log(epoch, commit=False, writer=self.writer)
-                self.validation_metrics.log(epoch, commit=False, writer=self.writer)
-
-                print("saving image...")
-                self.image_logger.logging(self.model, epoch, commit=True)
-
-            self.train_metrics.reset()
-            self.validation_metrics.reset()
+            self._log_metrics(epoch)
+            self._log_image(epoch)
+            self._reset_metrics()
 
             # save model checkpoint
-            num_digits = int(math.log10(self.config.num_epochs)) + 1
-            if self.config.save_checkpoint and (epoch == 1 or epoch % self.config.checkpoint_freq == 0):
-                model_save_path = f"{self.config.logdir}/checkpoint_{epoch:0{num_digits}d}.ckpt"
-                state = {
-                    "model": self.model,
-                    "optimizer": self.optimizer,
-                }
-                self.fabric.save(model_save_path, state)
+            self._save_checkpoint(epoch)
 
         if self.writer is not None:
             self.writer.close()
 
-        # log to wandb
-        if self.fabric.global_rank == 0 and self.config.wandb_on:
-            print("final saving model state...")
-            self._save_state(epoch, batch_idx, log=False, path=model_save_path)
+        self._log_wandb(log=False)
 
-            # add .out file to wandb and terminate
-            self.finish_wandb("/om2/user/sabeen/brain_segmentation/jobs/job_train.out")
+    def _train(self) -> None:
+        print('Training...')
+        batch_idx = 0
+        self.model.train()
+        for i, (image, mask) in enumerate(self.train_loader):
+            # mask[mask != 0] = 1 # uncomment for binary classification check
 
+            print(f"Process {self.fabric.global_rank}, batch {i}")
+
+            self.optimizer.zero_grad()
+            probs = self.model(image)
+            loss, classDice = self.loss_fn(mask.long(), probs)
+            self.fabric.backward(loss)
+            self.optimizer.step()
+            self.train_metrics.compute(mask.long(), probs, loss.item(), classDice)
+
+            batch_idx += 1
+        
     @torch.no_grad()
-    def _validation(self, data_loader) -> None:
+    def _validation(self) -> None:
+        print('Validation...')
         self.model.eval()
-        for i, (image, mask) in enumerate(data_loader):
+        for i, (image, mask) in enumerate(self.val_loader):
             # mask[mask != 0] = 1 # uncomment for binary classification check
 
             # forward pass
@@ -132,6 +112,41 @@ class Trainer:
             # backward pass
             loss, classDice = self.loss_fn(mask.long(), probs)
             self.validation_metrics.compute(mask.long(), probs, loss.item(), classDice)
+    
+    def _log_metrics(self, epoch) -> None:
+        if self.fabric.global_rank == 0:
+            print(f'Process {self.fabric.global_rank} logging metrics...')
+            self.train_metrics.log(epoch, commit=False, writer=self.writer)
+            self.validation_metrics.log(epoch, commit=False, writer=self.writer)
+    
+    def _log_image(self, epoch) -> None:
+        if self.fabric.global_rank == 0:
+            print(f"Process {self.fabric.global_rank} saving image...")
+            self.image_logger.logging(self.model, epoch, commit=True)
+    
+    def _reset_metrics(self) -> None:
+        print("Resetting metrics...")
+        self.train_metrics.reset()
+        self.validation_metrics.reset()
+    
+    def _save_checkpoint(self, epoch) -> None:
+        if self.config.save_checkpoint and (epoch == 1 or epoch % self.config.checkpoint_freq == 0):
+            print(f"Saving epoch {epoch} checkpoint...")
+            model_save_path = f"{self.config.logdir}/checkpoint_{epoch:04d}.ckpt"
+            state = {
+                "model": self.model,
+                "optimizer": self.optimizer,
+            }
+            self.fabric.save(model_save_path, state)
+    
+    def _log_wandb(self,log) -> None:
+        if self.fabric.global_rank == 0 and self.config.wandb_on:
+            print("Saving state to wandb...")
+            model_save_path = f"{self.config.logdir}/checkpoint_{self.config.num_epochs:04d}.ckpt"
+            self._save_state(log, model_save_path)
+
+            # add .out file to wandb and terminate
+            finish_wandb("/om2/user/sabeen/tissue_labeling/logs/job_train.out")
 
     def _save_state(
         self,
@@ -142,8 +157,6 @@ class Trainer:
         Save the pytorch model and the optimizer state
 
         Args:
-            epoch (int): epoch number
-            batch_idx (int): training batch index
             log (int): indicator if the model should be logged to wandb
         """
 
@@ -151,18 +164,3 @@ class Trainer:
             artifact = wandb.Artifact("Model", type="model")
             artifact.add_file(path)
             wandb.log_artifact(artifact)
-
-    def finish_wandb(self, out_file: str) -> None:
-        """
-        Finish Weights and Biases
-
-        Args:
-            out_file (str): name of the .out file of the run
-        """
-
-        # add .out file to wandb
-        artifact_out = wandb.Artifact("OutFile", type="out_file")
-        artifact_out.add_file(out_file)
-        wandb.log_artifact(artifact_out)
-        # finish wandb
-        wandb.finish(quiet=True)

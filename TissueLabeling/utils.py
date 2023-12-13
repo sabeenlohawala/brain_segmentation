@@ -67,7 +67,6 @@ def init_cuda() -> None:
             torch.backends.cudnn.benchmark,
         )
 
-
 def init_wandb(
     project_name: str,
     fabric: L.fabric,
@@ -102,7 +101,6 @@ def init_wandb(
         include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
     )
 
-
 def init_fabric(**kwargs) -> L.fabric:
     fabric = Fabric(**kwargs)
     fabric.launch()
@@ -119,3 +117,18 @@ def init_fabric(**kwargs) -> L.fabric:
         print(f"Initialize Process: {fabric.global_rank}")
 
     return fabric
+
+def finish_wandb(out_file: str) -> None:
+    """
+    Finish Weights and Biases
+
+    Args:
+        out_file (str): name of the .out file of the run
+    """
+
+    # add .out file to wandb
+    artifact_out = wandb.Artifact("OutFile", type="out_file")
+    artifact_out.add_file(out_file)
+    wandb.log_artifact(artifact_out)
+    # finish wandb
+    wandb.finish(quiet=True)
