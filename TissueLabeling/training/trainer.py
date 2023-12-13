@@ -6,7 +6,7 @@ import wandb
 import math
 from torch.utils.tensorboard import SummaryWriter
 
-from TissueLabeling.models.metrics import Classification_Metrics
+from TissueLabeling.metrics.metrics import Classification_Metrics
 from TissueLabeling.training.logging import Log_Images
 
 

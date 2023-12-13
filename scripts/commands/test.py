@@ -2,8 +2,9 @@ import csv
 
 import numpy as np
 import torch
-from models.segformer import Segformer
-from utils import crop, init_fabric, load_brains
+from TissueLabeling.models.segformer import Segformer
+from TissueLabeling.utils import init_fabric
+from TissueLabeling.brain_utils import crop, load_brains
 
 NR_OF_CLASSES = 6
 

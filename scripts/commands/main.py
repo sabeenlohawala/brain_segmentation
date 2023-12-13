@@ -17,7 +17,7 @@ import wandb
 
 from TissueLabeling.config import Configuration
 from TissueLabeling.data.dataset import get_data_loader
-from TissueLabeling.models.metrics import Dice
+from TissueLabeling.metrics.metrics import Dice
 from TissueLabeling.models.segformer import Segformer
 from TissueLabeling.models.unet import Unet
 from TissueLabeling.models.simple_unet import SimpleUnet
