@@ -44,7 +44,7 @@ class Dice(nn.Module):
         self.weights = fabric.to_device(self.weights)
         self.denom = None
 
-    def forward(self, y_true: torch.tensor, y_pred: torch.tensor):
+    def forward(self, y_true: torch.tensor, y_pred: torch.tensor, debug=False):
         """
         Args:
             y_true (torch.tensor): Ground Truth class. Tensor of shape [B,1,H,W]
@@ -59,23 +59,25 @@ class Dice(nn.Module):
         ).permute(0, 3, 1, 2)
 
         # compute the generalized dice for each imamge
-        class_intersect = torch.sum(
+        self.class_intersect = torch.sum(
             self.weights.view(1, -1, 1, 1) * (y_true_oh * y_pred), axis=(2, 3)
         )
-        class_denom = torch.sum(
+        self.class_union = torch.sum(
             self.weights.view(1, -1, 1, 1) * (y_true_oh + y_pred), axis=(2, 3)
         )
 
-        intersect = torch.sum(class_intersect, axis=1)
-        denom = torch.sum(class_denom, axis=1)
+        intersect = torch.sum(self.class_intersect, axis=1)
+        denom = torch.sum(self.class_union, axis=1)
 
         classDice = torch.mean(
-            2.0 * class_intersect / (class_denom + self.smooth), axis=0
+            2.0 * self.class_intersect / (self.class_union + self.smooth), axis=0
         )
 
         # compute the average over the batch
         dice_coeff = torch.mean((2.0 * intersect / (denom + self.smooth)))
         dice_loss = 1 - dice_coeff
+        if debug:
+            dice_loss = dice_coeff
 
         return dice_loss, classDice
 
@@ -89,15 +91,19 @@ class Classification_Metrics:
 
         self.loss = []
         self.classDice = []
+        self.class_intersect = []
+        self.class_union = []
         # self.TP, self.TN, self.FP, self.FN = torch.zeros(nr_of_classes),torch.zeros(nr_of_classes),torch.zeros(nr_of_classes),torch.zeros(nr_of_classes)
 
         self.Assert = torch.Tensor([1])
 
     def compute(
-        self, y_true: torch.tensor, y_pred: torch.tensor, loss: float, classDice
+        self, y_true: torch.tensor, y_pred: torch.tensor, loss: float, classDice, class_intersect, class_union
     ):
         self.loss.append(loss)
         self.classDice.append(classDice.tolist())
+        self.class_intersect = class_intersect
+        self.class_union = class_union
 
         # y_pred_hard = y_pred.argmax(1, keepdim=True)
         # for i in range(self.nr_of_classes):
@@ -173,6 +179,8 @@ class Classification_Metrics:
         self.loss = []
         # self.TP, self.TN, self.FP, self.FN = torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes)
         self.Assert = torch.Tensor([1])
+        self.class_intersect = []
+        self.class_union = []
 
     def sync(self, fabric):
         # self.TP = fabric.all_reduce(self.TP, reduce_op="sum")
@@ -180,6 +188,8 @@ class Classification_Metrics:
         # self.FP = fabric.all_reduce(self.FP, reduce_op="sum")
         # self.FN = fabric.all_reduce(self.FN, reduce_op="sum")
         self.Assert = fabric.all_reduce(self.Assert, reduce_op="sum")
+        self.class_intersect = fabric.all_gather(self.class_intersect)
+        self.class_union = fabric.all_gather(self.class_union)
 
         # self.Assert equals one for each process. The sum must thus be equal to the number of processes in ddp strategy
         # assert self.Assert.item() == torch.cuda.device_count(), f"Metrics Syncronization Did not Work. Assert: {self.Assert}, Devices {torch.cuda.device_count()}"
