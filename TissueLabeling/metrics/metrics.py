@@ -76,8 +76,6 @@ class Dice(nn.Module):
         # compute the average over the batch
         dice_coeff = torch.mean((2.0 * intersect / (denom + self.smooth)))
         dice_loss = 1 - dice_coeff
-        if debug:
-            dice_loss = dice_coeff
 
         return dice_loss, classDice
 

@@ -79,7 +79,7 @@ def generate_w_multi_gpu(config,save_path):
 
     # loss function
     old_dice = Dice(fabric, config)
-    new_dice = NewDice()
+    new_dice = CustomDice(fabric, dist_sync_on_step=True)
 
     # dataloaders
     train_loader, _, _ = get_data_loader(config,)
@@ -97,7 +97,7 @@ def generate_w_multi_gpu(config,save_path):
     fabric.save(model_save_path, state)
 
     old_losses = []
-    for epoch in range(1,2):
+    for epoch in range(1,3):
         print('training...')
         model.train()
         for i, (image,mask) in enumerate(train_loader):
@@ -110,6 +110,7 @@ def generate_w_multi_gpu(config,save_path):
             print(f'Process {fabric.global_rank} pre-backward old dice loss: {old_dice_loss}')
 
             new_dice_loss,new_class_dice = new_dice(mask,probs)
+            # new_dice_loss.requires_grad = True
             print(f'Process {fabric.global_rank} pre-backward new dice loss: {new_dice_loss}')
 
             # loss by hand
@@ -123,7 +124,6 @@ def generate_w_multi_gpu(config,save_path):
             class_union = torch.sum((y_true_oh + probs), axis=(2, 3))
 
             fabric.backward(new_dice_loss) # TODO
-            print(f'Process {fabric.global_rank} post-backward new dice loss: {new_dice_loss}')
             optimizer.step() # TODO
             # train_metrics # TODO
 
@@ -137,15 +137,15 @@ def generate_w_multi_gpu(config,save_path):
 
             print('saving files...')
             # save (brain,mask,pred) from each rank
-            torch.save([image.cpu(),mask.cpu(),probs.cpu()],os.path.join(save_path,f'image_mask_probs_{fabric.global_rank}.pt'))
+            torch.save([image.cpu(),mask.cpu(),probs.cpu()],os.path.join(save_path,f'image_mask_probs_rank{fabric.global_rank}_epoch{epoch}.pt'))
             # save (class_intersect, class_union) from each rank
-            torch.save([class_intersect.cpu(),class_union.cpu()],os.path.join(save_path,f'itersect_denom_{fabric.global_rank}.pt'))
+            torch.save([class_intersect.cpu(),class_union.cpu()],os.path.join(save_path,f'itersect_denom_rank{fabric.global_rank}_epoch{epoch}.pt'))
             # save (class_intersect_gather, class_union_gather)
-            torch.save([class_intersect_gather.cpu(), class_union_gather.cpu()],os.path.join(save_path,f'itersect_denom_gather_{fabric.global_rank}.pt'))
+            torch.save([class_intersect_gather.cpu(), class_union_gather.cpu()],os.path.join(save_path,f'itersect_denom_gather_rank{fabric.global_rank}_epoch{epoch}.pt'))
             # save old dice_loss and class_dice
-            torch.save([old_dice_loss,old_class_dice],os.path.join(save_path,f'old_dice_{fabric.global_rank}.pt'))
+            torch.save([old_dice_loss.cpu(),old_class_dice.cpu()],os.path.join(save_path,f'old_dice_rank{fabric.global_rank}_epoch{epoch}.pt'))
             # save new dice_loss and class_dice
-            torch.save([new_dice_loss,new_class_dice],os.path.join(save_path,f'new_dice_{fabric.global_rank}.pt'))
+            torch.save([new_dice_loss.cpu(),new_class_dice.cpu()],os.path.join(save_path,f'new_dice_rank{fabric.global_rank}_epoch{epoch}.pt'))
 
             break
 
@@ -155,7 +155,7 @@ def main():
     set_seed(config.seed)
     init_cuda()
     
-    save_path = '/om2/user/sabeen/nobrainer_data_norm/test_dice_data/51class_test/'
+    save_path = '/om2/user/sabeen/nobrainer_data_norm/test_dice_data/51class_20231214_3/'
 
     # uncomment below to generate outputs from multi-gpu case
     # generate_w_multi_gpu(config,save_path)
@@ -163,6 +163,8 @@ def main():
     # generate and test new files on multiple gpus
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+    
+    if len(os.listdir(save_path)) <= 1:
         generate_w_multi_gpu(config,save_path)
     
     model = Segformer(nr_of_classes=config.nr_of_classes,pretrained=False)
@@ -173,61 +175,84 @@ def main():
     # new_dice = NewDice()
 
     # get image/mask/probs from each multi_gp
-    image_0,mask_0,probs_0 = torch.load(os.path.join(save_path,'image_mask_probs_0.pt'))
-    image_1,mask_1,probs_1 = torch.load(os.path.join(save_path,'image_mask_probs_1.pt'))
+    image_rank0_epoch1,mask_rank0_epoch1,probs_rank0_epoch1 = torch.load(os.path.join(save_path,'image_mask_probs_rank0_epoch1.pt'))
+    image_rank1_epoch1,mask_rank1_epoch1,probs_rank1_epoch1 = torch.load(os.path.join(save_path,'image_mask_probs_rank1_epoch2.pt'))
+    image_rank0_epoch2,mask_rank0_epoch2,probs_rank0_epoch2 = torch.load(os.path.join(save_path,'image_mask_probs_rank0_epoch1.pt'))
+    image_rank1_epoch2,mask_rank1_epoch2,probs_rank1_epoch2 = torch.load(os.path.join(save_path,'image_mask_probs_rank1_epoch2.pt'))
 
     # get class_intersect/class_union
-    class_intersect_0, class_union_0 = torch.load(os.path.join(save_path,f'itersect_denom_0.pt'))
-    class_intersect_1, class_union_1 = torch.load(os.path.join(save_path,f'itersect_denom_1.pt'))
-
+    class_intersect_rank0_epoch1, class_union_rank0_epoch1 = torch.load(os.path.join(save_path,f'itersect_denom_rank0_epoch1.pt'))
+    class_intersect_rank1_epoch1, class_union_rank1_epoch1 = torch.load(os.path.join(save_path,f'itersect_denom_rank1_epoch1.pt'))
+    class_intersect_rank0_epoch2, class_union_rank0_epoch2 = torch.load(os.path.join(save_path,f'itersect_denom_rank0_epoch2.pt'))
+    class_intersect_rank1_epoch2, class_union_rank1_epoch2 = torch.load(os.path.join(save_path,f'itersect_denom_rank1_epoch2.pt'))
+    
     # get gathered
-    class_intersect_gather_0, class_union_gather_0 = torch.load(os.path.join(save_path,f'itersect_denom_gather_0.pt'))
-    class_intersect_gather_1, class_union_gather_1 = torch.load(os.path.join(save_path,f'itersect_denom_gather_1.pt'))
+    class_intersect_gather_rank0_epoch1, class_union_gather_rank0_epoch1 = torch.load(os.path.join(save_path,f'itersect_denom_gather_rank0_epoch1.pt'))
+    class_intersect_gather_rank1_epoch1, class_union_gather_rank1_epoch1 = torch.load(os.path.join(save_path,f'itersect_denom_gather_rank1_epoch1.pt'))
+    class_intersect_gather_rank0_epoch2, class_union_gather_rank0_epoch2 = torch.load(os.path.join(save_path,f'itersect_denom_gather_rank0_epoch2.pt'))
+    class_intersect_gather_rank1_epoch2, class_union_gather_rank1_epoch2 = torch.load(os.path.join(save_path,f'itersect_denom_gather_rank1_epoch2.pt'))
 
     # get dice metrics from Matthias's code
-    old_dice_loss_0, old_class_dice_0 = torch.load(os.path.join(save_path,f'old_dice_0.pt'))
-    old_dice_loss_1, old_class_dice_1 = torch.load(os.path.join(save_path,f'old_dice_1.pt'))
+    old_dice_loss_rank0_epoch1, old_class_dice_rank0_epoch1 = torch.load(os.path.join(save_path,f'old_dice_rank0_epoch1.pt'))
+    old_dice_loss_rank0_epoch1, old_class_dice_rank1_epoch1 = torch.load(os.path.join(save_path,f'old_dice_rank1_epoch1.pt'))
+    old_dice_loss_rank0_epoch2, old_class_dice_rank0_epoch2 = torch.load(os.path.join(save_path,f'old_dice_rank0_epoch2.pt'))
+    old_dice_loss_rank0_epoch2, old_class_dice_rank1_epoch2 = torch.load(os.path.join(save_path,f'old_dice_rank1_epoch2.pt'))
 
     # get dice metrics from new torch metrics custom metric
-    new_dice_loss_0, new_class_dice_0 = torch.load(os.path.join(save_path,f'new_dice_0.pt'))
-    new_dice_loss_1, new_class_dice_1 = torch.load(os.path.join(save_path,f'new_dice_1.pt'))
+    new_dice_loss_rank0_epoch1, new_class_dice_rank0_epoch1 = torch.load(os.path.join(save_path,f'new_dice_rank0_epoch1.pt'))
+    new_dice_loss_rank1_epoch1, new_class_dice_rank1_epoch1 = torch.load(os.path.join(save_path,f'new_dice_rank1_epoch1.pt'))
+    new_dice_loss_rank0_epoch2, new_class_dice_rank0_epoch2 = torch.load(os.path.join(save_path,f'new_dice_rank0_epoch2.pt'))
+    new_dice_loss_rank1_epoch2, new_class_dice_rank1_epoch2 = torch.load(os.path.join(save_path,f'new_dice_rank1_epoch2.pt'))
 
     print()
 
-    # # probs = model(image)
-    # mask_0 = fabric.to_device(mask_0)
-    # probs_0 = fabric.to_device(probs_0)
-    # loss, classDice = loss_fn(mask_0.long().to('cuda:0'),probs_0.to('cuda:0'),debug=False)
-    # new_loss,class_dice = new_dice(mask_0,probs_0)
-    # print(loss)
-    # print(new_loss)
-    # print()
-
-class NewDice(Metric):
-    def __init__(self, **kwargs):
+class CustomDice(Metric):
+    def __init__(self, fabric, config, **kwargs):
         super().__init__(**kwargs)
-        self.add_state("class_intersect", default=torch.zeros((1,51)), dist_reduce_fx="sum")
-        self.add_state("class_union", default=torch.zeros((1,51)), dist_reduce_fx="sum")
+        self.add_state("class_dice", default=torch.zeros((1,51)), dist_reduce_fx="mean") # want to average across all gpus
+        self.add_state("dice", default=torch.Tensor((1,)), dist_reduce_fx="mean") # want to average across all gpus
+
+        # weights for weighted dice score
+        pixel_counts = torch.from_numpy(np.load(f"{config.data_dir}/pixel_counts.npy"))
+        self.weights = 1 / pixel_counts
+        self.weights = self.weights / self.weights.sum()
+        self.weights = fabric.to_device(self.weights)
+        self.smooth = 1e-7
+        self.nr_of_classes = config.nr_of_classes
 
     def update(self, target: Tensor, preds: Tensor) -> None:
-        # preds, target = self._input_format(preds, target)
+        '''
+        This function updates the state variables specified in __init__ based on the target and the predictions
+        as suggested here: https://arxiv.org/abs/2004.10664
 
+        Args:
+            target (torch.tensor): Ground-truth mask. Tensor with shape [B, 1, H, W]
+            preds (torch.tensor): Predicted class probabilities. Tensor with shape [B, C, H, W]
+        '''
+
+        # convert mask to one-hot
         y_true_oh = torch.nn.functional.one_hot(
-            target.long().squeeze(1), num_classes=preds.shape[1]
+            target.long().squeeze(1), num_classes=self.nr_of_classes
         ).permute(0, 3, 1, 2)
 
-        self.class_intersect = torch.sum((y_true_oh * preds), axis=(0, 2, 3)).reshape((1,51))
-        self.class_union = torch.sum((y_true_oh + preds), axis=(0, 2, 3)).reshape((1,51))
+        # class specific intersection and union: sum over voxels
+        class_intersect = torch.sum((self.weights.view(1, -1, 1, 1) * (y_true_oh * preds)), axis=(2, 3))
+        class_union = torch.sum((self.weights.view(1, -1, 1, 1) * (y_true_oh + preds)), axis=(2, 3))
+
+        # overall intersection and union: sum over classes
+        intersect = torch.sum(class_intersect,axis=1)
+        union = torch.sum(class_union,axis=1)
+
+        # average over samples in the batch
+        self.class_dice = torch.mean(2.0 * class_intersect / (class_union + self.smooth), axis=0)
+        self.dice = torch.mean(2.0 * intersect / (union + self.smooth), axis=0)
 
     def compute(self) -> Tensor:
-        all_intersect = torch.sum(self.class_intersect, axis=1)
-        all_union = torch.sum(self.class_union, axis=1)
-
-        class_dice = 2.0 * self.class_intersect / self.class_union
-        dice_coeff = 2.0 * all_intersect / all_union
-        dice_loss = 1 - dice_coeff
-        
-        return dice_loss, class_dice
+        '''
+        This function computes the loss value based on the stored state.
+        '''
+        self.dice.requires_grad = True
+        return 1 - self.dice, self.class_dice
 
 
 if __name__ == "__main__":
