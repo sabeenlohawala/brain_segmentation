@@ -38,7 +38,7 @@ def select_model(config):
             dim_mults=(2, 4, 8, 16, 32, 64),
         )
     elif config.model_name == "simple_unet":
-        model = SimpleUnet(1)
+        model = SimpleUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
     else:
         print(f"Invalid model name provided: {config.model_name}")
         sys.exit()
@@ -93,7 +93,7 @@ def main():
     config = update_config(args)
     model = select_model(config)
 
-    fabric = init_fabric(precision=config.precision)
+    fabric = init_fabric(precision=config.precision,devices=1)
     set_seed(config.seed)
     init_cuda()
 

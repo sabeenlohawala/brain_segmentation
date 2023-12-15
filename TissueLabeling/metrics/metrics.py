@@ -89,19 +89,19 @@ class Classification_Metrics:
 
         self.loss = []
         self.classDice = []
-        self.class_intersect = []
-        self.class_union = []
+        # self.class_intersect = []
+        # self.class_union = []
         # self.TP, self.TN, self.FP, self.FN = torch.zeros(nr_of_classes),torch.zeros(nr_of_classes),torch.zeros(nr_of_classes),torch.zeros(nr_of_classes)
 
         self.Assert = torch.Tensor([1])
 
     def compute(
-        self, y_true: torch.tensor, y_pred: torch.tensor, loss: float, classDice, class_intersect, class_union
+        self, y_true: torch.tensor, y_pred: torch.tensor, loss: float, classDice #, class_intersect, class_union
     ):
         self.loss.append(loss)
         self.classDice.append(classDice.tolist())
-        self.class_intersect = class_intersect
-        self.class_union = class_union
+        # self.class_intersect = class_intersect
+        # self.class_union = class_union
 
         # y_pred_hard = y_pred.argmax(1, keepdim=True)
         # for i in range(self.nr_of_classes):
@@ -177,8 +177,8 @@ class Classification_Metrics:
         self.loss = []
         # self.TP, self.TN, self.FP, self.FN = torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes)
         self.Assert = torch.Tensor([1])
-        self.class_intersect = []
-        self.class_union = []
+        # self.class_intersect = []
+        # self.class_union = []
 
     def sync(self, fabric):
         # self.TP = fabric.all_reduce(self.TP, reduce_op="sum")
@@ -186,8 +186,8 @@ class Classification_Metrics:
         # self.FP = fabric.all_reduce(self.FP, reduce_op="sum")
         # self.FN = fabric.all_reduce(self.FN, reduce_op="sum")
         self.Assert = fabric.all_reduce(self.Assert, reduce_op="sum")
-        self.class_intersect = fabric.all_gather(self.class_intersect)
-        self.class_union = fabric.all_gather(self.class_union)
+        # self.class_intersect = fabric.all_gather(self.class_intersect)
+        # self.class_union = fabric.all_gather(self.class_union)
 
         # self.Assert equals one for each process. The sum must thus be equal to the number of processes in ddp strategy
         # assert self.Assert.item() == torch.cuda.device_count(), f"Metrics Syncronization Did not Work. Assert: {self.Assert}, Devices {torch.cuda.device_count()}"

@@ -38,9 +38,10 @@ class SimpleUnet(nn.Module):
     A simplified variant of the Unet architecture.
     """
 
-    def __init__(self, image_channels):
+    def __init__(self, image_channels, nr_of_classes):
         super().__init__()
         self.image_channels = image_channels
+        self.nr_of_classes = nr_of_classes
         down_channels = (64, 128, 256, 512, 1024)
         up_channels = (1024, 512, 256, 128, 64)
         out_dim = 1
@@ -63,7 +64,8 @@ class SimpleUnet(nn.Module):
             ]
         )
 
-        self.output = nn.Conv2d(up_channels[-1], self.image_channels, out_dim)
+        # self.output = nn.Conv2d(up_channels[-1], self.image_channels, out_dim)
+        self.output = nn.Conv2d(up_channels[-1], self.nr_of_classes, out_dim)
 
     def forward(self, x):
         # Initial conv
