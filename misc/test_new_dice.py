@@ -21,7 +21,7 @@ from torchmetrics import Metric
 from TissueLabeling.config import Configuration
 from TissueLabeling.metrics.metrics import Classification_Metrics
 from TissueLabeling.data.dataset import get_data_loader, NoBrainerDataset
-from TissueLabeling.metrics.metrics import Dice
+from TissueLabeling.metrics.metrics import OldDice
 from TissueLabeling.models.segformer import Segformer
 from TissueLabeling.models.unet import Unet
 from TissueLabeling.models.simple_unet import SimpleUnet
@@ -78,7 +78,7 @@ def generate_w_multi_gpu(config,save_path):
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
 
     # loss function
-    old_dice = Dice(fabric, config)
+    old_dice = OldDice(fabric, config)
     new_dice = CustomDice(fabric, dist_sync_on_step=True)
 
     # dataloaders

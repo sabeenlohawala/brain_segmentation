@@ -2,10 +2,58 @@ import lightning as L
 import numpy as np
 import torch
 from torch import nn
+from torch import Tensor
+from torchmetrics import Metric
 import wandb
 
+class Dice(Metric):
+    def __init__(self, fabric, config, **kwargs):
+        super().__init__(**kwargs)
+        self.add_state("class_dice", default=torch.zeros((1,51)), dist_reduce_fx="mean") # want to average across all gpus
+        self.add_state("dice", default=torch.Tensor((1,)), dist_reduce_fx="mean") # want to average across all gpus
 
-class Dice(nn.Module):
+        # weights for weighted dice score
+        pixel_counts = torch.from_numpy(np.load(f"{config.data_dir}/pixel_counts.npy"))
+        self.weights = 1 / pixel_counts
+        self.weights = self.weights / self.weights.sum()
+        self.weights = fabric.to_device(self.weights)
+        self.smooth = 1e-7
+        self.nr_of_classes = config.nr_of_classes
+
+    def update(self, target: Tensor, preds: Tensor) -> None:
+        '''
+        This function updates the state variables specified in __init__ based on the target and the predictions
+        as suggested here: https://arxiv.org/abs/2004.10664
+
+        Args:
+            target (torch.tensor): Ground-truth mask. Tensor with shape [B, 1, H, W]
+            preds (torch.tensor): Predicted class probabilities. Tensor with shape [B, C, H, W]
+        '''
+
+        # convert mask to one-hot
+        y_true_oh = torch.nn.functional.one_hot(
+            target.long().squeeze(1), num_classes=self.nr_of_classes
+        ).permute(0, 3, 1, 2)
+
+        # class specific intersection and union: sum over voxels
+        class_intersect = torch.sum((self.weights.view(1, -1, 1, 1) * (y_true_oh * preds)), axis=(2, 3))
+        class_union = torch.sum((self.weights.view(1, -1, 1, 1) * (y_true_oh + preds)), axis=(2, 3))
+
+        # overall intersection and union: sum over classes
+        intersect = torch.sum(class_intersect,axis=1)
+        union = torch.sum(class_union,axis=1)
+
+        # average over samples in the batch
+        self.class_dice = torch.mean(2.0 * class_intersect / (class_union + self.smooth), axis=0)
+        self.dice = torch.mean(2.0 * intersect / (union + self.smooth), axis=0)
+
+    def compute(self) -> Tensor:
+        '''
+        This function computes the loss value based on the stored state.
+        '''
+        return 1 - self.dice, self.class_dice
+
+class OldDice(nn.Module):
     def __init__(
         self, fabric: L.Fabric, config, smooth: float = 1e-7
     ) -> None:
@@ -89,9 +137,6 @@ class Classification_Metrics:
 
         self.loss = []
         self.classDice = []
-        # self.class_intersect = []
-        # self.class_union = []
-        # self.TP, self.TN, self.FP, self.FN = torch.zeros(nr_of_classes),torch.zeros(nr_of_classes),torch.zeros(nr_of_classes),torch.zeros(nr_of_classes)
 
         self.Assert = torch.Tensor([1])
 
@@ -100,69 +145,17 @@ class Classification_Metrics:
     ):
         self.loss.append(loss)
         self.classDice.append(classDice.tolist())
-        # self.class_intersect = class_intersect
-        # self.class_union = class_union
-
-        # y_pred_hard = y_pred.argmax(1, keepdim=True)
-        # for i in range(self.nr_of_classes):
-        #     # TP
-        #     self.TP[i] += (y_pred_hard[y_true == i] == i).sum().item()
-        #     # TN
-        #     self.TN[i] += (y_pred_hard[y_true != i] != i).sum().item()
-        #     # FP
-        #     self.FP[i] += (y_pred_hard[y_true == i] != i).sum().item()
-        #     # FN
-        #     self.FN[i] += (y_pred_hard[y_true != i] == i).sum().item()
-
-    # def nans_to_zero(self, array: torch.tensor):
-
-    #     where_are_NaNs = torch.isnan(array)
-    #     array[where_are_NaNs] = 0
-
-    #     return array
-
-    # def accuracy(self):
-
-    #     accruacy_per_class = (self.TP + self.TN)/(self.TP + self.TN + self.FP+self.FN)
-    #     macro_accuracy = self.nans_to_zero(accruacy_per_class).mean()
-
-    #     return macro_accuracy
-
-    # def f1(self):
-
-    #     f1_per_class = (2*self.TP)/(2*self.TP+self.FN+self.FP)
-    #     macro_f1 = self.nans_to_zero(f1_per_class).mean()
-
-    #     return macro_f1
-
-    # def recall(self):
-
-    #     recall_per_class = self.TP / (self.TP+self.FN)
-    #     macro_recall = self.nans_to_zero(recall_per_class).mean()
-
-    #     return macro_recall
-
-    # def precision(self):
-
-    #     precision_per_class = self.TP / (self.TP+self.FP)
-    #     macro_precision = self.nans_to_zero(precision_per_class).mean()
-
-    #     return macro_precision
 
     def log(self, epoch, commit: bool = False, writer=None):
         logging_dict = {
             f"{self.prefix}/Loss": sum(self.loss) / len(self.loss),
             f"{self.prefix}/DICE/overall": sum([1 - item for item in self.loss])
             / len(self.loss),
-            # f"{self.prefix}/Accuracy": self.accuracy().item(),
-            # f"{self.prefix}/F1": self.f1().item(),
-            # f"{self.prefix}/Recall": self.recall().item(),
-            # f"{self.prefix}/Precision": self.precision().item(),
             f"Assert": self.Assert.item(),
         }
-
         # for i in range(len(self.classDice[-1])):
         #     logging_dict[f"{self.prefix}/SegDICE/{i}"] = self.classDice[-1][i]
+
         if self.wandb_on:
             wandb.log(logging_dict, commit=commit)
         if writer is not None:
@@ -175,19 +168,11 @@ class Classification_Metrics:
     def reset(self):
         # reset
         self.loss = []
-        # self.TP, self.TN, self.FP, self.FN = torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes),torch.zeros(self.nr_of_classes)
+        self.classDice = []
         self.Assert = torch.Tensor([1])
-        # self.class_intersect = []
-        # self.class_union = []
 
     def sync(self, fabric):
-        # self.TP = fabric.all_reduce(self.TP, reduce_op="sum")
-        # self.TN = fabric.all_reduce(self.TN, reduce_op="sum")
-        # self.FP = fabric.all_reduce(self.FP, reduce_op="sum")
-        # self.FN = fabric.all_reduce(self.FN, reduce_op="sum")
         self.Assert = fabric.all_reduce(self.Assert, reduce_op="sum")
-        # self.class_intersect = fabric.all_gather(self.class_intersect)
-        # self.class_union = fabric.all_gather(self.class_union)
 
         # self.Assert equals one for each process. The sum must thus be equal to the number of processes in ddp strategy
         # assert self.Assert.item() == torch.cuda.device_count(), f"Metrics Syncronization Did not Work. Assert: {self.Assert}, Devices {torch.cuda.device_count()}"
