@@ -66,7 +66,6 @@ def get_args():
         "--data_dir",
         help="Directory of which dataset to train on",
         type=str,
-        # default="/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51",
     )
     train.add_argument(
         "--pretrained",

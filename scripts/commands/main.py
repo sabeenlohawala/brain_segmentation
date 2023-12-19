@@ -93,7 +93,7 @@ def main():
     config = update_config(args)
     model = select_model(config)
 
-    fabric = init_fabric(precision=config.precision)
+    fabric = init_fabric(precision=config.precision,devices=1)
     set_seed(config.seed)
     init_cuda()
 

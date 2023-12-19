@@ -143,15 +143,20 @@ class Trainer:
         if self.fabric.global_rank == 0 and self.config.wandb_on:
             print("Saving state to wandb...")
             model_save_path = f"{self.config.logdir}/checkpoint_{self.config.num_epochs:04d}.ckpt"
-            self._save_state(log, model_save_path)
+            self._save_state(model_save_path,log)
 
             # add .out file to wandb and terminate
-            finish_wandb("/om2/user/sabeen/tissue_labeling/logs/job_train.out")
+            wandb_log_file = os.path.join(
+                os.getcwd(),
+                "logs/job_train.out",
+            )
+
+            finish_wandb(wandb_log_file)
 
     def _save_state(
         self,
+        path,
         log: bool = False,
-        path="/home/sabeen/brain_segmentation/models/checkpoint.ckpt",
     ) -> None:
         """
         Save the pytorch model and the optimizer state

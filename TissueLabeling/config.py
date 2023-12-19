@@ -23,6 +23,8 @@ class Configuration:
         None
     """
 
+    root_dir = "/om2/user/sabeen/nobrainer_data_norm"
+
     def __init__(self, args=None, config_file_name=None):
         self.logdir = getattr(args, "logdir", os.getcwd())
         if not os.path.isabs(self.logdir):
@@ -99,12 +101,10 @@ class Configuration:
     def _update_data_dir(self):
         """Update the data directory based on the number of classes"""
 
-        root_dir = "/om2/user/sabeen/nobrainer_data_norm"
-
         folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51"}
 
         if self.nr_of_classes in folder_map:
-            self.data_dir = os.path.join(root_dir, folder_map[self.nr_of_classes])
+            self.data_dir = os.path.join(self.root_dir, folder_map[self.nr_of_classes])
         else:
             sys.exit(f"No dataset found for {self.nr_of_classes} classes")
 

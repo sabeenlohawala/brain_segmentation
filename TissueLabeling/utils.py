@@ -74,8 +74,8 @@ def init_wandb(
     description: str,
 ) -> None:
     # check if staged artifacts exist:
-    if os.path.exists("/home/sabeen/.local/share/wandb"):
-        shutil.rmtree("/home/sabeen/.local/share/wandb")
+    if os.path.exists(f"/home/{os.environ['USER']}/.local/share/wandb"):
+        shutil.rmtree(f"/home/{os.environ['USER']}/.local/share/wandb")
 
     wandb.init(
         name=f"{fabric.device}-{datetime.now().month}-{datetime.now().day}-{datetime.now().hour}:{datetime.now().minute}",
