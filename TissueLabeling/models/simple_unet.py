@@ -66,6 +66,7 @@ class SimpleUnet(nn.Module):
 
         # self.output = nn.Conv2d(up_channels[-1], self.image_channels, out_dim)
         self.output = nn.Conv2d(up_channels[-1], self.nr_of_classes, out_dim)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         # Initial conv
@@ -80,7 +81,8 @@ class SimpleUnet(nn.Module):
             # Add residual x as additional channels
             x = torch.cat((x, residual_x), dim=1)
             x = up(x)#, t)
-        return self.output(x)
+        x = self.output(x)
+        return self.softmax(x)
 
 
 if __name__ == "__main__":
