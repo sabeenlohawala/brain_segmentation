@@ -29,6 +29,8 @@ class NoBrainerDataset(Dataset):
         # Set the model name
         self.model_name = config.model_name
 
+        self.nr_of_classes = config.nr_of_classes
+
         # Set the pretrained attribute
         self.pretrained = config.pretrained
 
@@ -60,6 +62,9 @@ class NoBrainerDataset(Dataset):
             image = image[:,1:161,1:193]
             mask = mask[:,1:161,1:193]
 
+        if self.nr_of_classes == 2:
+            mask[mask != 0] = 1
+            
         # normalize image
         image = (
             image - self.normalization_constants[0]

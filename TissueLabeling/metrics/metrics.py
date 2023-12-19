@@ -14,6 +14,10 @@ class Dice(Metric):
 
         # weights for weighted dice score
         pixel_counts = torch.from_numpy(np.load(f"{config.data_dir}/pixel_counts.npy"))
+
+        if config.nr_of_classes == 2:
+            pixel_counts = torch.from_numpy(np.array([pixel_counts[0],sum(pixel_counts[1:])])) # uncomment for binary classification
+            
         self.weights = 1 / pixel_counts
         self.weights = self.weights / self.weights.sum()
         self.weights = fabric.to_device(self.weights)
@@ -78,7 +82,8 @@ class OldDice(nn.Module):
         # pixel_counts = np.load(f'/om2/user/sabeen/nobrainer_data_norm/matth406_medium_6_classes/pixel_counts.npy')
         pixel_counts = torch.from_numpy(pixel_counts)
 
-        # pixel_counts = torch.from_numpy(np.array([pixel_counts[0],sum(pixel_counts[1:])])) # uncomment for binary classification
+        if config.nr_of_classes == 2:
+            pixel_counts = torch.from_numpy(np.array([pixel_counts[0],sum(pixel_counts[1:])]))
 
         self.weights = 1 / pixel_counts
         # Check for inf values
