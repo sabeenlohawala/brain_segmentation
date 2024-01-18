@@ -94,8 +94,8 @@ def get_data_loader(
     train_dataset = NoBrainerDataset(f"{config.data_dir}/train", config)
     val_dataset = NoBrainerDataset(f"{config.data_dir}/validation", config)
     test_dataset = NoBrainerDataset(f"{config.data_dir}/test", config)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch_size)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.batch_size)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch_size,shuffle=True)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.batch_size,shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch_size)
 
     return (train_loader, val_loader, test_loader)
