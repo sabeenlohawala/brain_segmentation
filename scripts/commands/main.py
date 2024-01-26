@@ -72,7 +72,7 @@ def update_config(config):
         if not dice_list:
             sys.exit("No checkpoints exist to resume training")
 
-        data["checkpoint"] = dice_list[0]
+        data["checkpoint"] = dice_list[-1]
         data["start_epoch"] = int(os.path.basename(dice_list[0]).split('.')[0].split('_')[-1])
         
         args = argparse.Namespace(**data)

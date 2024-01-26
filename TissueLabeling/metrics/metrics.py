@@ -18,10 +18,10 @@ class Dice(Metric):
         if config.nr_of_classes == 2:
             pixel_counts = torch.from_numpy(np.array([pixel_counts[0],sum(pixel_counts[1:])])) # uncomment for binary classification
             
-        self.weights = 1 / pixel_counts
+        self.smooth = 1e-7
+        self.weights = 1 / (pixel_counts + self.smooth)
         self.weights = self.weights / self.weights.sum()
         self.weights = fabric.to_device(self.weights)
-        self.smooth = 1e-7
         self.nr_of_classes = config.nr_of_classes
 
     def update(self, target: Tensor, preds: Tensor) -> None:

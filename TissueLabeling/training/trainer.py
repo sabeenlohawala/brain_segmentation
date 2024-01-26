@@ -65,7 +65,6 @@ class Trainer:
 
             self._validation()
 
-            # TODO: syncing class-specific dice scores
             self.fabric.barrier()
             self.train_metrics.sync(self.fabric)
 
