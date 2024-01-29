@@ -13,6 +13,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from TissueLabeling.brain_utils import mapping
+
 
 class NoBrainerDataset(Dataset):
     def __init__(self, file_dir: str, config) -> None:
@@ -64,6 +66,8 @@ class NoBrainerDataset(Dataset):
 
         if self.nr_of_classes == 2:
             mask[mask != 0] = 1
+        elif self.nr_of_classes == 7:
+            mask = mapping(mask,self.nr_of_classes,original=False)
             
         # normalize image
         image = (

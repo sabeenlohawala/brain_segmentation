@@ -100,7 +100,7 @@ class Configuration:
     def _update_data_dir(self):
         """Update the data directory based on the number of classes"""
 
-        folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51", 2:"new_small_no_aug_51"}
+        folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51", 2:"new_small_no_aug_51", 7: "new_small_aug_107"}
 
         if self.nr_of_classes in folder_map:
             self.data_dir = os.path.join(self.root_dir, folder_map[self.nr_of_classes])

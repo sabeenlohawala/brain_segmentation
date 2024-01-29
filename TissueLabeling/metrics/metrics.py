@@ -6,6 +6,8 @@ from torch import Tensor
 from torchmetrics import Metric
 import wandb
 
+from TissueLabeling.brain_utils import mapping
+
 class Dice(Metric):
     def __init__(self, fabric, config, **kwargs):
         super().__init__(**kwargs)
@@ -17,6 +19,14 @@ class Dice(Metric):
 
         if config.nr_of_classes == 2:
             pixel_counts = torch.from_numpy(np.array([pixel_counts[0],sum(pixel_counts[1:])])) # uncomment for binary classification
+        elif config.nr_of_classes == 7:
+            new_indices = mapping(torch.tensor(list(range(107))),nr_of_classes=config.nr_of_classes,original=False)
+            unique_indices = np.unique(new_indices)
+            new_counts = torch.zeros(config.nr_of_classes)
+            for ind in unique_indices:
+                mask = (new_indices == ind)
+                new_counts[ind] = torch.sum(pixel_counts[mask])
+            pixel_counts = new_counts
             
         self.smooth = 1e-7
         self.weights = 1 / (pixel_counts + self.smooth)
