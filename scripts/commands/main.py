@@ -47,6 +47,10 @@ def select_model(config):
     if config.checkpoint:
         print(f"Loading from checkpoint...")
         model.load_state_dict(torch.load(config.checkpoint)['model'])
+        
+        # checkpoint path is something like: 'logdir/checkpoint_1000.chkpt'
+        config.start_epoch = int(config.checkpoint.split('/')[-1].split('.')[0].split('_')[-1])
+
     return model
 
 

@@ -8,7 +8,8 @@ import torch
 import webdataset as wds
 from scipy.ndimage import rotate
 from sklearn.model_selection import train_test_split
-from utils import brain_coord, load_brains, mapping
+
+from TissueLabeling.brain_utils import brain_coord, load_brains, mapping
 
 # import nobrainer
 
@@ -126,7 +127,7 @@ def main():
 
         for image_file, mask_file in zip(image_files, mask_files):
             brain, brain_mask, image_nr = load_brains(image_file, mask_file, file_path)
-            brain_mask = mapping(brain_mask)
+            brain_mask = mapping(brain_mask, nr_of_classes=NR_OF_CLASSES, original=True)
 
             # TODO Add Random Rotation here
             # rotate_flag = random.choice([True,False])

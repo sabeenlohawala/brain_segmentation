@@ -36,17 +36,18 @@ class Trainer:
         # self.start_epoch = config.start_epoch + 1
         self.config = config
 
-        if self.fabric.global_rank == 0:
-            self.image_logger = Log_Images(
-                self.fabric,
-                config=config,
-            )
-
         if self.config.logdir:
             self.writer = SummaryWriter(self.config.logdir)
             print("SummaryWriter created")
         else:
             self.writer = None
+        
+        if self.fabric.global_rank == 0:
+            self.image_logger = Log_Images(
+                self.fabric,
+                config=config,
+                writer=self.writer,
+            )
 
     def train_and_validate(self) -> None:
         self.train_metrics = Classification_Metrics(

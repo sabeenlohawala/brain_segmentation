@@ -79,10 +79,13 @@ class Log_Images_v2:
         self,
         # fabric: L.Fabric,
         config,
+        writer=None,
     ):
         self.wandb_on = config.wandb_on
         self.pretrained = config.pretrained
         self.model_name = config.model_name
+        self.nr_of_classes = config.nr_of_classes
+        self.writer = writer
         if self.model_name == 'simple_unet':
             self.image_shape = (160,192)
         else:
@@ -101,7 +104,7 @@ class Log_Images_v2:
         mask_file = "pac_36_aseg.nii.gz"
         file_path = "/om2/user/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs/"
         brain, mask, _ = load_brains(image_file, mask_file, file_path)
-        mask = mapping(mask)
+        mask = mapping(mask,nr_of_classes=self.nr_of_classes)
 
         self.brain_slices, self.mask_slices = [], []
 
@@ -211,10 +214,18 @@ class Log_Images_v2:
         current_logging_dict = self.logging_dict | logging_dict
         if self.wandb_on:
             wandb.log(current_logging_dict, commit=commit)
-        return current_logging_dict
+        
+        if self.writer is not None:
+            print('Logging images...')
+            for key, img in current_logging_dict.items():
+                img = np.array(img)
+                if len(img.shape) == 3:
+                    self.writer.add_image(key, np.array(img), config.start_epoch, dataformats='HWC')
+                elif len(img.shape) == 2:
+                    self.writer.add_image(key, np.array(img), config.start_epoch, dataformats='HW')
 
 
-logdir = '20240122-multi-8gpu-Msimple_unet\Ldice\C51\B374\A0'
+logdir = '20240119-multi-4gpu-Msimple_unet\Ldice\C51\B374\A0'
 config, checkpoint_paths = get_config(logdir)
 
 writer = SummaryWriter(f"results/{logdir}")
