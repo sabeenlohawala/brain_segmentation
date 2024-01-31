@@ -28,7 +28,7 @@ class Log_Images:
             self.image_shape = (162,194)
 
         # color map to get always the same colors for classes
-        if config.nr_of_classes in [2,6,51,107]: # freesurfer colors available
+        if config.nr_of_classes in [2,7,51,107]: # freesurfer colors available
             colors = self.__rgb_map_for_data(config.nr_of_classes)
         else:
             colors = plt.cm.hsv(np.linspace(0, 1, config.nr_of_classes))
@@ -120,7 +120,17 @@ class Log_Images:
         
         if self.writer is not None:
             print('Logging images...')
-            for key, img in current_logging_dict.items():
+            # only log raw image and true mask once
+            if epoch == 1:
+                for key, img in self.logging_dict.items():
+                    img = np.array(img)
+                    if len(img.shape) == 3:
+                        self.writer.add_image(key, np.array(img), epoch, dataformats='HWC')
+                    elif len(img.shape) == 2:
+                        self.writer.add_image(key, np.array(img), epoch, dataformats='HW')
+            
+            # log predicted masks each time
+            for key, img in logging_dict.items():
                 img = np.array(img)
                 if len(img.shape) == 3:
                     self.writer.add_image(key, np.array(img), epoch, dataformats='HWC')
@@ -237,7 +247,7 @@ class Log_Images:
             voxmorph_label_index = [
                 item.strip().split(":") for item in voxmorph_label_index[91:198] if item != ""
             ] # HACK
-        elif nr_of_classes == 6:
+        elif nr_of_classes == 7:
             voxmorph_label_index = [
                 item.strip().split(":") for item in voxmorph_label_index[253:260] if item != ""
             ] # HACK
