@@ -5,12 +5,11 @@ import os
 import sys
 
 import lightning as L
-import lightning as L
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import wandb
-from matplotlib.colors import BoundaryNorm, ListedColormap
+# from matplotlib.colors import BoundaryNorm, ListedColormap
 # import matplotlib.colors as mcolors
 from PIL import Image
 import cv2

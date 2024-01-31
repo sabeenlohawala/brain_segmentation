@@ -96,6 +96,9 @@ def get_args():
     train.add_argument(
         "--checkpoint_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
     )
+    train.add_argument(
+        "--image_log_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

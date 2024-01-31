@@ -53,6 +53,7 @@ class Configuration:
 
         self.save_checkpoint = getattr(args, "save_checkpoint", True)
         self.checkpoint_freq = getattr(args, "checkpoint_freq", 10)
+        self.image_log_freq = getattr(args, "image_log_freq", 10)
         self.checkpoint = getattr(args, "checkpoint", None)
         self.start_epoch = getattr(args, "start_epoch", 0)
         self.save_every = "epoch"
