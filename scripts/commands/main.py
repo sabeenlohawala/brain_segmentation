@@ -79,8 +79,10 @@ def update_config(config):
         data["checkpoint"] = dice_list[-1]
         data["start_epoch"] = int(os.path.basename(dice_list[0]).split('.')[0].split('_')[-1])
         
+        configs = sorted(glob.glob(os.path.join(chkpt_folder, "config*.json")))
+        config_file_name = "config_resume.json" if len(configs) == 1 else f"config_resume_{len(configs):02d}.json"
         args = argparse.Namespace(**data)
-        config = Configuration(args, "config_resume.json")
+        config = Configuration(args, config_file_name)
 
     else:
         sys.exit("Invalid Sub-command")
