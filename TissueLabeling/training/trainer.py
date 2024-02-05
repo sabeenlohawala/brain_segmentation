@@ -58,7 +58,7 @@ class Trainer:
         )
 
         print(
-            f"Process {self.fabric.global_rank} starts training on {len(self.train_loader) // self.config.batch_size} batches per epoch over {self.config.num_epochs} epochs"
+            f"Process {self.fabric.global_rank} starts training on {len(self.train_loader)} batches per epoch over {self.config.num_epochs} epochs"
         )
 
         for epoch in range(self.config.start_epoch + 1, self.config.num_epochs + 1):

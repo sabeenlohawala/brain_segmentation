@@ -45,6 +45,7 @@ class Configuration:
         self.lr = getattr(args, "lr", 6e-5)
 
         self.data_dir = getattr(args, "data_dir",'')
+        self.data_size = getattr(args, "data_size",'small')
         self.augment = getattr(args, "augment", 1)
         self.debug = getattr(args, "debug", 0)
 
@@ -101,12 +102,22 @@ class Configuration:
     def _update_data_dir(self):
         """Update the data directory based on the number of classes"""
 
-        folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51", 2:"new_small_no_aug_51", 7: "new_small_aug_107"}
+        if self.data_size == 'small':
+            folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51", 2:"new_small_no_aug_51", 7: "new_small_aug_107"}
+        elif self.data_size == 'med' or self.data_size == 'medium':
+            folder_map = {51: "new_med_no_aug_51", 2:"new_med_no_aug_51"}
+        else:
+            sys.exit(f"{self.data_size} is not a valid dataset size. Choose from 'small' or 'med'.")
 
         if self.nr_of_classes in folder_map:
             self.data_dir = os.path.join(self.root_dir, folder_map[self.nr_of_classes])
         else:
-            sys.exit(f"No dataset found for {self.nr_of_classes} classes")
+            sys.exit(f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size")
+        
+        if self.nr_of_classes == 51:
+            self.aug_dir = os.path.join(self.root_dir, "20240202_small_aug_51")
+        else:
+            self.aug_dir = ''
 
 
 if __name__ == "__main__":

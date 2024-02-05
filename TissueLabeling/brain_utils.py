@@ -135,55 +135,6 @@ def brain_area(slice: torch.tensor) -> torch.tensor:
 
     return slice[cut_top_temp : cut_bottom_temp + 1, cut_left_temp : cut_right_temp + 1]
 
-
-# def mapping(mask: np.array):
-#     class_mapping = {}
-#     # labels = []
-#     with open(
-#         "/home/matth406/unsupervised_brain/data/class-mapping.csv", newline=""
-#     ) as csvfile:
-#         spamreader = csv.reader(csvfile, delimiter=",", quotechar="|")
-#         # skip header
-#         next(spamreader, None)
-#         for row in spamreader:
-#             class_mapping[int(row[1])] = int(row[4])
-#     #         labels.append(int(row[1]))
-#     # labels = np.array(labels)
-
-#     # labels = []
-#     # with open('/home/matth406/unsupervised_brain/data/class-mapping.csv', newline='') as csvfile:
-#     #     spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
-#     #     # skip header
-#     #     next(spamreader, None)
-#     #     for row in spamreader:
-#     #         labels.append(int(row[1]))
-#     # labels = np.array(labels)
-#     # # labels = torch.tensor([   0, 1024,    2,    3,    4,    5, 1025,    7,    8, 1026,   10,   11,
-#     # #       12,   13,   14,   15,   16,   17,   18, 1034, 1035,   24,   26,   28,
-#     # #       30,   31,   41,   42,   43,   44,   46,   47, 1027,   49,   50,   51,
-#     # #       52,   53,   54, 1028,   58, 1029,   60,   62,   63, 1030, 1031,   72,
-#     # #     1032,   77, 1033,   80,   85,  251,  252,  253,  254,  255, 1009, 1010,
-#     # #     1011, 2034, 1012, 1013, 1014, 2035, 1015, 1007, 2033, 2000, 2001, 2002,
-#     # #     2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
-#     # #     2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 1000, 2025, 1002, 1003,
-#     # #     2024, 1005, 1006, 2031, 2032, 1008, 1001, 2026, 2027, 2028, 2029, 2030,
-#     # #     1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023])
-
-#     # class_mapping = {value.item(): index for index, value in enumerate(labels)}
-#     u, inv = np.unique(mask, return_inverse=True)
-#     num_classes = 50  # len(class_mapping)
-#     for x in u:
-#         if x not in class_mapping:
-#             class_mapping[x] = num_classes
-
-#     # # we collect all classes not in the mapping table as an additional "other" class
-#     # mask = np.array([class_mapping[int(x)] if x in labels else len(labels) for x in u])[inv].reshape(mask.shape)
-#     for old, new in class_mapping.items():
-#         mask[mask == old] = -1 * new
-#     mask = mask * -1
-
-#     return mask
-
 def mapping(mask: np.array, nr_of_classes=51, original=True):
 
     # if original == True, map from original --> num-class column
@@ -222,3 +173,81 @@ def mapping(mask: np.array, nr_of_classes=51, original=True):
     mask = mask * -1
 
     return mask
+
+def create_affine_transformation_matrix(
+    n_dims, scaling=None, rotation=None, shearing=None, translation=None
+):
+    """
+    From https://github.com/MGH-LEMoN/photo-reconstruction/blob/main/scripts/hcp_replicate_photos.py#L85C40-L85C40.
+    Create a 4x4 affine transformation matrix from specified values
+    :param n_dims: integer
+    :param scaling: list of 3 scaling values
+    :param rotation: list of 3 angles (degrees) for rotations around 1st, 2nd, 3rd axis
+    :param shearing: list of 6 shearing values
+    :param translation: list of 3 values
+    :return: 4x4 numpy matrix
+    """
+
+    T_scaling = np.eye(n_dims + 1)
+    T_shearing = np.eye(n_dims + 1)
+    T_translation = np.eye(n_dims + 1)
+
+    if scaling is not None:
+        T_scaling[np.arange(n_dims + 1), np.arange(n_dims + 1)] = np.append(
+            scaling, 1
+        )
+
+    if shearing is not None:
+        shearing_index = np.ones((n_dims + 1, n_dims + 1), dtype="bool")
+        shearing_index[np.eye(n_dims + 1, dtype="bool")] = False
+        shearing_index[-1, :] = np.zeros((n_dims + 1))
+        shearing_index[:, -1] = np.zeros((n_dims + 1))
+        T_shearing[shearing_index] = shearing
+
+    if translation is not None:
+        T_translation[
+            np.arange(n_dims), n_dims * np.ones(n_dims, dtype="int")
+        ] = translation
+
+    if n_dims == 2:
+        if rotation is None:
+            rotation = np.zeros(1)
+        else:
+            rotation = np.asarray(rotation) * (np.pi / 180)
+        T_rot = np.eye(n_dims + 1)
+        T_rot[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [
+            np.cos(rotation[0]),
+            np.sin(rotation[0]),
+            np.sin(rotation[0]) * -1,
+            np.cos(rotation[0]),
+        ]
+        return T_translation @ T_rot @ T_shearing @ T_scaling
+
+    else:
+
+        if rotation is None:
+            rotation = np.zeros(n_dims)
+        else:
+            rotation = np.asarray(rotation) * (np.pi / 180)
+        T_rot1 = np.eye(n_dims + 1)
+        T_rot1[np.array([1, 2, 1, 2]), np.array([1, 1, 2, 2])] = [
+            np.cos(rotation[0]),
+            np.sin(rotation[0]),
+            np.sin(rotation[0]) * -1,
+            np.cos(rotation[0]),
+        ]
+        T_rot2 = np.eye(n_dims + 1)
+        T_rot2[np.array([0, 2, 0, 2]), np.array([0, 0, 2, 2])] = [
+            np.cos(rotation[1]),
+            np.sin(rotation[1]) * -1,
+            np.sin(rotation[1]),
+            np.cos(rotation[1]),
+        ]
+        T_rot3 = np.eye(n_dims + 1)
+        T_rot3[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [
+            np.cos(rotation[2]),
+            np.sin(rotation[2]),
+            np.sin(rotation[2]) * -1,
+            np.cos(rotation[2]),
+        ]
+        return T_translation @ T_rot3 @ T_rot2 @ T_rot1 @ T_shearing @ T_scaling

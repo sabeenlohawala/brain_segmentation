@@ -99,6 +99,9 @@ def get_args():
     train.add_argument(
         "--image_log_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
     )
+    train.add_argument(
+        "--data_size", help='Whether to use the small or medium sized dataset', type=str, required=False, default='small'
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

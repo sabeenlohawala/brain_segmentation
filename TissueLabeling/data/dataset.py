@@ -9,25 +9,34 @@
 import glob
 import os
 
+import random
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from scipy.ndimage import affine_transform
 
 from TissueLabeling.brain_utils import mapping
 
 
 class NoBrainerDataset(Dataset):
-    def __init__(self, file_dir: str, config) -> None:
+    def __init__(self, mode: str, config) -> None:
         """
         Initializes the object with the given `file_dir` and `pretrained` parameters.
 
         Args:
-            file_dir: The directory where the files are located.
+            mode: The subdirectory where the files are located.
             pretrained: Whether or not to use pretrained models.
 
         Returns:
             None
         """
+        if mode == 'val':
+            mode = 'validation'
+
+        if mode not in ['train','test','validation']:
+            raise Exception(f"{mode} is not a valid data mode. Choose from 'train', 'test', or 'validation'.")
+        self.mode = mode
+
         # Set the model name
         self.model_name = config.model_name
 
@@ -37,29 +46,48 @@ class NoBrainerDataset(Dataset):
         self.pretrained = config.pretrained
 
         # Get a list of all the brain image files in the specified directory
-        self.images = sorted(glob.glob(f"{file_dir}/brain*.npy"))
+        self.images = sorted(glob.glob(f"{config.data_dir}/{mode}/brain*.npy"))
 
         # Get a list of all the mask files in the specified directory
-        self.masks = sorted(glob.glob(f"{file_dir}/mask*.npy"))
+        self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/mask*.npy"))
+
+        # Get a list of all the affine matrices for rigid transformations
+        self.affines = sorted(glob.glob(f"{config.aug_dir}/{mode}/affine*.npy"))
+
+        self.augment = config.augment and self.mode == 'train'
+        if self.augment:
+            self.images = self.images + self.images
+            self.masks = self.masks + self.masks
+            self.affines = self.affines + self.affines
 
         # Limit the number of images and masks to the first 100 during debugging
         if config.debug:
             print('debug mode')
             self.images = self.images[:100]
             self.masks = self.masks[:100]
+            self.affines = self.affines[:100]
 
         # Load the normalization constants from the file directory
         self.normalization_constants = np.load(
-            os.path.join(file_dir,'..','normalization_constants.npy')
+            os.path.join(f'{config.data_dir}/{mode}','..','normalization_constants.npy')
         )
 
-        if os.path.exists(f"{file_dir}/keys.npy"):
-            self.keys = np.load(f"{file_dir}/keys.npy")
+        if os.path.exists(f"{config.data_dir}/{mode}/keys.npy"):
+            self.keys = np.load(f"{config.data_dir}/{mode}/keys.npy")
 
     def __getitem__(self, idx):
         # returns (image, mask)
         image = torch.from_numpy(np.load(self.images[idx]))
         mask = torch.from_numpy(np.load(self.masks[idx]))
+
+        if self.augment:
+            if random.randint(0, 1) == 1:
+                affine = torch.from_numpy(np.load(self.affines[idx]))
+                image = affine_transform(image.squeeze(),affine,mode="constant")
+                mask = affine_transform(mask.squeeze(),affine,mode="constant",order=0)
+                image = torch.from_numpy(image).unsqueeze(dim=0)
+                mask = torch.from_numpy(mask).unsqueeze(dim=0)
+
         if self.model_name == 'simple_unet':
             image = image[:,1:161,1:193]
             mask = mask[:,1:161,1:193]
@@ -95,11 +123,14 @@ def get_data_loader(
     config,
     num_workers: int = 4 * torch.cuda.device_count(),
 ):
-    train_dataset = NoBrainerDataset(f"{config.data_dir}/train", config)
-    val_dataset = NoBrainerDataset(f"{config.data_dir}/validation", config)
-    test_dataset = NoBrainerDataset(f"{config.data_dir}/test", config)
+    # train_dataset = NoBrainerDataset(f"{config.data_dir}/train", config)
+    # val_dataset = NoBrainerDataset(f"{config.data_dir}/validation", config)
+    # test_dataset = NoBrainerDataset(f"{config.data_dir}/test", config)
+    train_dataset = NoBrainerDataset("train", config)
+    val_dataset = NoBrainerDataset("validation", config)
+    test_dataset = NoBrainerDataset("test", config)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch_size,shuffle=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.batch_size,shuffle=True)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.batch_size)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch_size)
 
     return (train_loader, val_loader, test_loader)
