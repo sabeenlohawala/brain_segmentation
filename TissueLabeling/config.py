@@ -115,7 +115,7 @@ class Configuration:
             sys.exit(f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size")
         
         if self.nr_of_classes == 51:
-            self.aug_dir = os.path.join(self.root_dir, "20240202_small_aug_51")
+            self.aug_dir = os.path.join(self.root_dir, "20240205_small_aug_51")
         else:
             self.aug_dir = ''
 

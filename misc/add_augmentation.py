@@ -1,110 +1,53 @@
 import os
 import glob
+import json
 
 import numpy as np
-import torch
 
 from skimage.transform import resize
 from TissueLabeling.brain_utils import create_affine_transformation_matrix
-
-# def create_affine_transformation_matrix(
-#     n_dims, scaling=None, rotation=None, shearing=None, translation=None
-# ):
-#     """Create a 4x4 affine transformation matrix from specified values
-#     :param n_dims: integer
-#     :param scaling: list of 3 scaling values
-#     :param rotation: list of 3 angles (degrees) for rotations around 1st, 2nd, 3rd axis
-#     :param shearing: list of 6 shearing values
-#     :param translation: list of 3 values
-#     :return: 4x4 numpy matrix
-#     """
-
-#     T_scaling = np.eye(n_dims + 1)
-#     T_shearing = np.eye(n_dims + 1)
-#     T_translation = np.eye(n_dims + 1)
-
-#     if scaling is not None:
-#         T_scaling[np.arange(n_dims + 1), np.arange(n_dims + 1)] = np.append(
-#             scaling, 1
-#         )
-
-#     if shearing is not None:
-#         shearing_index = np.ones((n_dims + 1, n_dims + 1), dtype="bool")
-#         shearing_index[np.eye(n_dims + 1, dtype="bool")] = False
-#         shearing_index[-1, :] = np.zeros((n_dims + 1))
-#         shearing_index[:, -1] = np.zeros((n_dims + 1))
-#         T_shearing[shearing_index] = shearing
-
-#     if translation is not None:
-#         T_translation[
-#             np.arange(n_dims), n_dims * np.ones(n_dims, dtype="int")
-#         ] = translation
-
-#     if n_dims == 2:
-#         if rotation is None:
-#             rotation = np.zeros(1)
-#         else:
-#             rotation = np.asarray(rotation) * (np.pi / 180)
-#         T_rot = np.eye(n_dims + 1)
-#         T_rot[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [
-#             np.cos(rotation[0]),
-#             np.sin(rotation[0]),
-#             np.sin(rotation[0]) * -1,
-#             np.cos(rotation[0]),
-#         ]
-#         return T_translation @ T_rot @ T_shearing @ T_scaling
-
-#     else:
-
-#         if rotation is None:
-#             rotation = np.zeros(n_dims)
-#         else:
-#             rotation = np.asarray(rotation) * (np.pi / 180)
-#         T_rot1 = np.eye(n_dims + 1)
-#         T_rot1[np.array([1, 2, 1, 2]), np.array([1, 1, 2, 2])] = [
-#             np.cos(rotation[0]),
-#             np.sin(rotation[0]),
-#             np.sin(rotation[0]) * -1,
-#             np.cos(rotation[0]),
-#         ]
-#         T_rot2 = np.eye(n_dims + 1)
-#         T_rot2[np.array([0, 2, 0, 2]), np.array([0, 0, 2, 2])] = [
-#             np.cos(rotation[1]),
-#             np.sin(rotation[1]) * -1,
-#             np.sin(rotation[1]),
-#             np.cos(rotation[1]),
-#         ]
-#         T_rot3 = np.eye(n_dims + 1)
-#         T_rot3[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [
-#             np.cos(rotation[2]),
-#             np.sin(rotation[2]),
-#             np.sin(rotation[2]) * -1,
-#             np.cos(rotation[2]),
-#         ]
-#         return T_translation @ T_rot3 @ T_rot2 @ T_rot1 @ T_shearing @ T_scaling
     
 # directory where images and masks are stored
-data_dir = '/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51'
+data_dir = '/om2/user/sabeen/nobrainer_data_norm/new_med_no_aug_51'
 
 # directory where affine matrices are stored
-aug_dir = '/om2/user/sabeen/nobrainer_data_norm/20240204_test'
+aug_dir = '/om2/user/sabeen/nobrainer_data_norm/20240206_med_aug_51'
 
-modes = ['test',]#'validation', 'train']
+modes = ['test', 'validation', 'train']
+augmentation_dict = {}
 
 for mode in modes:
+    print(f'Mode: {mode}')
     # mode = 'test'
     file_dir = f'{data_dir}/{mode}'
     images = sorted(glob.glob(f"{file_dir}/brain*.npy"))
     image = np.load(images[0]).squeeze()
     center = np.array([image.shape[0] // 2, image.shape[1] // 2])
 
+    augmentation_dict[mode] = {}
+    augmentation_dict_path = f'{aug_dir}/augmentation_dict.json'
+
     for image_file in images:
         file_suffix = image_file[len(file_dir)+1:].split('_')[-1] # to get the #.npy from '...brain_#.npy'
-        save_path = f'{aug_dir}/{mode}/affine_{file_suffix}'
+        affine_file = f'affine_{file_suffix}'
+        save_path = f'{aug_dir}/{mode}/{affine_file}'
+        
+        # always apply at least one augmentation
+        rot_flip = 0
+        scale_flip = 0
+        while rot_flip == 0 and scale_flip == 0:
+            rot_flip = np.random.choice([0,1])
+            scale_flip = np.random.choice([0,1])
 
-        rotation = np.random.randint(-30,31,1)
-        rotation_matrix = create_affine_transformation_matrix(n_dims = 2,
-                                                    scaling = None,
+        # randomize augmentations
+        rotation = np.random.randint(-30,31,1) if rot_flip == 1 else np.array([0])
+        scaling_factor = np.random.uniform(0.9,1.1) if scale_flip == 1 else 0
+        augmentation_dict[mode][affine_file] = {}
+        augmentation_dict[mode][affine_file]['rotation_angle'] = int(rotation[0])
+        augmentation_dict[mode][affine_file]['scaling_factor'] = scaling_factor
+
+        affine_matrix = create_affine_transformation_matrix(n_dims = 2,
+                                                    scaling = (scaling_factor,scaling_factor),
                                                     rotation = rotation,
                                                     shearing = None,
                                                     translation = None)
@@ -119,6 +62,10 @@ for mode in modes:
                                         [0, 1, center[1]],
                                         [0, 0, 1]])
 
-        final_matrix = translation_matrix2 @ rotation_matrix @ translation_matrix1
+        final_matrix = translation_matrix2 @ affine_matrix @ translation_matrix1
     
         np.save(save_path,final_matrix)
+
+    with open(augmentation_dict_path, "w") as outfile: 
+        json.dump(augmentation_dict, outfile)
+print('Finished!')
