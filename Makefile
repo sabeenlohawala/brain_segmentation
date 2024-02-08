@@ -24,30 +24,33 @@ DT := $(shell date +"%Y%m%d")
 # | simple_unet | 1632 | 3 | 96 |
 
 # Training parameters
-model_name = simple_unet
+model_name = segformer simple_unet
 loss_type = dice
-num_epochs = 1
+num_epochs = 100
 augment = 0
-lr = 5e-5
-# debug = 0
-batch_size = 384
+lrs = 0.1 0.01
+debug = 0
+batch_sizes = 32 64 128 256 512
 nr_of_classes = 51
+data_size = small
 
 
 ## ddpm-train: train a model from scratch
 tl-train:
 	for model in $(model_name); do \
-		for loss in $(loss_type); do \
-			for nr in $(nr_of_classes); do \
-				logdir="20231211-test-makefile-M$$model\L$$loss\C$$nr\B$(batch_size)\A$(augment)"
-				sbatch --job-name=$$logdir submit.sh python -u scripts/commands/main.py train \
+		for batch_size in $(batch_sizes); do \
+			for lr in $(lrs); do \
+				logdir="20240207-grid-M$$model\S$(data_size)\L$(loss_type)\C$(nr_of_classes)\B$$batch_size\LR$$lr\A$(augment)"
+				sbatch --job-name=$$logdir submit.sh srun python -u scripts/commands/main.py train \
 					--model_name $$model \
-					--nr_of_classes $$nr \
+					--nr_of_classes $(nr_of_classes) \
 					--logdir $$logdir \
 					--num_epochs $(num_epochs) \
-					--batch_size $(batch_size) \
+					--batch_size $$batch_size \
 					--augment $(augment) \
-					--lr $(lr); \
+					--lr $$lr \
+					--debug $(debug) \
+					--data_size $(data_size); \
 			done;
 		done; \
 	done;

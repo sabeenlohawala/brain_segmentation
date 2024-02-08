@@ -6,8 +6,8 @@
 #SBATCH --gres=gpu:a100:4
 #SBATCH --mem=40G # per node memory
 #SBATCH -p multi-gpu
-#SBATCH -o ./logs/med-50seg-multi-su.out
-#SBATCH -e ./logs/med-50seg-multi-su.err
+#SBATCH -o ./logs/med-50seg-multi-seg-resume-2.out
+#SBATCH -e ./logs/med-50seg-multi-seg-resume-2.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 
@@ -17,8 +17,8 @@ conda init bash
 # -u ensures that the output is unbuffered, and written immediately to stdout.
 # 24 batch size per A100 GPU
 # For multi GPU training
-srun python -u scripts/commands/main.py resume-train --logdir='20240204-multi-4gpu-Msegformer\Smed\Ldice\C51\B648\A0'
-# srun python -u scripts/commands/main.py train --logdir='20240204-multi-4gpu-Msimple_unet\Smed\Ldice\C51\B352\A0' --num_epochs=1000 --batch_size=352 --model_name='simple_unet' --nr_of_classes=51 --lr=5e-5 --data_size='med'
+srun python -u scripts/commands/main.py resume-train --logdir='20240204-multi-4gpu-Msegformer\Smed\Ldice\C51\B512\A0'
+# srun python -u scripts/commands/main.py resume-train --logdir='20240204-multi-4gpu-Msimple_unet\Smed\Ldice\C51\B352\A0'
 
 # to run:
 # sbatch --export=ALL,wandb_description='testrun' jobs/job.sh
