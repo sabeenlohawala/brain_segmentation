@@ -28,11 +28,12 @@ model_name = segformer simple_unet
 loss_type = dice
 num_epochs = 100
 augment = 0
-lrs = 0.1 0.01
+lrs = 0.001 0.0001
 debug = 0
-batch_sizes = 32 64 128 256 512
+batch_sizes = 32 64 128 256
 nr_of_classes = 51
 data_size = small
+aug_rotate = 1
 
 
 ## ddpm-train: train a model from scratch
@@ -40,14 +41,14 @@ tl-train:
 	for model in $(model_name); do \
 		for batch_size in $(batch_sizes); do \
 			for lr in $(lrs); do \
-				logdir="20240207-grid-M$$model\S$(data_size)\L$(loss_type)\C$(nr_of_classes)\B$$batch_size\LR$$lr\A$(augment)"
+				logdir="20240208-aug-M$$model\S$(data_size)\L$(loss_type)\C$(nr_of_classes)\B$$batch_size\LR$$lr\AR$(aug_rotate)"
 				sbatch --job-name=$$logdir submit.sh srun python -u scripts/commands/main.py train \
 					--model_name $$model \
 					--nr_of_classes $(nr_of_classes) \
 					--logdir $$logdir \
 					--num_epochs $(num_epochs) \
 					--batch_size $$batch_size \
-					--augment $(augment) \
+					--aug_rotate $(aug_rotate)
 					--lr $$lr \
 					--debug $(debug) \
 					--data_size $(data_size); \

@@ -46,7 +46,21 @@ class Configuration:
 
         self.data_dir = getattr(args, "data_dir",'')
         self.data_size = getattr(args, "data_size",'small')
-        self.augment = getattr(args, "augment", 1)
+        self.aug_rotate = getattr(args, "aug_rotate", 0)
+        self.aug_zoom = getattr(args, "aug_zoom", 0)
+        self.aug_null = getattr(args, "aug_null", 0)
+        self.aug_flip = getattr(args, "aug_flip", 0)
+        self.augment = 1 if self.aug_rotate or self.aug_zoom or self.aug_null or self.aug_flip else 0
+        print(f'Augmentations: {self.augment}, {self.aug_rotate}, {self.aug_zoom}, {self.aug_null}, {self.aug_flip}')
+        if self.aug_rotate not in [0,1]:
+            raise Exception(f"Invalid aug_zoom = {self.aug_rotate} provided. Must specify 0 or 1.")
+        if self.aug_zoom not in [0,1]:
+            raise Exception(f"Invalid aug_zoom = {self.aug_zoom} provided. Must specify 0 or 1.")
+        if self.aug_null not in list(range(5)):
+            raise Exception(f"Invalid aug_null = {self.aug_null} provided. Must specify an integer from 0-4.")
+        if self.aug_flip not in list(range(4)):
+            raise Exception(f"Invalid aug_flip = {self.aug_flip} provided. Must specify an integer from 0-3.")
+        
         self.debug = getattr(args, "debug", 0)
 
         self.seed = getattr(args, "seed", 42)
@@ -114,10 +128,15 @@ class Configuration:
         else:
             sys.exit(f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size")
         
-        if self.nr_of_classes == 51:
-            self.aug_dir = os.path.join(self.root_dir, "20240205_small_aug_51")
+        if self.nr_of_classes == 51 and self.aug_rotate and self.data_size == 'small':
+            self.aug_rotate_dir = os.path.join(self.root_dir, "20240205_small_aug_51")
         else:
-            self.aug_dir = ''
+            self.aug_rotate_dir = ''
+        
+        if self.nr_of_classes == 51 and self.aug_zoom and self.data_size == 'small':
+            self.aug_zoom_dir = os.path.join(self.root_dir, f"20240208_zoom_{self.aug_zoom}0_small_aug_51")
+        else:
+            self.aug_zoom_dir = ''
 
 
 if __name__ == "__main__":

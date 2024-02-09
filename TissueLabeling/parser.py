@@ -90,9 +90,9 @@ def get_args():
     train.add_argument(
         "--wandb_description", help='Description for wandb run', type=str, required=False
     )
-    train.add_argument(
-        "--augment", help='Flag for whether to train on augmented data', type=int, required=False, default=0
-    )
+    # train.add_argument(
+    #     "--augment", help='Flag for whether to train on augmented data', type=int, required=False, default=0
+    # )
     train.add_argument(
         "--checkpoint_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
     )
@@ -101,6 +101,18 @@ def get_args():
     )
     train.add_argument(
         "--data_size", help='Whether to use the small or medium sized dataset', type=str, required=False, default='small'
+    )
+    train.add_argument(
+        "--aug_rotate", help="Flag for whether to augment the data by adding random rotations", type=int, required=False, default=0
+    )
+    train.add_argument(
+        "--aug_zoom", help="Flag for whether to augment the data by adding random zooms.\n0 = None, 1 = scale_factor from 0.9-1.1, 2 = scale_factor from 0.8-1.1", type=int, required=False, default=0
+    )
+    train.add_argument(
+        "--aug_null", help="Flag for whether to augment the data by adding random nulls.\n0 = None, 1 = left/right null, 2 = up/down null, 3 = left/right or up/down, 4 = random half of pixels", type=int, required=False, default=0
+    )
+    train.add_argument(
+        "--aug_flip", help="Flag for whether to augment the data by adding random flips.\n 0 = None, 1 = up/down flip, 2 = left/right flip, 3 = left/right or up/down flip", type=int, required=False, default=0
     )
 
     # Parse the command line arguments
