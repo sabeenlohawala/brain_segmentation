@@ -24,16 +24,16 @@ DT := $(shell date +"%Y%m%d")
 # | simple_unet | 1632 | 3 | 96 |
 
 # Training parameters
-model_name = segformer simple_unet
-loss_type = dice
+model_name = segformer
 num_epochs = 100
-augment = 0
+# augment = 0
 lrs = 0.001 0.0001
 debug = 0
-batch_sizes = 32 64 128 256
+batch_sizes = 64 128
 nr_of_classes = 51
-data_size = small
-aug_rotate = 1
+data_size = med
+# aug_flip = 0 1 2 3
+log_images = 0
 
 
 ## ddpm-train: train a model from scratch
@@ -41,17 +41,17 @@ tl-train:
 	for model in $(model_name); do \
 		for batch_size in $(batch_sizes); do \
 			for lr in $(lrs); do \
-				logdir="20240208-aug-M$$model\S$(data_size)\L$(loss_type)\C$(nr_of_classes)\B$$batch_size\LR$$lr\AR$(aug_rotate)"
-				sbatch --job-name=$$logdir submit.sh srun python -u scripts/commands/main.py train \
-					--model_name $$model \
-					--nr_of_classes $(nr_of_classes) \
-					--logdir $$logdir \
-					--num_epochs $(num_epochs) \
-					--batch_size $$batch_size \
-					--aug_rotate $(aug_rotate)
-					--lr $$lr \
-					--debug $(debug) \
-					--data_size $(data_size); \
+					logdir="/om2/scratch/Sat/sabeen/20240212-grid-M$$model\S$(data_size)\C$(nr_of_classes)\B$$batch_size\LR$$lr\A0"
+					sbatch --job-name=$$logdir submit.sh srun python -u scripts/commands/main.py train \
+						--model_name $$model \
+						--nr_of_classes $(nr_of_classes) \
+						--logdir $$logdir \
+						--num_epochs $(num_epochs) \
+						--batch_size $$batch_size \
+						--lr $$lr \
+						--debug $(debug) \
+						--log_images $(log_images) \
+						--data_size $(data_size); \
 			done;
 		done; \
 	done;

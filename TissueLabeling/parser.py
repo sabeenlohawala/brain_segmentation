@@ -94,6 +94,12 @@ def get_args():
     #     "--augment", help='Flag for whether to train on augmented data', type=int, required=False, default=0
     # )
     train.add_argument(
+        "--save_checkpoint", help='Frequency at which to save checkpoints', type=int, required=False, default=1
+    )
+    train.add_argument(
+        "--log_images", help='Frequency at which to log images', type=int, required=False, default=0
+    )
+    train.add_argument(
         "--checkpoint_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
     )
     train.add_argument(

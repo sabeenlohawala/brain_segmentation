@@ -120,7 +120,7 @@ class Trainer:
             self.validation_metrics.log(epoch, commit=False, writer=self.writer)
     
     def _log_image(self, epoch) -> None:
-        if self.fabric.global_rank == 0 and (epoch == 1 or epoch % self.config.image_log_freq == 0):
+        if self.config.log_images and self.fabric.global_rank == 0 and (epoch == 1 or epoch % self.config.image_log_freq == 0):
             print(f"Process {self.fabric.global_rank} saving image...")
             self.image_logger.logging(self.model, epoch, commit=True)
     

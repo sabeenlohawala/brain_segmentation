@@ -22,7 +22,7 @@ class Configuration:
         None
     """
 
-    root_dir = "/om2/user/sabeen/nobrainer_data_norm"
+    data_root_dir = "/om2/user/sabeen/nobrainer_data_norm"
 
     def __init__(self, args=None, config_file_name=None):
         self.logdir = getattr(args, "logdir", os.getcwd())
@@ -66,7 +66,8 @@ class Configuration:
         self.seed = getattr(args, "seed", 42)
         self.precision = "32-true"  # "16-mixed"
 
-        self.save_checkpoint = getattr(args, "save_checkpoint", True)
+        self.save_checkpoint = True if getattr(args, "save_checkpoint", 1) == 1 else False
+        self.log_images = True if getattr(args, "log_images", 0) == 1 else False
         self.checkpoint_freq = getattr(args, "checkpoint_freq", 10)
         self.image_log_freq = getattr(args, "image_log_freq", 10)
         self.checkpoint = getattr(args, "checkpoint", None)
@@ -124,17 +125,17 @@ class Configuration:
             sys.exit(f"{self.data_size} is not a valid dataset size. Choose from 'small' or 'med'.")
 
         if self.nr_of_classes in folder_map:
-            self.data_dir = os.path.join(self.root_dir, folder_map[self.nr_of_classes])
+            self.data_dir = os.path.join(self.data_root_dir, folder_map[self.nr_of_classes])
         else:
             sys.exit(f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size")
         
         if self.nr_of_classes == 51 and self.aug_rotate and self.data_size == 'small':
-            self.aug_rotate_dir = os.path.join(self.root_dir, "20240205_small_aug_51")
+            self.aug_rotate_dir = os.path.join(self.data_root_dir, "20240205_small_aug_51")
         else:
             self.aug_rotate_dir = ''
         
         if self.nr_of_classes == 51 and self.aug_zoom and self.data_size == 'small':
-            self.aug_zoom_dir = os.path.join(self.root_dir, f"20240208_zoom_{self.aug_zoom}0_small_aug_51")
+            self.aug_zoom_dir = os.path.join(self.data_root_dir, f"20240208_zoom_{self.aug_zoom}0_small_aug_51")
         else:
             self.aug_zoom_dir = ''
 
