@@ -60,7 +60,7 @@ def get_args():
         default=64,
     )
     train.add_argument(
-        "--lr", help="Learning for training", type=float, required=False, default=6e-5
+        "--lr", help="Learning for training", type=float, required=False, default=1e-3
     )
     train.add_argument(
         "--data_dir",

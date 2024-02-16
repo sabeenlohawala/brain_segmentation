@@ -42,7 +42,7 @@ class Configuration:
         self.nr_of_classes = getattr(args, "nr_of_classes", 51)
         self.num_epochs = getattr(args, "num_epochs", 20)
         self.batch_size = getattr(args, "batch_size", 64)
-        self.lr = getattr(args, "lr", 6e-5)
+        self.lr = getattr(args, "lr", 1e-3)
 
         self.data_dir = getattr(args, "data_dir",'')
         self.data_size = getattr(args, "data_size",'small')

@@ -89,11 +89,11 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     image_channels = 1
     image_size = (160, 192)  # (28, 28)
-    batch_size = 1024 + 256 + 128 + 64 + 32
+    batch_size = 128
 
     # Note: For (28, 28), remove 2 up/down channels.
 
-    model = SimpleUnet(image_channels=image_channels).to(device)
+    model = SimpleUnet(image_channels=image_channels,nr_of_classes=51).to(device)
     summary(
         model,
         input_size=[(batch_size, image_channels, *image_size), (batch_size,)],

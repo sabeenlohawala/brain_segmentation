@@ -42,7 +42,7 @@ class Trainer:
         else:
             self.writer = None
         
-        if self.fabric.global_rank == 0:
+        if self.fabric.global_rank == 0 and self.config.log_images:
             self.image_logger = Log_Images(
                 self.fabric,
                 config=config,

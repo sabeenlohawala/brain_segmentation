@@ -27,13 +27,33 @@ DT := $(shell date +"%Y%m%d")
 model_name = segformer
 num_epochs = 100
 # augment = 0
-lrs = 0.001 0.0001
+lrs = 0.0001
 debug = 0
-batch_sizes = 64 128
+batch_sizes = 256
 nr_of_classes = 51
 data_size = med
 # aug_flip = 0 1 2 3
 log_images = 0
+
+## ddpm-train: train a model from scratch
+tl-train-new:
+	for model in $(model_name); do \
+		for batch_size in $(batch_sizes); do \
+			for lr in $(lrs); do \
+					logdir="/om2/scratch/Sat/sabeen/20240215-grid-M$$model\S$(data_size)\C$(nr_of_classes)\B$$batch_size\LR$$lr\A0"
+					sbatch --job-name=$$logdir submit_requeue.sh \
+						model_name=$$model \
+						nr_of_classes=$(nr_of_classes) \
+						logdir=$$logdir \
+						num_epochs=$(num_epochs) \
+						batch_size=$$batch_size \
+						lr=$$lr \
+						debug=$(debug) \
+						log_images=$(log_images) \
+						data_size=$(data_size); \
+			done;
+		done; \
+	done;
 
 
 ## ddpm-train: train a model from scratch
@@ -41,7 +61,7 @@ tl-train:
 	for model in $(model_name); do \
 		for batch_size in $(batch_sizes); do \
 			for lr in $(lrs); do \
-					logdir="/om2/scratch/Sat/sabeen/20240212-grid-M$$model\S$(data_size)\C$(nr_of_classes)\B$$batch_size\LR$$lr\A0"
+					logdir="/om2/scratch/Sat/sabeen/20240214-grid-M$$model\S$(data_size)\C$(nr_of_classes)\B$$batch_size\LR$$lr\A0"
 					sbatch --job-name=$$logdir submit.sh srun python -u scripts/commands/main.py train \
 						--model_name $$model \
 						--nr_of_classes $(nr_of_classes) \
