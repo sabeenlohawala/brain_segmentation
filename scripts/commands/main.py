@@ -48,9 +48,6 @@ def select_model(config):
         print(f"Loading from checkpoint...")
         model.load_state_dict(torch.load(config.checkpoint)['model'])
         
-        # checkpoint path is something like: 'logdir/checkpoint_1000.chkpt'
-        config.start_epoch = int(config.checkpoint.split('/')[-1].split('.')[0].split('_')[-1])
-
     return model
 
 
@@ -77,7 +74,7 @@ def update_config(config):
             sys.exit("No checkpoints exist to resume training")
 
         data["checkpoint"] = dice_list[-1]
-        data["start_epoch"] = int(os.path.basename(dice_list[0]).split('.')[0].split('_')[-1])
+        data["start_epoch"] = int(os.path.basename(dice_list[-1]).split('.')[0].split('_')[-1])
         
         configs = sorted(glob.glob(os.path.join(chkpt_folder, "config*.json")))
         config_file_name = "config_resume.json" if len(configs) == 1 else f"config_resume_{len(configs):02d}.json"

@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --requeue
-#SBATCH -t 12:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH --ntasks-per-node=4
 #SBATCH --gres=gpu:a100:4
 #SBATCH --mem=40G # per node memory
-#SBATCH -p use-everything
-#SBATCH -o ./logs/grid-requeue.out
-#SBATCH -e ./logs/grid-requeue.err
+#SBATCH -p normal
+#SBATCH -o ./logs/grid-requeue-su.out
+#SBATCH -e ./logs/grid-requeue-su.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 
@@ -16,17 +16,18 @@ export PATH="/om2/user/sabeen/miniconda/bin:$PATH"
 conda init bash
 
 # Set default values
-BATCH_SIZE=128
-LR=0.001
+BATCH_SIZE=4
+LR=0.0001
 NUM_EPOCHS=200
-MODEL_NAME="segformer"
+MODEL_NAME="simple_unet"
 DEBUG=0
 NR_OF_CLASSES=51
 DATA_SIZE="med"
 LOG_IMAGES=0
 PRETRAINED=0
 
-LOGDIR="/om2/scratch/Sat/sabeen/20240216-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A0"
+# LOGDIR="/om2/scratch/Sat/sabeen/20240216-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\A0"
+LOGDIR="/om2/scratch/Sat/sabeen/20240217-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A0"
 # CHECKPOINT_FILE="$LOGDIR/checkpoint_0001.ckpt"
 
 # Check if checkpoint file exists

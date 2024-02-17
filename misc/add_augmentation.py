@@ -5,21 +5,29 @@ import json
 import numpy as np
 
 from skimage.transform import resize
-from TissueLabeling.brain_utils import create_affine_transformation_matrix
+from TissueLabeling.brain_utils import create_affine_transformation_matrix, draw_value_from_distribution
 
 # set seed
 np.random.seed(42)
 
 # which augmentations to perform
-rotate_flag = 0
-zoom_flag = 1
-scale_range = 0.2
-    
+flipping = True  # enable right/left flipping
+scaling_bounds = 0.2  # the scaling coefficients will be sampled from U(1-scaling_bounds; 1+scaling_bounds)
+rotation_bounds = 15  # the rotation angles will be sampled from U(-rotation_bounds; rotation_bounds)
+shearing_bounds = 0.012  # the shearing coefficients will be sampled from U(-shearing_bounds; shearing_bounds)
+translation_bounds = False  # no translation is performed, as this is already modelled by the random cropping
+enable_90_rotations = False
+# nonlin_std = 4.  # this controls the maximum elastic deformation (higher = more deformation)
+# bias_field_std = 0.7  # this controls the maximum bias field corruption (higher = more bias)
+
+batchsize = 1
+n_dims = 2
+
 # directory where images and masks are stored
 data_dir = '/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51'
 
 # directory where affine matrices are stored
-aug_dir = '/om2/user/sabeen/nobrainer_data_norm/20240208_zoom_20_small_aug_51'
+aug_dir = '/om2/user/sabeen/nobrainer_data_norm/20240217_small_synth_aug'
 
 modes = ['test', 'validation', 'train']
 augmentation_dict = {}
@@ -28,6 +36,10 @@ for mode in modes:
     print(f'Mode: {mode}')
     # mode = 'test'
     file_dir = f'{data_dir}/{mode}'
+    if not os.path.exists(f'{aug_dir}/{mode}'):
+        print("Making aug dirs...")
+        os.makedirs(f'{aug_dir}/{mode}')
+    
     images = sorted(glob.glob(f"{file_dir}/brain*.npy"))
     image = np.load(images[0]).squeeze()
     center = np.array([image.shape[0] // 2, image.shape[1] // 2])
@@ -39,27 +51,38 @@ for mode in modes:
         file_suffix = image_file[len(file_dir)+1:].split('_')[-1] # to get the #.npy from '...brain_#.npy'
         affine_file = f'affine_{file_suffix}'
         save_path = f'{aug_dir}/{mode}/{affine_file}'
-        
-        # coin toss: whether to rotate or zoom (or both)
-        if rotate_flag == 1 and zoom_flag == 1:
-            print('randomizing rotate/zoom combo')
-            rot_flip = np.random.choice([0,1])
-            scale_flip = np.random.choice([0,1])
-        else:
-            rot_flip = rotate_flag
-            scale_flip = zoom_flag
 
         # randomize augmentations
-        rotation = np.random.randint(-30,31,1) if rot_flip == 1 else np.array([0])
-        scaling_factor = np.random.uniform(1 - scale_range, 1 + scale_range) if scale_flip == 1 else 1
+        
+        scaling = draw_value_from_distribution(scaling_bounds,
+                                               size=n_dims,
+                                               centre=1,
+                                               default_range=.15,
+                                               return_as_tensor=False,
+                                               batchsize=batchsize)
+
+        rotation = draw_value_from_distribution(rotation_bounds,
+                                                size=1,
+                                                default_range=15.0,
+                                                return_as_tensor=False,
+                                                batchsize=batchsize)
+
+        shearing = draw_value_from_distribution(shearing_bounds,
+                                                size=n_dims ** 2 - n_dims,
+                                                default_range=.01,
+                                                return_as_tensor=False,
+                                                batchsize=batchsize)
+
         augmentation_dict[mode][affine_file] = {}
-        augmentation_dict[mode][affine_file]['rotation_angle'] = int(rotation[0])
-        augmentation_dict[mode][affine_file]['scaling_factor'] = scaling_factor
+        augmentation_dict[mode][affine_file]['rotation'] = rotation.tolist()
+        augmentation_dict[mode][affine_file]['scaling'] = scaling.tolist()
+        augmentation_dict[mode][affine_file]['shearing'] = shearing.tolist()
+        augmentation_dict[mode][affine_file]['translation'] = None
 
         affine_matrix = create_affine_transformation_matrix(n_dims = 2,
-                                                    scaling = (scaling_factor,scaling_factor),
+                                                    scaling = scaling,
                                                     rotation = rotation,
-                                                    shearing = None,
+                                                    shearing = shearing,
                                                     translation = None)
 
         # Translate the center back to the origin

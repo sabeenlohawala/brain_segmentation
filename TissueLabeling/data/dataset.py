@@ -52,37 +52,30 @@ class NoBrainerDataset(Dataset):
         self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/mask*.npy"))
 
         # Get a list of all the affine matrices for rigid transformations
-        self.rotate_affines = sorted(glob.glob(f"{config.aug_rotate_dir}/{mode}/affine*.npy"))
-        self.zoom_affines = sorted(glob.glob(f"{config.aug_zoom_dir}/{mode}/affine*.npy"))
+        self.affines = sorted(glob.glob(f"{config.aug_dir}/{mode}/affine*.npy"))
 
         # only augment the train, not validation or test
         if self.mode == 'train':
             self.augment = config.augment
-            self.aug_rotate = config.aug_rotate
-            self.aug_zoom = config.aug_zoom
-            self.aug_null = config.aug_null
-            self.aug_flip = config.aug_flip
+            self.aug_mask = config.aug_mask
+            self.aug_cut_out = config.aug_cut_out
         else:
             self.augment = 0
-            self.aug_rotate = 0
-            self.aug_zoom = 0
-            self.aug_null = 0
-            self.aug_flip = 0
+            self.aug_mask = config.aug_mask
+            self.aug_cut_out = 0
 
         if self.augment:
             print(f'augmenting data!')
             self.images = self.images + self.images
             self.masks = self.masks + self.masks
-            self.rotate_affines = self.rotate_affines + self.rotate_affines
-            self.zoom_affines = self.zoom_affines + self.zoom_affines
+            self.affines = self.affines + self.affines
 
         # Limit the number of images and masks to the first 100 during debugging
         if config.debug:
             print('debug mode')
             self.images = self.images[:100]
             self.masks = self.masks[:100]
-            self.rotate_affines = self.rotate_affines[:100]
-            self.zoom_affines = self.zoom_affines[:100]
+            self.affines = self.affines[:100]
 
         # Load the normalization constants from the file directory
         self.normalization_constants = np.load(
@@ -97,56 +90,25 @@ class NoBrainerDataset(Dataset):
         image = torch.from_numpy(np.load(self.images[idx]))
         mask = torch.from_numpy(np.load(self.masks[idx]))
 
-        # randomly rotate
-        rotate_coin_toss = random.randint(0,1)
-        if self.aug_rotate and rotate_coin_toss == 1:
-            affine = torch.from_numpy(np.load(self.rotate_affines[idx]))
+        # randomly augment
+        augment_coin_toss = random.randint(0,1)
+        if self.augment and augment_coin_toss == 1:
+            affine = torch.from_numpy(np.load(self.affines[idx]))
             image = affine_transform(image.squeeze(),affine,mode="constant")
             mask = affine_transform(mask.squeeze(),affine,mode="constant",order=0)
-            image = torch.from_numpy(image).unsqueeze(dim=0)
-            mask = torch.from_numpy(mask).unsqueeze(dim=0)
 
-        # randomly zoom
-        zoom_coin_toss = random.randint(0,1)
-        if self.aug_zoom and zoom_coin_toss == 1:
-            affine = torch.from_numpy(np.load(self.zoom_affines[idx]))
-            image = affine_transform(image.squeeze(),affine,mode="constant")
-            mask = affine_transform(mask.squeeze(),affine,mode="constant",order=0)
-            image = torch.from_numpy(image).unsqueeze(dim=0)
-            mask = torch.from_numpy(mask).unsqueeze(dim=0)
+            image = torch.from_numpy(image)
+            mask = torch.from_numpy(mask)
         
-        # random null
-        null_coin_toss = random.randint(0,1)
-        null_type = random.randint(1,2) if self.aug_null == 3 else self.aug_null
-        if null_type == 1 and null_coin_toss == 1:
-            # left/right null
-            mid = image.shape[1] // 2
-            if random.randint(0,1) == 1:
-                image[:,:,:mid] = 0
-                mask[:,:,:mid] = 0
-            else:
-                image[:,:,mid:] = 0
-                mask[:,:,mid:] = 0
-        elif null_type == 2 and null_coin_toss == 1:
-            # up/down null
-            mid = image.shape[2] // 2
-            if random.randint(0,1) == 1:
-                image[:,:mid,:] = 0
-                mask[:,:mid,:] = 0
-            else:
-                image[mid:,:] = 0
-                mask[mid:,:] = 0
-        elif null_type == 4 and null_coin_toss == 1:
-            # random pixel null
-            random_mask = torch.rand(image.size()) < 0.5
-            image[random_mask] = 0
-            mask[random_mask] = 0
-        
-        # random flip
-        flip_coin_toss = random.randint(0,1)
-        flip_type = random.randint(1,2) if self.aug_flip == 3 else self.aug_flip # choose left/right or up/down
-        if flip_type != 0 and flip_coin_toss == 1:
-            image = torch.flip(image,dims=(flip_type,))
+            # random left/right flip
+            flip_coin_toss = random.randint(0,1)
+            if flip_coin_toss == 1:
+                image = torch.flip(image,dims=(1,))
+                mask = torch.flip(mask,dims=(1,))
+            
+            # resize image to [1,h,w] again
+            image = image.unsqueeze(dim=0)
+            mask = mask.unsqueeze(dim=0)
 
         if self.model_name == 'simple_unet':
             image = image[:,1:161,1:193]

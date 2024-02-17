@@ -251,3 +251,96 @@ def create_affine_transformation_matrix(
             np.cos(rotation[2]),
         ]
         return T_translation @ T_rot3 @ T_rot2 @ T_rot1 @ T_shearing @ T_scaling
+    
+def draw_value_from_distribution(hyperparameter,
+                                 size=1,
+                                 distribution='uniform',
+                                 centre=0.,
+                                 default_range=10.0,
+                                 positive_only=False,
+                                 return_as_tensor=False,
+                                 batchsize=None):
+    """Sample values from a uniform, or normal distribution of given hyperparameters.
+    These hyperparameters are to the number of 2 in both uniform and normal cases.
+    :param hyperparameter: values of the hyperparameters. Can either be:
+    1) None, in each case the two hyperparameters are given by [center-default_range, center+default_range],
+    2) a number, where the two hyperparameters are given by [centre-hyperparameter, centre+hyperparameter],
+    3) a sequence of length 2, directly defining the two hyperparameters: [min, max] if the distribution is uniform,
+    [mean, std] if the distribution is normal.
+    4) a numpy array, with size (2, m). In this case, the function returns a 1d array of size m, where each value has
+    been sampled independently with the specified hyperparameters. If the distribution is uniform, rows correspond to
+    its lower and upper bounds, and if the distribution is normal, rows correspond to its mean and std deviation.
+    5) a numpy array of size (2*n, m). Same as 4) but we first randomly select a block of two rows among the
+    n possibilities.
+    6) the path to a numpy array corresponding to case 4 or 5.
+    7) False, in which case this function returns None.
+    :param size: (optional) number of values to sample. All values are sampled independently.
+    Used only if hyperparameter is not a numpy array.
+    :param distribution: (optional) the distribution type. Can be 'uniform' or 'normal'. Default is 'uniform'.
+    :param centre: (optional) default centre to use if hyperparameter is None or a number.
+    :param default_range: (optional) default range to use if hyperparameter is None.
+    :param positive_only: (optional) whether to reset all negative values to zero.
+    :param return_as_tensor: (optional) whether to return the result as a tensorflow tensor
+    :param batchsize: (optional) if return_as_tensor is true, then you can sample a tensor of a given batchsize. Give
+    this batchsize as a tensorflow tensor here.
+    :return: a float, or a numpy 1d array if size > 1, or hyperparameter is itself a numpy array.
+    Returns None if hyperparameter is False.
+    """
+
+    # return False is hyperparameter is False
+    if hyperparameter is False:
+        return None
+
+    # reformat parameter_range
+    # hyperparameter = load_array_if_path(hyperparameter, load_as_numpy=True)
+    hyperparameter = None
+    if not isinstance(hyperparameter, np.ndarray):
+        if hyperparameter is None:
+            hyperparameter = np.array([[centre - default_range] * size, [centre + default_range] * size])
+        elif isinstance(hyperparameter, (int, float)):
+            hyperparameter = np.array([[centre - hyperparameter] * size, [centre + hyperparameter] * size])
+        elif isinstance(hyperparameter, (list, tuple)):
+            assert len(hyperparameter) == 2, 'if list, parameter_range should be of length 2.'
+            hyperparameter = np.transpose(np.tile(np.array(hyperparameter), (size, 1)))
+        else:
+            raise ValueError('parameter_range should either be None, a number, a sequence, or a numpy array.')
+    elif isinstance(hyperparameter, np.ndarray):
+        assert hyperparameter.shape[0] % 2 == 0, 'number of rows of parameter_range should be divisible by 2'
+        n_modalities = int(hyperparameter.shape[0] / 2)
+        modality_idx = 2 * np.random.randint(n_modalities)
+        hyperparameter = hyperparameter[modality_idx: modality_idx + 2, :]
+
+    # draw values as tensor
+    if return_as_tensor:
+        print('dont return as tensor?')
+        parameter_value = None
+        # shape = KL.Lambda(lambda x: tf.convert_to_tensor(hyperparameter.shape[1], 'int32'))([])
+        # if batchsize is not None:
+        #     shape = KL.Lambda(lambda x: tf.concat([x[0], tf.expand_dims(x[1], axis=0)], axis=0))([batchsize, shape])
+        # if distribution == 'uniform':
+        #     parameter_value = KL.Lambda(lambda x: tf.random.uniform(shape=x,
+        #                                                             minval=hyperparameter[0, :],
+        #                                                             maxval=hyperparameter[1, :]))(shape)
+        # elif distribution == 'normal':
+        #     parameter_value = KL.Lambda(lambda x: tf.random.normal(shape=x,
+        #                                                            mean=hyperparameter[0, :],
+        #                                                            stddev=hyperparameter[1, :]))(shape)
+        # else:
+        #     raise ValueError("Distribution not supported, should be 'uniform' or 'normal'.")
+
+        # if positive_only:
+        #     parameter_value = KL.Lambda(lambda x: K.clip(x, 0, None))(parameter_value)
+
+    # draw values as numpy array
+    else:
+        if distribution == 'uniform':
+            parameter_value = np.random.uniform(low=hyperparameter[0, :], high=hyperparameter[1, :])
+        elif distribution == 'normal':
+            parameter_value = np.random.normal(loc=hyperparameter[0, :], scale=hyperparameter[1, :])
+        else:
+            raise ValueError("Distribution not supported, should be 'uniform' or 'normal'.")
+
+        if positive_only:
+            parameter_value[parameter_value < 0] = 0
+
+    return parameter_value
