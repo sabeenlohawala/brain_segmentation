@@ -24,10 +24,10 @@ batchsize = 1
 n_dims = 2
 
 # directory where images and masks are stored
-data_dir = '/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51'
+data_dir = '/om2/user/sabeen/nobrainer_data_norm/new_med_no_aug_51'
 
 # directory where affine matrices are stored
-aug_dir = '/om2/user/sabeen/nobrainer_data_norm/20240217_small_synth_aug'
+aug_dir = '/om2/user/sabeen/nobrainer_data_norm/20240217_med_synth_aug'
 
 modes = ['test', 'validation', 'train']
 augmentation_dict = {}

@@ -48,7 +48,11 @@ class Configuration:
         self.data_size = getattr(args, "data_size",'small')
         self.augment = getattr(args,"augment",0)
         self.aug_mask = getattr(args,"aug_mask",0)
-        self.aug_cut_out = getattr(args,"aug_cut_out",0)
+        self.aug_cutout = getattr(args,"aug_cutout",0)
+        self.cutout_n_holes = getattr(args, "cutout_n_holes", 0) if self.aug_cutout == 1 else 0
+        self.cutout_length = getattr(args, "cutout_length", 0) if self.aug_cutout == 1 else 0
+        self.mask_n_holes = getattr(args, "mask_n_holes", 0) if self.aug_mask == 1 else 0
+        self.mask_length = getattr(args, "mask_length", 0) if self.aug_mask == 1 else 0
         
         self.debug = getattr(args, "debug", 0)
 

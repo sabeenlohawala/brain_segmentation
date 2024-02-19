@@ -112,7 +112,19 @@ def get_args():
         "--aug_mask", help="Flag for whether to augment the data by masking", type=int, required=False, default=0
     )
     train.add_argument(
-        "--aug_cut_out", help="Flag for whether to augment the data by adding cut outs", type=int, required=False, default=0
+        "--aug_cutout", help="Flag for whether to augment the data by adding cutouts", type=int, required=False, default=0
+    )
+    train.add_argument(
+        "--cutout_n_holes", help="Number of cutouts to make during augmentation", type=int, required=False, default=1
+    )
+    train.add_argument(
+        "--cutout_length", help="Side length of cutout to make during augmentation", type=int, required=False, default=8
+    )
+    train.add_argument(
+        "--mask_n_holes", help="Number of masks to make during augmentation", type=int, required=False, default=1
+    )
+    train.add_argument(
+        "--mask_length", help="Side length of mask to make during augmentation", type=int, required=False, default=8
     )
 
     # Parse the command line arguments

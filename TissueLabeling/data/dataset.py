@@ -16,6 +16,8 @@ from torch.utils.data import Dataset
 from scipy.ndimage import affine_transform
 
 from TissueLabeling.brain_utils import mapping
+from TissueLabeling.data.cutout import Cutout
+from TissueLabeling.data.mask import Mask
 
 
 class NoBrainerDataset(Dataset):
@@ -58,17 +60,23 @@ class NoBrainerDataset(Dataset):
         if self.mode == 'train':
             self.augment = config.augment
             self.aug_mask = config.aug_mask
-            self.aug_cut_out = config.aug_cut_out
+            self.aug_cutout = config.aug_cutout
+            self.aug_mask = config.aug_mask
+            self.cutout_obj = Cutout(config.cutout_n_holes, config.cutout_length)
+            self.mask_obj = Mask(config.mask_n_holes, config.mask_length)
         else:
             self.augment = 0
-            self.aug_mask = config.aug_mask
-            self.aug_cut_out = 0
+            self.aug_mask = 0
+            self.aug_cutout = 0
+            self.aug_mask = 0
+            self.cutout_obj = None
+            self.mask_obj = None
 
         if self.augment:
             print(f'augmenting data!')
-            self.images = self.images + self.images
-            self.masks = self.masks + self.masks
-            self.affines = self.affines + self.affines
+            self.images = self.images[:] + self.images[:]
+            self.masks = self.masks[:] + self.masks[:]
+            self.affines = self.affines[:] + self.affines[:]
 
         # Limit the number of images and masks to the first 100 during debugging
         if config.debug:
@@ -93,6 +101,7 @@ class NoBrainerDataset(Dataset):
         # randomly augment
         augment_coin_toss = random.randint(0,1)
         if self.augment and augment_coin_toss == 1:
+            # apply affine
             affine = torch.from_numpy(np.load(self.affines[idx]))
             image = affine_transform(image.squeeze(),affine,mode="constant")
             mask = affine_transform(mask.squeeze(),affine,mode="constant",order=0)
@@ -105,6 +114,14 @@ class NoBrainerDataset(Dataset):
             if flip_coin_toss == 1:
                 image = torch.flip(image,dims=(1,))
                 mask = torch.flip(mask,dims=(1,))
+            
+            # apply cutout
+            if self.aug_cutout == 1:
+                image = self.cutout_obj(image)
+                
+            # apply mask
+            if self.aug_mask == 1: # TODO: if or elif?
+                image, mask = self.mask_obj(image,mask)
             
             # resize image to [1,h,w] again
             image = image.unsqueeze(dim=0)
