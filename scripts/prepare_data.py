@@ -40,8 +40,8 @@ DATASET_NAME = args.dataset_name
 
 def main():
     # create and store train/val/test split of ALL files once and save it
-    file_path = "/om2/user/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs"
-    idx_path = "/om2/user/matth406/nobrainer_data/data/SharedData/segmentation/idx.dat"
+    file_path = "/nese/mit/group/sig/users/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs"
+    idx_path = "/nese/mit/group/sig/users/matth406/nobrainer_data/data/SharedData/segmentation/idx.dat"
     # save_path_basic = f'/om2/user/sabeen/nobrainer_data_norm/data_prepared_segmentation_{TYPE}_3'
     save_path_basic = f"/om2/user/sabeen/nobrainer_data_norm/{DATASET_NAME}"
     # for mode in ['train','validation','test']:

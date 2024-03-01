@@ -39,7 +39,7 @@ class Log_Images:
         # load always the same image from validation set
         image_file = "pac_36_orig.nii.gz"
         mask_file = "pac_36_aseg.nii.gz"
-        file_path = "/om2/user/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs/"
+        file_path = "/nese/mit/group/sig/users/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs/"
         brain, mask, _ = load_brains(image_file, mask_file, file_path)
         mask = mapping(mask,nr_of_classes=self.nr_of_classes)
 
@@ -48,7 +48,7 @@ class Log_Images:
         # randomly select slices in 3 directions
         self.slice_idx = [125, 150]
         normalization_constants = np.load(
-            "/om2/user/matth406/nobrainer_data_norm/data_prepared_medium/normalization_constants.npy"
+            "/nese/mit/group/sig/users/matth406/nobrainer_data_norm/data_prepared_medium/normalization_constants.npy"
         )
         self.brain_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]))
         self.mask_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]),dtype=torch.long)
@@ -91,8 +91,9 @@ class Log_Images:
         # send all slices to device
         if self.pretrained:
             self.brain_slices = self.brain_slices.repeat((1, 3, 1, 1))
-        self.brain_slices = fabric.to_device(self.brain_slices)
-        self.mask_slices = fabric.to_device(self.mask_slices)
+        if fabric:
+            self.brain_slices = fabric.to_device(self.brain_slices)
+            self.mask_slices = fabric.to_device(self.mask_slices)
 
     @torch.no_grad()
     def logging(self, model, epoch: int, commit: bool):
@@ -136,6 +137,7 @@ class Log_Images:
                     self.writer.add_image(key, np.array(img), epoch, dataformats='HWC')
                 elif len(img.shape) == 2:
                     self.writer.add_image(key, np.array(img), epoch, dataformats='HW')
+        return current_logging_dict
     
     @staticmethod
     def __create_plot(
