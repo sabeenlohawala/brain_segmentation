@@ -96,8 +96,8 @@ if __name__ == "__main__":
     model = SimpleUnet(image_channels=image_channels,nr_of_classes=51).to(device)
     summary(
         model,
-        #input_size=[(batch_size, image_channels, *image_size), (batch_size,)],
+        # input_size=[(batch_size, image_channels, *image_size), (batch_size,)],
         input_size=(batch_size,image_channels,*image_size),
-	col_names=["input_size", "output_size", "num_params"],
+	    col_names=["input_size", "output_size", "num_params"],
         depth=5,
     )
