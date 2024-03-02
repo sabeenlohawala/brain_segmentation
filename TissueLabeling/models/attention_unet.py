@@ -56,19 +56,19 @@ def Downsample(dim, dim_out=None):
     )
 
 
-class SinusoidalPositionEmbeddings(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.dim = dim
+# class SinusoidalPositionEmbeddings(nn.Module):
+#     def __init__(self, dim):
+#         super().__init__()
+#         self.dim = dim
 
-    def forward(self, time):
-        device = time.device
-        half_dim = self.dim // 2
-        embeddings = math.log(10000) / (half_dim - 1)
-        embeddings = torch.exp(torch.arange(half_dim, device=device) * -embeddings)
-        embeddings = time[:, None] * embeddings[None, :]
-        embeddings = torch.cat((embeddings.sin(), embeddings.cos()), dim=-1)
-        return embeddings
+#     def forward(self, time):
+#         device = time.device
+#         half_dim = self.dim // 2
+#         embeddings = math.log(10000) / (half_dim - 1)
+#         embeddings = torch.exp(torch.arange(half_dim, device=device) * -embeddings)
+#         embeddings = time[:, None] * embeddings[None, :]
+#         embeddings = torch.cat((embeddings.sin(), embeddings.cos()), dim=-1)
+#         return embeddings
 
 
 class WeightStandardizedConv2d(nn.Conv2d):
@@ -209,7 +209,7 @@ class PreNorm(nn.Module):
         return self.fn(x)
 
 
-class Unet(nn.Module):
+class AttentionUnet(nn.Module):
     def __init__(
         self,
         dim,
@@ -241,14 +241,15 @@ class Unet(nn.Module):
         block_klass = partial(ResnetBlock, groups=resnet_block_groups)
 
         # time embeddings
-        time_dim = dim * 4
+        # time_dim = dim * 4
 
-        self.time_mlp = nn.Sequential(
-            SinusoidalPositionEmbeddings(dim),
-            nn.Linear(dim, time_dim),
-            nn.GELU(),
-            nn.Linear(time_dim, time_dim),
-        )
+        # self.time_mlp = nn.Sequential(
+        #     SinusoidalPositionEmbeddings(dim),
+        #     nn.Linear(dim, time_dim),
+        #     nn.GELU(),
+        #     nn.Linear(time_dim, time_dim),
+        # )
+        time_dim = None
 
         # layers
         self.downs = nn.ModuleList([])
@@ -296,8 +297,9 @@ class Unet(nn.Module):
 
         self.final_res_block = block_klass(dim * 2, dim, time_emb_dim=time_dim)
         self.final_conv = nn.Conv2d(dim, self.out_dim, 1)
+        self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, x, time, x_self_cond=None):
+    def forward(self, x, time=None, x_self_cond=None):
         if self.self_condition:
             x_self_cond = default(x_self_cond, lambda: torch.zeros_like(x))
             x = torch.cat((x_self_cond, x), dim=1)
@@ -305,7 +307,8 @@ class Unet(nn.Module):
         x = self.init_conv(x)
         r = x.clone()
 
-        t = self.time_mlp(time)
+        # t = self.time_mlp(time)
+        t = None
 
         h = []
 
@@ -336,22 +339,23 @@ class Unet(nn.Module):
         x = torch.cat((x, r), dim=1)
 
         x = self.final_res_block(x, t)
-        return self.final_conv(x)
+        x = self.final_conv(x)
+        return self.softmax(x)
 
 
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     image_channels = 1  # 24
-    image_size = (96, 112)  # (192, 224), (28, 28)
+    image_size =  (160,192) #(96, 112),  (192, 224), (28, 28)
     dim_mults = (2, 4, 8, 16, 32)  # (2, 4, 8, 16, 32, 64), (1, 2, 4)
     batch_size = 1
 
-    model = Unet(dim=16, channels=image_channels, dim_mults=dim_mults).to(device)
+    model = AttentionUnet(dim=16, out_dim=51, channels=image_channels, dim_mults=dim_mults).to(device)
 
     summary(
         model,
-        input_size=[(batch_size, image_channels, *image_size), (batch_size,)],
+        input_size=(batch_size, image_channels, *image_size),
         col_names=["input_size", "output_size", "num_params"],
         depth=5,
     )
