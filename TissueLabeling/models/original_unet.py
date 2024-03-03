@@ -6,7 +6,7 @@ from torchinfo import summary
 
 
 class Block(nn.Module):
-    def __init__(self, in_ch, out_ch, time_emb_dim=None, up=False):
+    def __init__(self, in_ch, out_ch, up=False):
         super().__init__()
         if up:
             # self.conv1 = nn.Conv2d(2 * in_ch, out_ch, 3, padding=1)
@@ -33,7 +33,7 @@ class Block(nn.Module):
         return self.transform(h)
 
 
-class NobrainerUnet(nn.Module):
+class OriginalUnet(nn.Module):
     """
     A simplified variant of the Unet architecture.
     """
@@ -50,9 +50,6 @@ class NobrainerUnet(nn.Module):
         up_channels = [1024, 512, 256, 128, 64]
         out_dim = 1
 
-        # Initial projection
-        self.conv0 = nn.Conv2d(self.image_channels, down_channels[0], 3, padding=1)
-
         # Downsample
         self.max_pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.downs = nn.ModuleList(
@@ -61,7 +58,9 @@ class NobrainerUnet(nn.Module):
                 for i in range(len(down_channels) - 2)
             ]
         )
+        
         self.shared_block = Block(down_channels[-2], down_channels[-1], up=True)
+
         # Upsample
         self.ups = nn.ModuleList(
             [
@@ -70,22 +69,17 @@ class NobrainerUnet(nn.Module):
             ]
             + [
                 Block(up_channels[-2], up_channels[-1], up=False)
-            ]  # last decoder block has no transpose
+            ]  # last decoder block has no upsampling (ConvTranspose2D)
         )
 
-        # self.output = nn.Conv2d(up_channels[-1], self.image_channels, out_dim)
         self.output = nn.Conv2d(up_channels[-1], self.nr_of_classes, out_dim)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
-        # Initial conv
-        # x = self.conv0(x)
         # Unet
         residual_inputs = []
-        # residual_inputs.append(x)
-        # print('ri',residual_inputs[-1].shape)
         for down in self.downs:
-            x = down(x)  # , t)
+            x = down(x)
             residual_inputs.append(x)
             x = self.max_pool(x)
         x = self.shared_block(x)
@@ -93,7 +87,7 @@ class NobrainerUnet(nn.Module):
             residual_x = residual_inputs.pop()
             # Add residual x as additional channels
             x = torch.cat((x, residual_x), dim=1)
-            x = up(x)  # , t)
+            x = up(x)
         x = self.output(x)
         return self.softmax(x)
 
@@ -106,7 +100,7 @@ if __name__ == "__main__":
 
     # Note: For (28, 28), remove 2 up/down channels.
 
-    model = NobrainerUnet(image_channels=image_channels, nr_of_classes=51).to(device)
+    model = OriginalUnet(image_channels=image_channels, nr_of_classes=51).to(device)
     summary(
         model,
         input_size=(batch_size, image_channels, *image_size),

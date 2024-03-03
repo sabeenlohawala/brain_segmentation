@@ -18,8 +18,8 @@ from torch.utils.tensorboard import SummaryWriter
 from TissueLabeling.config import Configuration
 from TissueLabeling.brain_utils import crop, load_brains, mapping
 from TissueLabeling.models.segformer import Segformer
-from TissueLabeling.models.unet import Unet
-from TissueLabeling.models.simple_unet import SimpleUnet
+from TissueLabeling.models.original_unet import OriginalUnet
+from TissueLabeling.models.attention_unet import AttentionUnet
 
 def load_model(config, checkpoint_path = None):
     """
@@ -27,14 +27,14 @@ def load_model(config, checkpoint_path = None):
     """
     if config.model_name == "segformer":
         model = Segformer(config.nr_of_classes, pretrained=config.pretrained)
-    elif config.model_name == "unet":
-        model = Unet(
+    elif config.model_name == "original_unet":
+        model = OriginalUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
+    elif config.model_name == "attention_unet":
+        model = AttentionUnet(
             dim=16,
             channels=1,
             dim_mults=(2, 4, 8, 16, 32, 64),
         )
-    elif config.model_name == "simple_unet":
-        model = SimpleUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
     else:
         print(f"Invalid model name provided: {config.model_name}")
         sys.exit()
@@ -90,7 +90,7 @@ class Log_Images_v2:
         self.model_name = config.model_name
         self.nr_of_classes = config.nr_of_classes
         self.writer = writer
-        if self.model_name == 'simple_unet':
+        if 'unet' in self.model_name:
             self.image_shape = (160,192)
         else:
             self.image_shape = (162,194)
@@ -114,7 +114,7 @@ class Log_Images_v2:
         # load always the same image from validation set
         image_file = "pac_36_orig.nii.gz"
         mask_file = "pac_36_aseg.nii.gz"
-        file_path = "/om2/user/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs/"
+        file_path = "/nese/mit/group/sig/users/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs/"
         brain, mask, _ = load_brains(image_file, mask_file, file_path)
         mask = mapping(mask,nr_of_classes=self.nr_of_classes)
 
@@ -123,7 +123,7 @@ class Log_Images_v2:
         # randomly select slices in 3 directions
         self.slice_idx = [125, 150]
         normalization_constants = np.load(
-            "/om2/user/matth406/nobrainer_data_norm/data_prepared_medium/normalization_constants.npy"
+            "/nese/mit/group/sig/users/matth406/nobrainer_data_norm/data_prepared_medium/normalization_constants.npy"
         )
         self.brain_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]))
         self.mask_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]),dtype=torch.long)

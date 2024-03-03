@@ -22,7 +22,7 @@ class Log_Images:
         self.model_name = config.model_name
         self.nr_of_classes = config.nr_of_classes
         self.writer = writer
-        if self.model_name == 'simple_unet':
+        if 'unet' in self.model_name:
             self.image_shape = (160,192)
         else:
             self.image_shape = (162,194)

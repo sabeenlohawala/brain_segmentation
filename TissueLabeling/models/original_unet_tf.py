@@ -24,7 +24,7 @@ class Block(keras.layers.Layer):
         # Down or Upsample
         return self.transform(h)
 
-class NobrainerUnetTF(tf.keras.Model):
+class OriginalUnetTF(tf.keras.Model):
     def __init__(self,image_channels, nr_of_classes):
         super().__init__(name="NobrainerUnetTF")
         self.image_channels = image_channels
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
     # Note: For (28, 28), remove 2 up/down channels.
 
-    model = NobrainerUnetTF(image_channels=image_channels, nr_of_classes=51)#.to(device)
+    model = OriginalUnetTF(image_channels=image_channels, nr_of_classes=51)#.to(device)
     
     # model.build(input_shape=(batch_size,image_channels,*image_size))
     # print(model.summary())

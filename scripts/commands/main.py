@@ -19,8 +19,8 @@ from TissueLabeling.config import Configuration
 from TissueLabeling.data.dataset import get_data_loader
 from TissueLabeling.metrics.metrics import Dice
 from TissueLabeling.models.segformer import Segformer
-from TissueLabeling.models.unet import Unet
-from TissueLabeling.models.simple_unet import SimpleUnet
+from TissueLabeling.models.original_unet import OriginalUnet
+from TissueLabeling.models.attention_unet import AttentionUnet
 from TissueLabeling.parser import get_args
 from TissueLabeling.training.trainer import Trainer
 from TissueLabeling.utils import init_cuda, init_fabric, init_wandb, set_seed, main_timer
@@ -31,14 +31,16 @@ def select_model(config):
     """
     if config.model_name == "segformer":
         model = Segformer(config.nr_of_classes, pretrained=config.pretrained)
-    elif config.model_name == "unet":
-        model = Unet(
+    elif config.model_name == "original_unet":
+        model = OriginalUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
+    elif config.model_name == "attention_unet":
+        model = AttentionUnet(
             dim=16,
             channels=1,
             dim_mults=(2, 4, 8, 16, 32, 64),
         )
-    elif config.model_name == "simple_unet":
-        model = SimpleUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
+    elif config.model_name == "nobrainer_unet":
+        model = OriginalUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
     else:
         print(f"Invalid model name provided: {config.model_name}")
         sys.exit()
@@ -77,7 +79,7 @@ def update_config(config):
         data["start_epoch"] = int(os.path.basename(dice_list[-1]).split('.')[0].split('_')[-1])
         
         configs = sorted(glob.glob(os.path.join(chkpt_folder, "config*.json")))
-        config_file_name = "config_resume.json" if len(configs) == 1 else f"config_resume_{len(configs):02d}.json"
+        config_file_name = f"config_resume_{len(configs):02d}.json"
         args = argparse.Namespace(**data)
         config = Configuration(args, config_file_name)
 

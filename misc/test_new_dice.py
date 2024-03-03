@@ -23,8 +23,8 @@ from TissueLabeling.metrics.metrics import Classification_Metrics
 from TissueLabeling.data.dataset import get_data_loader, NoBrainerDataset
 from TissueLabeling.metrics.metrics import OldDice
 from TissueLabeling.models.segformer import Segformer
-from TissueLabeling.models.unet import Unet
-from TissueLabeling.models.simple_unet import SimpleUnet
+from TissueLabeling.models.original_unet import OriginalUnet
+from TissueLabeling.models.attention_unet import AttentionUnet
 from TissueLabeling.parser import get_args
 from TissueLabeling.training.trainer import Trainer
 from TissueLabeling.utils import init_cuda, init_fabric, init_wandb, set_seed, main_timer

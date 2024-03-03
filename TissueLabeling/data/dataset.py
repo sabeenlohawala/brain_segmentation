@@ -127,7 +127,7 @@ class NoBrainerDataset(Dataset):
             image = image.unsqueeze(dim=0)
             mask = mask.unsqueeze(dim=0)
 
-        if self.model_name == 'simple_unet':
+        if 'unet' in self.model_name:
             image = image[:,1:161,1:193]
             mask = mask[:,1:161,1:193]
 

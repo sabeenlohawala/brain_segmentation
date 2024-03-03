@@ -101,4 +101,5 @@ tl-test:
 ## model-summary: print model summary
 model-summary:
 	python TissueLabeling/models/segformer.py
-	python TissueLabeling/models/simple_unet.py
+	python TissueLabeling/models/original_unet.py
+	python TissueLabeling/models/attention_unet.py
