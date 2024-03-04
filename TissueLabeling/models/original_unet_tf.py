@@ -34,8 +34,6 @@ class OriginalUnetTF(tf.keras.Model):
         up_channels = [1024, 512, 256, 128, 64]
         out_dim = 1 # ??
 
-        self.input_layer = InputLayer(input_shape=(self.image_channels, 160, 192),name='input_layer') # is input layer required?
-
         # Downsample
         self.max_pool = MaxPool2D(pool_size=2,strides=2,data_format='channels_first')
         # Q: tf equivalent to nn.ModuleList?? nn.Sequential has forward() but ModuleList does not. Does python list work?
