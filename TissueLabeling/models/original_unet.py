@@ -12,7 +12,7 @@ class Block(nn.Module):
             # self.conv1 = nn.Conv2d(2 * in_ch, out_ch, 3, padding=1)
             self.conv1 = nn.Conv2d(in_ch, out_ch, 3, padding=1)
             # self.transform = nn.ConvTranspose2d(out_ch, out_ch, 2, 2, 1) # MOD
-            self.transform = nn.ConvTranspose2d(out_ch, out_ch // 2, 4, 2, 1)
+            self.transform = nn.ConvTranspose2d(out_ch, out_ch // 2, 2, 2, 0)
         else:
             self.conv1 = nn.Conv2d(in_ch, out_ch, 3, padding=1)
             self.transform = nn.Identity()

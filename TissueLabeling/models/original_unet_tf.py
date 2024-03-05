@@ -7,7 +7,7 @@ class Block(keras.layers.Layer):
         super().__init__(name=name)
         if up:
             self.conv1 = Conv2D(filters=out_ch,kernel_size=3,padding='same',data_format='channels_first')
-            self.transform = Conv2DTranspose(filters=out_ch//2,kernel_size=4,strides=2,padding='same',data_format='channels_first')
+            self.transform = Conv2DTranspose(filters=out_ch//2,kernel_size=2,strides=2,padding='same',data_format='channels_first')
         else:
             self.conv1 = Conv2D(filters=out_ch,kernel_size=3,padding='same',data_format='channels_first')
             self.transform = Identity()
@@ -50,7 +50,7 @@ class OriginalUnetTF(tf.keras.Model):
         self.up3 = Block(up_channels[3], up=True,name='UpBlock3')
         self.up4 = Block(up_channels[4], up=False,name='UpBlock4') # last decoder block has no upsampling (ConvTranspose2D)
 
-        self.final_conv = Conv2D(filters=self.nr_of_classes, kernel_size=out_dim, data_format='channels_first', name='FinalConv') # Q: why kernel_size = out_dim?
+        self.final_conv = Conv2D(filters=self.nr_of_classes, kernel_size=out_dim, data_format='channels_first', name='FinalConv')
         self.softmax = Softmax(axis=1)
         super().__init__()
     
