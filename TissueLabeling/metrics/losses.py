@@ -1,6 +1,17 @@
 import torch
+from torch import nn
 from torch.nn import functional as F
 from torch.nn import NLLLoss
+
+class SoftmaxFocalLoss(nn.Module):
+    def __init__(self, alpha: float = -1, gamma: float = 2, reduction: str = "mean"):
+        super(SoftmaxFocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+    
+    def forward(self, mask, probs):
+        return softmax_focal_loss(mask, probs, alpha = self.alpha, gamma = self.gamma, reduction = self.reduction)
 
 def softmax_focal_loss(
     mask: torch.Tensor,

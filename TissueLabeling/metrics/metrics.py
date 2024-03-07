@@ -67,82 +67,6 @@ class Dice(Metric):
         '''
         return 1 - self.dice, self.class_dice
 
-class OldDice(nn.Module):
-    def __init__(
-        self, fabric: L.Fabric, config, smooth: float = 1e-7
-    ) -> None:
-        """
-        Compute the multi-class generlized dice loss as suggested here:
-        https://arxiv.org/abs/2004.10664
-
-        Args:
-            nr_of_classes (int): number of classes
-            fabric (L.Fabric): fabric to get right device
-            smooth (float, optional): Smoothing Constant. Defaults to 1e-7.
-        """
-        super(Dice, self).__init__()
-
-        # init
-        self.nr_of_classes = config.nr_of_classes
-        self.smooth = smooth
-
-        pixel_counts = np.load(f"{config.data_dir}/pixel_counts.npy")
-
-        # NR_OF_CLASSES = 6
-        # pixel_counts = np.load(f'/om2/user/sabeen/nobrainer_data_norm/matth406_medium_6_classes/pixel_counts.npy')
-        pixel_counts = torch.from_numpy(pixel_counts)
-
-        if config.nr_of_classes == 2:
-            pixel_counts = torch.from_numpy(np.array([pixel_counts[0],sum(pixel_counts[1:])]))
-
-        self.weights = 1 / pixel_counts
-        # Check for inf values
-        inf_mask = torch.isinf(self.weights)
-        # Replace inf values with zero
-        self.weights[inf_mask] = 0.0
-        # normalize weights
-        self.weights = self.weights / self.weights.sum()
-
-        # send weights to GPU
-        self.weights = fabric.to_device(self.weights)
-        self.denom = None
-
-    def forward(self, y_true: torch.tensor, y_pred: torch.tensor, debug=False):
-        """
-        Args:
-            y_true (torch.tensor): Ground Truth class. Tensor of shape [B,1,H,W]
-            y_pred (torch.tensor): Predicted class probabilities. Tensor of shape [B,C,H,W]
-
-        Returns:
-            float: differentiable dice loss
-        """
-        # one-hot encode label tensor
-        y_true_oh = torch.nn.functional.one_hot(
-            y_true.squeeze(1), num_classes=self.nr_of_classes
-        ).permute(0, 3, 1, 2)
-
-        # compute the generalized dice for each imamge
-        self.class_intersect = torch.sum(
-            self.weights.view(1, -1, 1, 1) * (y_true_oh * y_pred), axis=(2, 3)
-        )
-        self.class_union = torch.sum(
-            self.weights.view(1, -1, 1, 1) * (y_true_oh + y_pred), axis=(2, 3)
-        )
-
-        intersect = torch.sum(self.class_intersect, axis=1)
-        denom = torch.sum(self.class_union, axis=1)
-
-        classDice = torch.mean(
-            2.0 * self.class_intersect / (self.class_union + self.smooth), axis=0
-        )
-
-        # compute the average over the batch
-        dice_coeff = torch.mean((2.0 * intersect / (denom + self.smooth)))
-        dice_loss = 1 - dice_coeff
-
-        return dice_loss, classDice
-
-
 class Classification_Metrics:
     def __init__(self, nr_of_classes: int, prefix: str, wandb_on: bool):
         # init
@@ -159,7 +83,7 @@ class Classification_Metrics:
         self, y_true: torch.tensor, y_pred: torch.tensor, loss: float, classDice #, class_intersect, class_union
     ):
         self.loss.append(loss)
-        if classDice:
+        if classDice is not None:
             self.classDice.append(classDice.tolist())
 
     def log(self, epoch, commit: bool = False, writer=None):

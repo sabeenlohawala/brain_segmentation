@@ -1,8 +1,8 @@
 """
 Filename: tissue_labeling/scripts/main.py
-Created Date: Friday, December 8th 2023
+Created Date: Wednesday, March 6th, 2024
 Author: Sabeen Lohawala
-Description: Training code of TissueLabeling
+Description: Similar to training code of TissueLabeling to test SoftmaxFocalLoss implementation
 
 Copyright (c) 2023, Sabeen Lohawala. MIT
 """
@@ -24,7 +24,7 @@ from TissueLabeling.models.attention_unet import AttentionUnet
 from TissueLabeling.parser import get_args
 from TissueLabeling.training.trainer import Trainer
 from TissueLabeling.utils import init_cuda, init_fabric, init_wandb, set_seed, main_timer
-from TissueLabeling.metrics.losses import softmax_focal_loss
+from TissueLabeling.metrics.losses import SoftmaxFocalLoss
 
 def select_model(config):
     """
@@ -99,7 +99,7 @@ def main():
     config = update_config(args)
     model = select_model(config)
 
-    fabric = init_fabric(precision=config.precision, devices=1)
+    fabric = init_fabric(precision=config.precision)
     set_seed(config.seed)
     init_cuda()
 
@@ -108,7 +108,7 @@ def main():
 
     # loss function
     # loss_fn = Dice(fabric, config)
-    loss_fn = softmax_focal_loss
+    loss_fn = SoftmaxFocalLoss(alpha = 0.25)
 
     # get data loader
     train_loader, val_loader, _ = get_data_loader(config)
