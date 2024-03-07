@@ -9,5 +9,4 @@ export PATH="/om2/user/sabeen/miniconda/bin:$PATH"
 conda init bash
 
 # -u ensures that the output is unbuffered, and written immediately to stdout.
-cd src
-srun python -u prepare_data.py medium new_med_no_aug_51
+srun python -u scripts/prepare_data.py medium new_med_no_aug_51

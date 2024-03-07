@@ -1,19 +1,87 @@
+import argparse
+import glob
+import json
+import os
+import sys
+
 import lightning as L
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import wandb
 # from matplotlib.colors import BoundaryNorm, ListedColormap
+# import matplotlib.colors as mcolors
 from PIL import Image
 import cv2
 from torch.utils.tensorboard import SummaryWriter
 
+from TissueLabeling.config import Configuration
 from TissueLabeling.brain_utils import crop, load_brains, mapping
+from TissueLabeling.models.segformer import Segformer
+from TissueLabeling.models.original_unet import OriginalUnet
+from TissueLabeling.models.attention_unet import AttentionUnet
 
-class Log_Images:
+def load_model(config, checkpoint_path = None):
+    """
+    Selects the model based on the model name provided in the config file.
+    """
+    if config.model_name == "segformer":
+        model = Segformer(config.nr_of_classes, pretrained=config.pretrained)
+    elif config.model_name == "original_unet":
+        model = OriginalUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
+    elif config.model_name == "attention_unet":
+        model = AttentionUnet(
+            dim=16,
+            channels=1,
+            dim_mults=(2, 4, 8, 16, 32, 64),
+        )
+    else:
+        print(f"Invalid model name provided: {config.model_name}")
+        sys.exit()
+
+    print(f"{config.model_name} found")
+    if checkpoint_path:
+        print(f"Loading from checkpoint...")
+        if torch.cuda.is_available():
+            model.load_state_dict(torch.load(checkpoint_path)['model'])
+        else:
+            model.load_state_dict(torch.load(checkpoint_path,map_location=torch.device('cpu'))['model'])
+        
+        # checkpoint path is something like: 'logdir/checkpoint_1000.chkpt'
+        config.start_epoch = int(checkpoint_path.split('/')[-1].split('.')[0].split('_')[-1])
+
+    return model
+
+def get_config(logdir):
+    """
+    Gets the config file based on the command line arguments.
+    """
+    chkpt_folder = os.path.join('results/', logdir)
+
+    config_file = os.path.join(chkpt_folder, "config.json")
+    if not os.path.exists(config_file):
+        sys.exit(f"Configuration file not found at {config_file}")
+
+    with open(config_file) as json_file:
+        data = json.load(json_file)
+    assert isinstance(data, dict), "Invalid Object Type"
+
+    dice_list = sorted(glob.glob(os.path.join(chkpt_folder, "checkpoint*")))
+    if not dice_list:
+        sys.exit("No checkpoints exist to resume training")
+
+    data["checkpoint"] = dice_list[-1]
+    # data["start_epoch"] = int(os.path.basename(dice_list[0]).split('.')[0].split('_')[-1])
+
+    args = argparse.Namespace(**data)
+    config = Configuration(args, "config_resume.json")
+
+    return config, dice_list
+
+class Log_Images_v2:
     def __init__(
         self,
-        fabric: L.Fabric,
+        # fabric: L.Fabric,
         config,
         writer=None,
     ):
@@ -28,14 +96,21 @@ class Log_Images:
             self.image_shape = (162,194)
 
         # color map to get always the same colors for classes
-        if config.nr_of_classes in [2,7,51,107]: # freesurfer colors available
+        if config.nr_of_classes == 51 or config.nr_of_classes == 107:
             colors = self.__rgb_map_for_data(config.nr_of_classes)
+            rgb = colors
         else:
             colors = plt.cm.hsv(np.linspace(0, 1, config.nr_of_classes))
-            colors = colors[:,:-1] * 255
+            rgb = colors[:,:-1] * 255
         self.color_range = np.zeros((256,3))
-        self.color_range[:colors.shape[0],:] = colors
+        self.color_range[:rgb.shape[0],:] = rgb
+        # # new plt cmap
+        # self.cmap = ListedColormap(colors)
+        # # new plt norm
+        # bounds = np.arange(0, config.nr_of_classes + 1)
+        # self.norm = BoundaryNorm(bounds, self.cmap.N)
 
+        print('Loading brains...')
         # load always the same image from validation set
         image_file = "pac_36_orig.nii.gz"
         mask_file = "pac_36_aseg.nii.gz"
@@ -52,6 +127,8 @@ class Log_Images:
         )
         self.brain_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]))
         self.mask_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]),dtype=torch.long)
+
+        print('Initializing logging_dict...')
         i = 0
         self.logging_dict = {}
         for d in range(3):
@@ -91,54 +168,9 @@ class Log_Images:
         # send all slices to device
         if self.pretrained:
             self.brain_slices = self.brain_slices.repeat((1, 3, 1, 1))
-        if fabric:
-            self.brain_slices = fabric.to_device(self.brain_slices)
-            self.mask_slices = fabric.to_device(self.mask_slices)
+        # self.brain_slices = fabric.to_device(self.brain_slices)
+        # self.mask_slices = fabric.to_device(self.mask_slices)
 
-    @torch.no_grad()
-    def logging(self, model, epoch: int, commit: bool):
-        model.eval()
-        probs = model(self.brain_slices)
-        probs = probs.argmax(1)
-        probs = probs.cpu()
-        model.train()
-
-        i = 0
-        logging_dict = {}
-        for d in range(3):
-            for slice_id in self.slice_idx:
-                logging_dict[f"Predicted Mask d{d} c{slice_id}"] = self.__create_plot(
-                    self.wandb_on,
-                    probs[i].numpy(),
-                    caption=f"Epoch {epoch}",
-                    color_range=self.color_range,
-                    # fig_path=f'/om2/user/sabeen/test_imgs/predicted_mask_d{d}_c{slice_id}_fs.png'
-                )
-                i += 1
-        current_logging_dict = self.logging_dict | logging_dict
-        if self.wandb_on:
-            wandb.log(current_logging_dict, commit=commit)
-        
-        if self.writer is not None:
-            print('Logging images...')
-            # only log raw image and true mask once
-            if epoch == 1:
-                for key, img in self.logging_dict.items():
-                    img = np.array(img)
-                    if len(img.shape) == 3:
-                        self.writer.add_image(key, np.array(img), epoch, dataformats='HWC')
-                    elif len(img.shape) == 2:
-                        self.writer.add_image(key, np.array(img), epoch, dataformats='HW')
-            
-            # log predicted masks each time
-            for key, img in logging_dict.items():
-                img = np.array(img)
-                if len(img.shape) == 3:
-                    self.writer.add_image(key, np.array(img), epoch, dataformats='HWC')
-                elif len(img.shape) == 2:
-                    self.writer.add_image(key, np.array(img), epoch, dataformats='HW')
-        return current_logging_dict
-    
     @staticmethod
     def __create_plot(
         wandb_on: bool,
@@ -169,6 +201,40 @@ class Log_Images:
         if wandb_on:
                 image = wandb.Image(image, caption=caption)
         return image
+
+    @torch.no_grad()
+    def logging(self, model, e: int, commit: bool):
+        model.eval()
+        probs = model(self.brain_slices)
+        probs = probs.argmax(1)
+        probs = probs.cpu()
+        model.train()
+
+        i = 0
+        logging_dict = {}
+        for d in range(3):
+            for slice_id in self.slice_idx:
+                logging_dict[f"Predicted Mask d{d} c{slice_id}"] = self.__create_plot(
+                    self.wandb_on,
+                    probs[i].numpy(),
+                    caption=f"Epoch {e}",
+                    color_range=self.color_range,
+                    # fig_path=f'/om2/user/sabeen/test_imgs/predicted_mask_d{d}_c{slice_id}_fs.png'
+                )
+                i += 1
+        current_logging_dict = self.logging_dict | logging_dict
+        if self.wandb_on:
+            wandb.log(current_logging_dict, commit=commit)
+        
+        if self.writer is not None:
+            print('Logging images...')
+            for key, img in current_logging_dict.items():
+                img = np.array(img)
+                if len(img.shape) == 3:
+                    self.writer.add_image(key, np.array(img), config.start_epoch, dataformats='HWC')
+                elif len(img.shape) == 2:
+                    self.writer.add_image(key, np.array(img), config.start_epoch, dataformats='HW')
+        return current_logging_dict
     
     def __extract_numbers_names_colors(self,FreeSurferColorLUT=''):
         """
@@ -249,7 +315,7 @@ class Log_Images:
             voxmorph_label_index = [
                 item.strip().split(":") for item in voxmorph_label_index[91:198] if item != ""
             ] # HACK
-        elif nr_of_classes == 7:
+        elif nr_of_classes == 6:
             voxmorph_label_index = [
                 item.strip().split(":") for item in voxmorph_label_index[253:260] if item != ""
             ] # HACK
@@ -269,3 +335,44 @@ class Log_Images:
         ]
 
         return np.array(my_colors)
+
+
+logdir = '20240122-multi-8gpu-Msegformer\Ldice\C51\B670\A0'
+config, checkpoint_paths = get_config(logdir)
+
+writer=None
+writer = SummaryWriter(f"results/{logdir}")
+print("SummaryWriter created")
+
+# for i in range(len(checkpoint_paths)-1,-1,-1):
+#     checkpoint_path = checkpoint_paths[i]
+#     model = load_model(config, checkpoint_path)
+#     print(f"Epoch {config.start_epoch}")
+
+#     image_logger = Log_Images_v2(config)
+#     log = image_logger.logging(model,config.start_epoch,True)
+
+#     print('Logging images...')
+#     for key, img in log.items():
+#         img = np.array(img)
+#         if len(img.shape) == 3:
+#             writer.add_image(key, np.array(img), config.start_epoch, dataformats='HWC')
+#         elif len(img.shape) == 2:
+#             writer.add_image(key, np.array(img), config.start_epoch, dataformats='HW')
+
+checkpoint_path = checkpoint_paths[-1]
+model = load_model(config, checkpoint_path)
+print(f"Epoch {config.start_epoch}")
+
+image_logger = Log_Images_v2(config,writer=writer)
+log = image_logger.logging(model,config.start_epoch,True)
+
+# print('Logging images...')
+# for key, img in log.items():
+#     img = np.array(img)
+#     if len(img.shape) == 3:
+#         writer.add_image(key, np.array(img), config.start_epoch, dataformats='HWC')
+#     elif len(img.shape) == 2:
+#         writer.add_image(key, np.array(img), config.start_epoch, dataformats='HW')
+    
+writer.close()

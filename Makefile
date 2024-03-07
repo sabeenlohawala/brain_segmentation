@@ -24,30 +24,54 @@ DT := $(shell date +"%Y%m%d")
 # | simple_unet | 1632 | 3 | 96 |
 
 # Training parameters
-model_name = simple_unet
-loss_type = dice
-num_epochs = 1
-augment = 0
-lr = 5e-5
-# debug = 0
-batch_size = 384
+model_name = segformer
+num_epochs = 100
+# augment = 0
+lrs = 0.0001
+debug = 0
+batch_sizes = 256
 nr_of_classes = 51
+data_size = med
+# aug_flip = 0 1 2 3
+log_images = 0
+
+## ddpm-train: train a model from scratch
+tl-train-new:
+	for model in $(model_name); do \
+		for batch_size in $(batch_sizes); do \
+			for lr in $(lrs); do \
+					logdir="/om2/scratch/Sat/sabeen/20240215-grid-M$$model\S$(data_size)\C$(nr_of_classes)\B$$batch_size\LR$$lr\A0"
+					sbatch --job-name=$$logdir submit_requeue.sh \
+						model_name=$$model \
+						nr_of_classes=$(nr_of_classes) \
+						logdir=$$logdir \
+						num_epochs=$(num_epochs) \
+						batch_size=$$batch_size \
+						lr=$$lr \
+						debug=$(debug) \
+						log_images=$(log_images) \
+						data_size=$(data_size); \
+			done;
+		done; \
+	done;
 
 
 ## ddpm-train: train a model from scratch
 tl-train:
 	for model in $(model_name); do \
-		for loss in $(loss_type); do \
-			for nr in $(nr_of_classes); do \
-				logdir="20231211-test-makefile-M$$model\L$$loss\C$$nr\B$(batch_size)\A$(augment)"
-				sbatch --job-name=$$logdir submit.sh python -u scripts/commands/main.py train \
-					--model_name $$model \
-					--nr_of_classes $$nr \
-					--logdir $$logdir \
-					--num_epochs $(num_epochs) \
-					--batch_size $(batch_size) \
-					--augment $(augment) \
-					--lr $(lr); \
+		for batch_size in $(batch_sizes); do \
+			for lr in $(lrs); do \
+					logdir="/om2/scratch/Sat/sabeen/20240214-grid-M$$model\S$(data_size)\C$(nr_of_classes)\B$$batch_size\LR$$lr\A0"
+					sbatch --job-name=$$logdir submit.sh srun python -u scripts/commands/main.py train \
+						--model_name $$model \
+						--nr_of_classes $(nr_of_classes) \
+						--logdir $$logdir \
+						--num_epochs $(num_epochs) \
+						--batch_size $$batch_size \
+						--lr $$lr \
+						--debug $(debug) \
+						--log_images $(log_images) \
+						--data_size $(data_size); \
 			done;
 		done; \
 	done;
@@ -77,4 +101,5 @@ tl-test:
 ## model-summary: print model summary
 model-summary:
 	python TissueLabeling/models/segformer.py
-	python TissueLabeling/models/simple_unet.py
+	python TissueLabeling/models/original_unet.py
+	python TissueLabeling/models/attention_unet.py

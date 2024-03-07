@@ -26,16 +26,6 @@ def get_args():
         type=str,
         help="Folder containing previous checkpoints",
     )
-    resume.add_argument(
-        "--num_epochs",
-        type=int,
-        help="Number of epochs to train for",
-        required=False,
-        default=0
-    )
-    resume.add_argument(
-        "--checkpoint_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
-    )
     resume.add_argument("--debug", action="store_true", dest="debug")
 
     # create subparser for "train" command
@@ -70,13 +60,12 @@ def get_args():
         default=64,
     )
     train.add_argument(
-        "--lr", help="Learning for training", type=float, required=False, default=6e-5
+        "--lr", help="Learning for training", type=float, required=False, default=1e-3
     )
     train.add_argument(
         "--data_dir",
         help="Directory of which dataset to train on",
         type=str,
-        # default="/om2/user/sabeen/nobrainer_data_norm/new_small_no_aug_51",
     )
     train.add_argument(
         "--pretrained",
@@ -102,10 +91,40 @@ def get_args():
         "--wandb_description", help='Description for wandb run', type=str, required=False
     )
     train.add_argument(
-        "--augment", help='Flag for whether to train on augmented data', type=int, required=False, default=0
+        "--save_checkpoint", help='Frequency at which to save checkpoints', type=int, required=False, default=1
+    )
+    train.add_argument(
+        "--log_images", help='Frequency at which to log images', type=int, required=False, default=0
     )
     train.add_argument(
         "--checkpoint_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
+    )
+    train.add_argument(
+        "--image_log_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
+    )
+    train.add_argument(
+        "--data_size", help='Whether to use the small or medium sized dataset', type=str, required=False, default='small'
+    )
+    train.add_argument(
+        "--augment", help='Flag for whether to train on augmented data', type=int, required=False, default=0
+    )
+    train.add_argument(
+        "--aug_mask", help="Flag for whether to augment the data by masking", type=int, required=False, default=0
+    )
+    train.add_argument(
+        "--aug_cutout", help="Flag for whether to augment the data by adding cutouts", type=int, required=False, default=0
+    )
+    train.add_argument(
+        "--cutout_n_holes", help="Number of cutouts to make during augmentation", type=int, required=False, default=1
+    )
+    train.add_argument(
+        "--cutout_length", help="Side length of cutout to make during augmentation", type=int, required=False, default=32
+    )
+    train.add_argument(
+        "--mask_n_holes", help="Number of masks to make during augmentation", type=int, required=False, default=1
+    )
+    train.add_argument(
+        "--mask_length", help="Side length of mask to make during augmentation", type=int, required=False, default=32
     )
 
     # Parse the command line arguments
