@@ -159,7 +159,8 @@ class Classification_Metrics:
         self, y_true: torch.tensor, y_pred: torch.tensor, loss: float, classDice #, class_intersect, class_union
     ):
         self.loss.append(loss)
-        self.classDice.append(classDice.tolist())
+        if classDice:
+            self.classDice.append(classDice.tolist())
 
     def log(self, epoch, commit: bool = False, writer=None):
         logging_dict = {
