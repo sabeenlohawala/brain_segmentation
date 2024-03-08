@@ -17,6 +17,7 @@ class Trainer:
         train_loader,
         val_loader,
         loss_fn: torch.nn.Module,
+        metric: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         fabric: L.Fabric,
         config,
@@ -25,6 +26,7 @@ class Trainer:
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.loss_fn = loss_fn
+        self.metric = metric
         self.optimizer = optimizer
         self.fabric = fabric
         # self.nr_of_classes = config.nr_of_classes
@@ -51,10 +53,18 @@ class Trainer:
 
     def train_and_validate(self) -> None:
         self.train_metrics = Classification_Metrics(
-            self.config.nr_of_classes, prefix="Train", wandb_on=self.config.wandb_on
+            self.config.nr_of_classes, 
+            prefix="Train", 
+            wandb_on=self.config.wandb_on, 
+            loss_name=self.config.loss_fn, 
+            metric_name=self.config.metric
         )
         self.validation_metrics = Classification_Metrics(
-            self.config.nr_of_classes, prefix=f"Validation", wandb_on=self.config.wandb_on
+            self.config.nr_of_classes, 
+            prefix=f"Validation", 
+            wandb_on=self.config.wandb_on, 
+            loss_name=self.config.loss_fn, 
+            metric_name=self.config.metric
         )
 
         print(
@@ -92,10 +102,12 @@ class Trainer:
 
             self.optimizer.zero_grad()
             probs = self.model(image)
-            loss, classDice = self.loss_fn(mask.long(), probs)
+            loss = self.loss_fn(mask.long(), probs)
             self.fabric.backward(loss)
             self.optimizer.step()
-            self.train_metrics.compute(mask.long(), probs, loss.item(), classDice)
+
+            overallDice = self.metric(mask.long(),probs)
+            self.train_metrics.compute(loss = loss.item(), metric = overallDice.item())#, classDice)
 
             batch_idx += 1
         
@@ -110,8 +122,10 @@ class Trainer:
             probs = self.model(image)
 
             # backward pass
-            loss, classDice = self.loss_fn(mask.long(), probs)
-            self.validation_metrics.compute(mask.long(), probs, loss.item(), classDice)
+            # loss, classDice = self.loss_fn(mask.long(), probs)
+            loss = self.loss_fn(mask.long(), probs)
+            overallDice = self.metric(mask.long(), probs)
+            self.validation_metrics.compute(loss = loss.item(), metric = overallDice.item()) #, classDice)
     
     def _log_metrics(self, epoch) -> None:
         if self.fabric.global_rank == 0:

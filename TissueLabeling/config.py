@@ -44,6 +44,11 @@ class Configuration:
         self.batch_size = getattr(args, "batch_size", 64)
         self.lr = getattr(args, "lr", 1e-3)
 
+        self.loss_fn = getattr(args, "loss_fn", "dice")
+        self.loss_fn = self.loss_fn.lower()
+        self.metric = getattr(args, "metric", "dice")
+        self.metric = self.metric.lower()
+
         self.data_dir = getattr(args, "data_dir",'')
         self.data_size = getattr(args, "data_size",'small')
         self.augment = getattr(args,"augment",0)

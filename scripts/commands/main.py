@@ -18,6 +18,7 @@ import wandb
 from TissueLabeling.config import Configuration
 from TissueLabeling.data.dataset import get_data_loader
 from TissueLabeling.metrics.metrics import Dice
+from TissueLabeling.metrics.losses import SoftmaxFocalLoss
 from TissueLabeling.models.segformer import Segformer
 from TissueLabeling.models.original_unet import OriginalUnet
 from TissueLabeling.models.attention_unet import AttentionUnet
@@ -106,7 +107,8 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
 
     # loss function
-    loss_fn = Dice(fabric, config)
+    loss_fn = Dice(fabric, config, is_loss=True) if config.loss_fn == 'dice' else SoftmaxFocalLoss()
+    metric = Dice(fabric,config)
 
     # get data loader
     train_loader, val_loader, _ = get_data_loader(config)
@@ -136,6 +138,7 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
         loss_fn=loss_fn,
+        metric=metric,
         optimizer=optimizer,
         fabric=fabric,
         config=config,

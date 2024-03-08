@@ -126,6 +126,12 @@ def get_args():
     train.add_argument(
         "--mask_length", help="Side length of mask to make during augmentation", type=int, required=False, default=32
     )
+    train.add_argument(
+        "--loss_fn", help="Which loss function to use: dice or focal", type=str, required=False, default="dice"
+    )
+    train.add_argument(
+        "--metric", help="Which metric to use (currently only supports dice)", type=str, required=False, default="dice"
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

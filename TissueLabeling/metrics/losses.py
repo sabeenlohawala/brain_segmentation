@@ -4,13 +4,44 @@ from torch.nn import functional as F
 from torch.nn import NLLLoss
 
 class SoftmaxFocalLoss(nn.Module):
+    """
+    Multi-class version of sigmoid_focal_loss from: 
+    https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/focal_loss.py
+
+    Loss used in RetinaNet for dense detection: https://arxiv.org/abs/1708.02002.
+    """
     def __init__(self, alpha: float = -1, gamma: float = 2, reduction: str = "mean"):
+        """
+        Constructor.
+
+        Args:
+            alpha: (optional) Weighting factor in range (0,1) to balance
+                    positive vs negative examples. Default = -1 (no weighting).
+            gamma: Exponent of the modulating factor (1 - p_t) to
+                balance easy vs hard examples.
+            reduction: 'none' | 'mean' | 'sum'
+                       'none': No reduction will be applied to the output.
+                       'mean': The output will be averaged.
+                       'sum': The output will be summed.
+        """
         super(SoftmaxFocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
         self.reduction = reduction
     
     def forward(self, mask, probs):
+        """
+        Computes the softmax focal loss.
+        Args
+            mask: A tensor of shape (batch_size, nr_of_classes, height, width) containing
+                integer class numbers for each pixel.
+            probs: A float tensor with the same shape as inputs. Stores the binary
+                classification label for each element in inputs
+               (0 for the negative class and 1 for the positive class).
+            
+        Returns:
+            Loss tensor with the reduction option applied.
+        """
         return softmax_focal_loss(mask, probs, alpha = self.alpha, gamma = self.gamma, reduction = self.reduction)
 
 def softmax_focal_loss(
@@ -21,7 +52,9 @@ def softmax_focal_loss(
     reduction: str = "mean",
 ) -> torch.Tensor:
     """
-    Multi-class version of sigmoid_focal_loss from: https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/focal_loss.py
+    Functional multi-class version of sigmoid_focal_loss from: 
+    https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/focal_loss.py
+
     Loss used in RetinaNet for dense detection: https://arxiv.org/abs/1708.02002.
     Args:
         mask: A tensor of shape (batch_size, nr_of_classes, height, width) containing
@@ -62,4 +95,4 @@ def softmax_focal_loss(
     elif reduction == "sum":
         loss = loss.sum()
 
-    return loss, None
+    return loss
