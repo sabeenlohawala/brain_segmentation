@@ -18,7 +18,7 @@ class SoftmaxFocalLoss(nn.Module):
             alpha: (optional) Weighting factor in range (0,1) to balance
                     positive vs negative examples. Default = -1 (no weighting).
             gamma: Exponent of the modulating factor (1 - p_t) to
-                balance easy vs hard examples.
+                   balance easy vs hard examples.
             reduction: 'none' | 'mean' | 'sum'
                        'none': No reduction will be applied to the output.
                        'mean': The output will be averaged.
@@ -34,10 +34,9 @@ class SoftmaxFocalLoss(nn.Module):
         Computes the softmax focal loss.
         Args
             mask: A tensor of shape (batch_size, nr_of_classes, height, width) containing
-                integer class numbers for each pixel.
-            probs: A float tensor with the same shape as inputs. Stores the binary
-                classification label for each element in inputs
-               (0 for the negative class and 1 for the positive class).
+                  integer class numbers for each pixel.
+            probs: A float tensor with the same shape as inputs. Stores the softmax output
+                   probabilities for each class.
             
         Returns:
             Loss tensor with the reduction option applied.
@@ -59,9 +58,8 @@ def softmax_focal_loss(
     Args:
         mask: A tensor of shape (batch_size, nr_of_classes, height, width) containing
               integer class numbers for each pixel.
-        probs: A float tensor with the same shape as inputs. Stores the binary
-               classification label for each element in inputs
-               (0 for the negative class and 1 for the positive class).
+        probs: A float tensor with the same shape as inputs. Stores the softmax output
+               probabilities for each class.
         alpha: (optional) Weighting factor in range (0,1) to balance
                 positive vs negative examples. Default = -1 (no weighting).
         gamma: Exponent of the modulating factor (1 - p_t) to
