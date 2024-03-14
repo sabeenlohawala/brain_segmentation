@@ -132,6 +132,9 @@ def get_args():
     train.add_argument(
         "--metric", help="Which metric to use (currently only supports dice)", type=str, required=False, default="dice"
     )
+    train.add_argument(
+        "--intensity_scale", help="Whether to apply intensity scaling", type=int, required=False, default=0
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

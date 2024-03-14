@@ -58,6 +58,7 @@ class Configuration:
         self.cutout_length = getattr(args, "cutout_length", 0) if self.aug_cutout == 1 else 0
         self.mask_n_holes = getattr(args, "mask_n_holes", 0) if self.aug_mask == 1 else 0
         self.mask_length = getattr(args, "mask_length", 0) if self.aug_mask == 1 else 0
+        self.intensity_scale = getattr(args, "intensity_scale",0)
         
         self.debug = getattr(args, "debug", 0)
 

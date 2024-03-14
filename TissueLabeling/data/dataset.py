@@ -14,6 +14,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from scipy.ndimage import affine_transform
+from torchvision import transforms
 
 from TissueLabeling.brain_utils import mapping
 from TissueLabeling.data.cutout import Cutout
@@ -64,6 +65,7 @@ class NoBrainerDataset(Dataset):
             self.aug_mask = config.aug_mask
             self.cutout_obj = Cutout(config.cutout_n_holes, config.cutout_length)
             self.mask_obj = Mask(config.mask_n_holes, config.mask_length)
+            self.intensity_scale = transforms.ColorJitter(brightness=0.2,contrast=0.2) if config.intensity_scale else None
         else:
             self.augment = 0
             self.aug_mask = 0
@@ -71,8 +73,9 @@ class NoBrainerDataset(Dataset):
             self.aug_mask = 0
             self.cutout_obj = None
             self.mask_obj = None
+            self.intensity_scale = None
 
-        if self.augment:
+        if self.augment or self.intensity_scale:
             print(f'augmenting data!')
             self.images = self.images[:] + self.images[:]
             self.masks = self.masks[:] + self.masks[:]
@@ -126,6 +129,9 @@ class NoBrainerDataset(Dataset):
             # resize image to [1,h,w] again
             image = image.unsqueeze(dim=0)
             mask = mask.unsqueeze(dim=0)
+
+        if self.intensity_scale and augment_coin_toss:
+            image = self.intensity_scale(image)
 
         if 'unet' in self.model_name:
             image = image[:,1:161,1:193]
