@@ -48,6 +48,7 @@ class Configuration:
         self.loss_fn = self.loss_fn.lower()
         self.metric = getattr(args, "metric", "dice")
         self.metric = self.metric.lower()
+        self.class_specific_scores = getattr(args, "class_specific_scores", 0) if self.metric == 'dice' else 0
 
         self.data_dir = getattr(args, "data_dir",'')
         self.data_size = getattr(args, "data_size",'small')

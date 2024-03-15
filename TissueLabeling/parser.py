@@ -133,6 +133,9 @@ def get_args():
         "--metric", help="Which metric to use (currently only supports dice)", type=str, required=False, default="dice"
     )
     train.add_argument(
+        "--class_specific_scores", help="Whether to log class-specific dice", type=int, required=False, default=0
+    )
+    train.add_argument(
         "--intensity_scale", help="Whether to apply intensity scaling", type=int, required=False, default=0
     )
 

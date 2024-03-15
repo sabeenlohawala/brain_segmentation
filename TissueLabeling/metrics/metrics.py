@@ -21,10 +21,10 @@ class Dice(Metric):
             fabric (L.Fabric | None): fabric to get right device
             config (TissueLabeling.config.Configuration): contains the experiment parameters
             is_loss (bool): whether to return the dice loss = 1 - dice
-            class_specific_scores (bool): whether to return classDice
+            class_specific_scores (bool): whether to return class_dice
         """
         super().__init__(**kwargs)
-        self.add_state("class_dice", default=torch.zeros((1,51)), dist_reduce_fx="mean") # want to average across all gpus
+        self.add_state("class_dice", default=torch.zeros((1,config.nr_of_classes)), dist_reduce_fx="mean") # want to average across all gpus
         self.add_state("dice", default=torch.Tensor((1,)), dist_reduce_fx="mean") # want to average across all gpus
 
         # weights for weighted dice score
@@ -82,10 +82,6 @@ class Dice(Metric):
         '''
         This function computes the loss value based on the stored state.
         '''
-        # res = (1 - self.dice if self.is_loss else self.dice, )
-        # if self.class_specific_scores:
-        #     res = res + (self.class_dice,)
-        # return res
         score = 1 - self.dice if self.is_loss else self.dice
         if self.class_specific_scores:
             return score, self.class_dice
@@ -114,19 +110,19 @@ class Classification_Metrics:
 
         self.loss = []
         self.metric = []
-        self.classDice = []
+        self.class_dice = torch.zeros((self.nr_of_classes,))
 
         self.Assert = torch.Tensor([1])
 
-    def compute(self, loss: float, metric: float, classDice=None): #, class_intersect, class_union):
+    def compute(self, loss: float, metric: float, class_dice=None): #, class_intersect, class_union):
         """
-        Appends the loss, metric, and classDice to their respective lists so they can later
+        Appends the loss, metric, and class_dice to their respective lists so they can later
         be aggregated over the batch.
         """
         self.loss.append(loss)
         self.metric.append(metric)
-        if classDice is not None:
-            self.classDice.append(classDice.tolist())
+        if class_dice is not None:
+            self.class_dice = self.class_dice + class_dice
 
     def log(self, epoch, commit: bool = False, writer=None):
         """
@@ -137,8 +133,10 @@ class Classification_Metrics:
             f"{self.prefix}/Metric ({self.metric_name})": sum(self.metric) / len(self.metric),
             f"Assert": self.Assert.item(),
         }
-        # for i in range(len(self.classDice[-1])):
-        #     logging_dict[f"{self.prefix}/SegDICE/{i}"] = self.classDice[-1][i]
+        
+        if len(self.class_dice) > 0:
+            for i in range(len(self.class_dice)):
+                logging_dict[f"{self.prefix}/Metric/ClassDice/{i}"] = self.class_dice[i].item() / len(self.loss)
 
         if self.wandb_on:
             wandb.log(logging_dict, commit=commit)
@@ -150,7 +148,7 @@ class Classification_Metrics:
         # reset
         self.loss = []
         self.metric = []
-        self.classDice = []
+        self.class_dice = torch.zeros((self.nr_of_classes,))
         self.Assert = torch.Tensor([1])
 
     def sync(self, fabric):

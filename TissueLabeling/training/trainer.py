@@ -1,4 +1,5 @@
 import os
+import copy
 
 import lightning as L
 import torch
@@ -106,8 +107,12 @@ class Trainer:
             self.fabric.backward(loss)
             self.optimizer.step()
 
-            overallDice = self.metric(mask.long(),probs)
-            self.train_metrics.compute(loss = loss.item(), metric = overallDice.item())#, classDice)
+            if self.config.class_specific_scores:
+                overall_dice, class_dice = self.metric(mask.long(), probs)
+            else:
+                class_dice = None
+                overall_dice = self.metric(mask.long(), probs)
+            self.train_metrics.compute(loss = loss.item(), metric = overall_dice.item(), class_dice=class_dice)
 
             batch_idx += 1
         
@@ -124,8 +129,12 @@ class Trainer:
             # backward pass
             # loss, classDice = self.loss_fn(mask.long(), probs)
             loss = self.loss_fn(mask.long(), probs)
-            overallDice = self.metric(mask.long(), probs)
-            self.validation_metrics.compute(loss = loss.item(), metric = overallDice.item()) #, classDice)
+            if self.config.class_specific_scores:
+                overall_dice, class_dice = self.metric(mask.long(), probs)
+            else:
+                class_dice = None
+                overall_dice = self.metric(mask.long(), probs)
+            self.validation_metrics.compute(loss = loss.item(), metric = overall_dice.item(), class_dice=class_dice)
     
     def _log_metrics(self, epoch) -> None:
         if self.fabric.global_rank == 0:
