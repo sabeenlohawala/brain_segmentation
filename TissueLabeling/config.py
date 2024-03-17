@@ -37,7 +37,7 @@ class Configuration:
 
         self.model_name = getattr(args, "model_name", "segformer")
         self.pretrained = (
-            getattr(args, "pretrained", 1) == 1 and self.model_name == "segformer"
+            getattr(args, "pretrained", 0) == 1 and self.model_name == "segformer"
         )
         self.nr_of_classes = getattr(args, "nr_of_classes", 51)
         self.num_epochs = getattr(args, "num_epochs", 20)
@@ -50,6 +50,7 @@ class Configuration:
         self.metric = self.metric.lower()
         self.class_specific_scores = getattr(args, "class_specific_scores", 0) if self.metric == 'dice' else 0
 
+        self.new_kwyk_data = getattr(args, "new_kwyk_data",1)
         self.data_dir = getattr(args, "data_dir",'')
         self.data_size = getattr(args, "data_size",'small')
         self.augment = getattr(args,"augment",0)
@@ -116,26 +117,29 @@ class Configuration:
 
     def _update_data_dir(self):
         """Update the data directory based on the number of classes"""
+        if self.new_kwyk_data:
+            self.data_dir = "/om2/user/sabeen/kwyk_final"
+            self.aug_dir = ""
+        else:
+            if self.data_size == 'small':
+                folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51", 2:"new_small_no_aug_51", 7: "new_small_aug_107"}
+            elif self.data_size == 'med' or self.data_size == 'medium':
+                folder_map = {51: "new_med_no_aug_51", 2:"new_med_no_aug_51"}
+            else:
+                sys.exit(f"{self.data_size} is not a valid dataset size. Choose from 'small' or 'med'.")
 
-        if self.data_size == 'small':
-            folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51", 2:"new_small_no_aug_51", 7: "new_small_aug_107"}
-        elif self.data_size == 'med' or self.data_size == 'medium':
-            folder_map = {51: "new_med_no_aug_51", 2:"new_med_no_aug_51"}
-        else:
-            sys.exit(f"{self.data_size} is not a valid dataset size. Choose from 'small' or 'med'.")
-
-        if self.nr_of_classes in folder_map:
-            self.data_dir = os.path.join(self.data_root_dir, folder_map[self.nr_of_classes])
-        else:
-            sys.exit(f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size")
-        
-        if self.augment: 
-            if self.nr_of_classes == 51 and self.data_size == 'small':
-                self.aug_dir = os.path.join(self.data_root_dir, "20240217_small_synth_aug")
-            if self.nr_of_classes == 51 and self.data_size == 'med':
-                self.aug_dir = os.path.join(self.data_root_dir, "20240217_med_synth_aug")
-        else:
-            self.aug_dir = ''
+            if self.nr_of_classes in folder_map:
+                self.data_dir = os.path.join(self.data_root_dir, folder_map[self.nr_of_classes])
+            else:
+                sys.exit(f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size")
+            
+            if self.augment: 
+                if self.nr_of_classes == 51 and self.data_size == 'small':
+                    self.aug_dir = os.path.join(self.data_root_dir, "20240217_small_synth_aug")
+                if self.nr_of_classes == 51 and self.data_size == 'med':
+                    self.aug_dir = os.path.join(self.data_root_dir, "20240217_med_synth_aug")
+            else:
+                self.aug_dir = ''
 
 
 if __name__ == "__main__":

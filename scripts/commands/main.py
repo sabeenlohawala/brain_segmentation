@@ -26,12 +26,12 @@ from TissueLabeling.parser import get_args
 from TissueLabeling.training.trainer import Trainer
 from TissueLabeling.utils import init_cuda, init_fabric, init_wandb, set_seed, main_timer
 
-def select_model(config):
+def select_model(config, image_dims):
     """
     Selects the model based on the model name provided in the config file.
     """
     if config.model_name == "segformer":
-        model = Segformer(config.nr_of_classes, pretrained=config.pretrained)
+        model = Segformer(config.nr_of_classes, pretrained=config.pretrained, image_dims=image_dims)
     elif config.model_name == "original_unet":
         model = OriginalUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
     elif config.model_name == "attention_unet":
@@ -97,21 +97,23 @@ def main():
     args = get_args()
 
     config = update_config(args)
-    model = select_model(config)
 
     fabric = init_fabric(precision=config.precision)
     set_seed(config.seed)
     init_cuda()
-
-    # optimizer
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
 
     # loss function
     loss_fn = Dice(fabric, config, is_loss=True) if config.loss_fn == 'dice' else SoftmaxFocalLoss()
     metric = Dice(fabric,config, is_loss=False, class_specific_scores=config.class_specific_scores)
 
     # get data loader
-    train_loader, val_loader, _ = get_data_loader(config)
+    train_loader, val_loader, _, image_dims = get_data_loader(config)
+
+    # get model
+    model = select_model(config, image_dims)
+
+    # optimizer
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
 
     # fabric setup
     train_loader, val_loader = fabric.setup_dataloaders(train_loader, val_loader)

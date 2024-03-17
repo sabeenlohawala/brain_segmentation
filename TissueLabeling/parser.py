@@ -72,7 +72,7 @@ def get_args():
         help="Flag for whether to use pretrained model",
         type=int,
         required=False,
-        default=1,
+        default=0,
     )
     train.add_argument(
         "--nr_of_classes",
@@ -137,6 +137,9 @@ def get_args():
     )
     train.add_argument(
         "--intensity_scale", help="Whether to apply intensity scaling", type=int, required=False, default=0
+    )
+    train.add_argument(
+        "--new_kwyk_data", help="Debugging flag, remove later: whether to use new dataset", type=int, required=False, default=1
     )
 
     # Parse the command line arguments

@@ -19,6 +19,7 @@ from torchvision import transforms
 from TissueLabeling.brain_utils import mapping
 from TissueLabeling.data.cutout import Cutout
 from TissueLabeling.data.mask import Mask
+from TissueLabeling.brain_utils import mapping
 
 
 class NoBrainerDataset(Dataset):
@@ -48,14 +49,20 @@ class NoBrainerDataset(Dataset):
         # Set the pretrained attribute
         self.pretrained = config.pretrained
 
-        # Get a list of all the brain image files in the specified directory
-        self.images = sorted(glob.glob(f"{config.data_dir}/{mode}/brain*.npy"))
+        self.new_kwyk_data = config.new_kwyk_data
+        if config.new_kwyk_data:
+            self.images = sorted(glob.glob(f"{config.data_dir}/{mode}/features/*.npy"))
+            self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/labels/*.npy"))
+            self.affines = []
+        else:
+            # Get a list of all the brain image files in the specified directory
+            self.images = sorted(glob.glob(f"{config.data_dir}/{mode}/brain*.npy"))
 
-        # Get a list of all the mask files in the specified directory
-        self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/mask*.npy"))
+            # Get a list of all the mask files in the specified directory
+            self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/mask*.npy"))
 
-        # Get a list of all the affine matrices for rigid transformations
-        self.affines = sorted(glob.glob(f"{config.aug_dir}/{mode}/affine*.npy"))
+            # Get a list of all the affine matrices for rigid transformations
+            self.affines = sorted(glob.glob(f"{config.aug_dir}/{mode}/affine*.npy"))
 
         # only augment the train, not validation or test
         if self.mode == 'train':
@@ -89,9 +96,10 @@ class NoBrainerDataset(Dataset):
             self.affines = self.affines[:100]
 
         # Load the normalization constants from the file directory
-        self.normalization_constants = np.load(
-            os.path.join(f'{config.data_dir}/{mode}','..','normalization_constants.npy')
-        )
+        if not config.new_kwyk_data:
+            self.normalization_constants = np.load(
+                os.path.join(f'{config.data_dir}/{mode}','..','normalization_constants.npy')
+            )
 
         if os.path.exists(f"{config.data_dir}/{mode}/keys.npy"):
             self.keys = np.load(f"{config.data_dir}/{mode}/keys.npy")
@@ -143,24 +151,22 @@ class NoBrainerDataset(Dataset):
             mask = mapping(mask,self.nr_of_classes,original=False)
             
         # normalize image
-        image = (
-            image - self.normalization_constants[0]
-        ) / self.normalization_constants[1]
+        if not self.new_kwyk_data:
+            image = (
+                image - self.normalization_constants[0]
+            ) / self.normalization_constants[1]
 
         if self.pretrained:
             return image.repeat((3, 1, 1)), mask
+        
+        if self.new_kwyk_data:
+            image = image.to(torch.float32)
+            mask = torch.tensor(mapping(np.array(mask),self.nr_of_classes,original=True))
+
         return image, mask
 
     def __len__(self):
         return len(self.images)
-
-    def normalize(self, sample):
-        image = sample[0]
-        image = (
-            image - self.normalization_constants[0]
-        ) / self.normalization_constants[1]
-        sample = (image, sample[1], sample[2])
-        return sample
 
 
 def get_data_loader(
@@ -178,4 +184,4 @@ def get_data_loader(
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.batch_size)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch_size)
 
-    return (train_loader, val_loader, test_loader)
+    return train_loader, val_loader, test_loader, tuple(train_dataset[0][0].shape[1:])

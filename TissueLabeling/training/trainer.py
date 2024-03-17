@@ -102,7 +102,7 @@ class Trainer:
             print(f"Process {self.fabric.global_rank}, batch {i}")
 
             self.optimizer.zero_grad()
-            probs = self.model(image)
+            probs = self.model(image.to(torch.float32))
             loss = self.loss_fn(mask.long(), probs)
             self.fabric.backward(loss)
             self.optimizer.step()
