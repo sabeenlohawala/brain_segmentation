@@ -10,6 +10,7 @@ from collections import Counter
 import random
 import pickle
 import json
+import argparse
 from sklearn.model_selection import train_test_split
 import nobrainer
 
@@ -18,31 +19,42 @@ from datetime import datetime
 
 from TissueLabeling.brain_utils import mapping
 
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "transform_dir", help="Where to save the transformed volumes", type=str
+)
+parser.add_argument(
+    "slice_dest_dir",
+    help="Directory where the slices extracted from the transformed volumes are saved",
+    type=str,
+)
+parser.add_argument(
+    "--rotate_vol",
+    help="Flag for whether to rotate the brain volume",
+    type=int,
+    required=False,
+    default=0
+)
+args = parser.parse_args()
+
 gettrace = getattr(sys, "gettrace", None)
 DEBUG = True if gettrace() else False
 
 SOURCE_DIR_00 = "/nese/mit/group/sig/data/kwyk/rawdata" # TODO: command line arg?
 
-TRANSFORM_DIR = "/om2/user/sabeen/kwyk_tranform" # TODO: command line arg
+TRANSFORM_DIR = args.transform_dir # "/om2/user/sabeen/kwyk_tranform" # Done: command line arg
 FEATURE_TRANFORM_DIR = f"{TRANSFORM_DIR}/features"
 LABEL_TRANFORM_DIR = f"{TRANSFORM_DIR}/labels"
 IDX_PATH = f"{TRANSFORM_DIR}/idx.dat"
 
-DEST_DIR = "/om2/user/sabeen/kwyk_final" # TODO: command line arg
-FEATURE_DEST_DIR = f"{DEST_DIR}/features"
-LABEL_DEST_DIR = f"{DEST_DIR}/labels"
+SLICE_DEST_DIR = args.slice_dest_dir # "/om2/user/sabeen/kwyk_final" # Done: command line arg
 
-NR_OF_CLASSES = 107 # TODO: probably unnecessary
-ROTATE_VOL = True # TODO: make this command line arg
+ROTATE_VOL = args.rotate_vol # True # Done: make this command line arg
 
 SEED = 42
 
 os.makedirs(FEATURE_TRANFORM_DIR, exist_ok=True)
 os.makedirs(LABEL_TRANFORM_DIR, exist_ok=True)
-
-# os.makedirs(FEATURE_DEST_DIR, exist_ok=True)
-# os.makedirs(LABEL_DEST_DIR, exist_ok=True)
-
 
 def main_timer(func):
     """Decorator to time any function"""
@@ -136,7 +148,7 @@ def transform_feature_label_pair(
 
         affine = nobrainer.transform.get_affine(feature_vol.shape,rotation=angles)
         feature_vol = np.array(nobrainer.transform.warp(feature_vol,affine,order=1))
-        label_vol = np.array(nobrainer.transform.warp(label_vol,affine,order=0)).astype('int32') # TODO: check whether this is necessary or can I leave as ints?
+        label_vol = np.array(nobrainer.transform.warp(label_vol,affine,order=0)).astype('int32') # Done: check whether this is necessary or can I leave as ints?
 
     mask, cropping = cropLabelVol(label_vol)
     feature_vol = applyCropping(feature_vol, cropping)
@@ -146,7 +158,7 @@ def transform_feature_label_pair(
     utils.save_volume(feature_vol, feature_aff, feature_hdr, feature_dest)
     utils.save_volume(mask, label_aff, label_hdr, label_dest)
 
-    # TODO: pixel counts
+    # TODO: is pixel counts needed at vol level?
     unique,counts = np.unique(mask,return_counts = True)
     pixel_counts = {label:count for label,count in zip(unique,counts)}
 
@@ -156,6 +168,7 @@ def transform_kwyk_dataset():
     """
     Apply a series of transformations to the entire kwyk dataset.
     """
+    
     feature_label_pairs = get_feature_label_pair()
 
     file_count = len(feature_label_pairs)
@@ -253,7 +266,7 @@ def extract_feature_label_slices(
             np.save(os.path.join(label_slice_dest_dir,label_slice_filename), padded_label_slice[np.newaxis,:])
 
 
-            # TODO: get pixel_counts
+            # Done: get pixel_counts
             if get_pixel_counts:
                 unique,counts = np.unique(padded_label_slice,return_counts = True)
                 pixel_counts.update({label:count for label,count in zip(unique,counts)})
@@ -334,12 +347,12 @@ def extract_kwyk_slices(max_shape):
     for mode, zipped in feature_label_pairs_by_mode.items():
         print(f"Extracting {mode} slices...")
         for feature, label in zipped:
-            pixel_counts = extract_feature_label_slices(feature,label,max_shape,os.path.join(DEST_DIR, mode),get_pixel_counts=(mode=='train'))
+            pixel_counts = extract_feature_label_slices(feature,label,max_shape,os.path.join(SLICE_DEST_DIR, mode),get_pixel_counts=(mode=='train'))
             if pixel_counts is not None:
                 train_pixel_counts += pixel_counts
     
-    # TODO: aggregate and save pixel counts
-    with open(os.path.join(DEST_DIR,'train_pixel_counts.pkl'), 'wb') as pickle_file:
+    # Done: aggregate and save pixel counts
+    with open(os.path.join(SLICE_DEST_DIR,'train_pixel_counts.pkl'), 'wb') as pickle_file:
         pickle.dump(dict(train_pixel_counts), pickle_file)
 
 @main_timer
@@ -349,7 +362,7 @@ def main():
     all_keys = {key for d in pixel_counts for key in d.keys()}
     all_pixel_counts = {float(label):sum(p.get(label,0) for p in pixel_counts) for label in all_keys} # save in kwyk_tranform? -> this might be slightly different after padding (more zeros)
 
-    # TODO: Matthias finds pixel_counts over training data only
+    # TODO: Matthias finds pixel_counts over training data only -> is this needed anymore?
     with open(os.path.join(TRANSFORM_DIR,'all_pixel_counts.pkl'), 'wb') as pickle_file:
         pickle.dump(all_pixel_counts, pickle_file)
     
