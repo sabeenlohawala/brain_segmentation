@@ -108,7 +108,7 @@ def main():
 
     # loss function
     loss_fn = Dice(fabric, config, is_loss=True) if config.loss_fn == 'dice' else SoftmaxFocalLoss()
-    metric = Dice(fabric,config)
+    metric = Dice(fabric,config, is_loss=False, class_specific_scores=config.class_specific_scores)
 
     # get data loader
     train_loader, val_loader, _ = get_data_loader(config)

@@ -110,7 +110,7 @@ class Classification_Metrics:
 
         self.loss = []
         self.metric = []
-        self.class_dice = torch.zeros((self.nr_of_classes,))
+        self.class_dice = torch.zeros((self.nr_of_classes,),device='cpu')
 
         self.Assert = torch.Tensor([1])
 
@@ -122,15 +122,15 @@ class Classification_Metrics:
         self.loss.append(loss)
         self.metric.append(metric)
         if class_dice is not None:
-            self.class_dice = self.class_dice + class_dice
+            self.class_dice = self.class_dice + class_dice.cpu()
 
     def log(self, epoch, commit: bool = False, writer=None):
         """
         Used to aggregate and log the stored losses and metrics for a batch to tensorboard and wandb.
         """
         logging_dict = {
-            f"{self.prefix}/Loss ({self.loss_name})": sum(self.loss) / len(self.loss),
-            f"{self.prefix}/Metric ({self.metric_name})": sum(self.metric) / len(self.metric),
+            f"{self.prefix}/Loss/{self.loss_name.title()}": sum(self.loss) / len(self.loss),
+            f"{self.prefix}/Metric/{self.metric_name.title()}": sum(self.metric) / len(self.metric),
             f"Assert": self.Assert.item(),
         }
         
@@ -141,14 +141,17 @@ class Classification_Metrics:
         if self.wandb_on:
             wandb.log(logging_dict, commit=commit)
         if writer is not None:
-            writer.add_scalar(f"{self.prefix}/Loss/{self.loss_name.title()}", sum(self.loss) / len(self.loss), epoch)
-            writer.add_scalar(f"{self.prefix}/Metric/{self.metric_name.title()}", sum(self.metric) / len(self.metric), epoch)
+            # writer.add_scalar(f"{self.prefix}/Loss/{self.loss_name.title()}", sum(self.loss) / len(self.loss), epoch)
+            # writer.add_scalar(f"{self.prefix}/Metric/{self.metric_name.title()}", sum(self.metric) / len(self.metric), epoch)
+            for key, val in logging_dict.items():
+                if key != 'Assert':
+                    writer.add_scalar(key, val, epoch)
 
     def reset(self):
         # reset
         self.loss = []
         self.metric = []
-        self.class_dice = torch.zeros((self.nr_of_classes,))
+        self.class_dice = torch.zeros((self.nr_of_classes,),device='cpu')
         self.Assert = torch.Tensor([1])
 
     def sync(self, fabric):
