@@ -156,7 +156,7 @@ def transform_kwyk_dataset():
     Apply a series of transformations to the entire kwyk dataset.
     """
     
-    feature_label_pairs = get_feature_label_pair()
+    feature_label_pairs = get_feature_label_pairs()
 
     file_count = len(feature_label_pairs)
 
@@ -196,12 +196,12 @@ def transform_kwyk_dataset():
     return max_dims #, all_pixel_counts
 
 
-def get_feature_label_pair(features_dir=SOURCE_DIR_00, labels_dir = SOURCE_DIR_00):
+def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir = SOURCE_DIR_00):
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:1000]
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:1000]
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:10]
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:10]
 
     return list(zip(features, labels))
 
@@ -324,7 +324,7 @@ def get_train_val_test_split():
             ) = pickle.load(f)
     else:
         # get file names
-        feature_label_pairs = get_feature_label_pair(features_dir=FEATURE_TRANFORM_DIR,labels_dir=LABEL_TRANFORM_DIR)
+        feature_label_pairs = get_feature_label_pairs(features_dir=FEATURE_TRANFORM_DIR,labels_dir=LABEL_TRANFORM_DIR)
         feature_files = [feature for feature, _ in feature_label_pairs]
         label_files = [label for _, label in feature_label_pairs]
         feature_files = sorted(feature_files)
@@ -363,10 +363,22 @@ def extract_kwyk_slices(max_shape):
     train_pixel_counts = Counter()
     for mode, zipped in feature_label_pairs_by_mode.items():
         print(f"Extracting {mode} slices...")
-        for feature, label in zipped:
-            pixel_counts = extract_feature_label_slices(feature,label,max_shape,os.path.join(SLICE_DEST_DIR, mode),get_pixel_counts=(mode=='train'))
-            if pixel_counts is not None:
-                train_pixel_counts += pixel_counts
+        
+        n_procs = 1 if DEBUG else multiprocessing.cpu_count()
+        with Pool(processes=n_procs) as pool:
+            pixel_counts = pool.starmap(
+                extract_feature_label_slices,
+                [(
+                    feature,
+                    label,
+                    max_shape,
+                    os.path.join(SLICE_DEST_DIR, mode),
+                    mode=='train',
+                ) for feature,label in zipped],
+            )
+            if mode == 'train':
+                for item in pixel_counts:
+                    train_pixel_counts += item
     
     # Done: aggregate and save pixel counts
     with open(os.path.join(SLICE_DEST_DIR,'train_pixel_counts.pkl'), 'wb') as pickle_file:
