@@ -53,9 +53,6 @@ ROTATE_VOL = args.rotate_vol # True # Done: make this command line arg
 
 SEED = 42
 
-os.makedirs(FEATURE_TRANFORM_DIR, exist_ok=True)
-os.makedirs(LABEL_TRANFORM_DIR, exist_ok=True)
-
 def main_timer(func):
     """Decorator to time any function"""
 
@@ -140,16 +137,6 @@ def transform_feature_label_pair(
 
     label_vol = label_vol.astype('int32')
 
-    # Add random rotation to entire volume
-    if ROTATE_VOL:
-        # randomly choose an angle between 0 to 20 for all axes
-        angles = np.random.uniform(0,20,size=3)
-        assert feature_vol.shape == label_vol.shape
-
-        affine = nobrainer.transform.get_affine(feature_vol.shape,rotation=angles)
-        feature_vol = np.array(nobrainer.transform.warp(feature_vol,affine,order=1))
-        label_vol = np.array(nobrainer.transform.warp(label_vol,affine,order=0)).astype('int32') # Done: check whether this is necessary or can I leave as ints?
-
     mask, cropping = cropLabelVol(label_vol)
     feature_vol = applyCropping(feature_vol, cropping)
     feature_vol = feature_vol * (mask > 0)
@@ -173,28 +160,48 @@ def transform_kwyk_dataset():
 
     file_count = len(feature_label_pairs)
 
-    input_ids = np.random.choice(range(file_count), file_count, replace=False)
-    # input_ids = input_ids[:20]
+    if os.path.exists(FEATURE_TRANFORM_DIR) and os.path.exists(LABEL_TRANFORM_DIR) and len(os.listdir(FEATURE_TRANFORM_DIR)) == file_count and len(os.listdir(LABEL_TRANFORM_DIR)) == file_count:
+        all_pixel_counts = None
+        max_dims = np.load(os.path.join(TRANSFORM_DIR,'max_dims.npy'))
+    else:
+        os.makedirs(FEATURE_TRANFORM_DIR, exist_ok=True)
+        os.makedirs(LABEL_TRANFORM_DIR, exist_ok=True)
 
-    n_procs = 1 if DEBUG else multiprocessing.cpu_count()
+        input_ids = np.random.choice(range(file_count), file_count, replace=False)
 
-    with Pool(processes=n_procs) as pool:
-        shapes_and_pixel_counts = pool.starmap(
-            transform_feature_label_pair,
-            [feature_label_pairs[idx] for idx in input_ids],
-        )
+        n_procs = 1 if DEBUG else multiprocessing.cpu_count()
 
-    shapes = [shape for shape, _ in shapes_and_pixel_counts]
-    pixel_counts = [pixel_counts for _, pixel_counts in shapes_and_pixel_counts]
-    return shapes, pixel_counts
+        with Pool(processes=n_procs) as pool:
+            shapes_and_pixel_counts = pool.starmap(
+                transform_feature_label_pair,
+                [feature_label_pairs[idx] for idx in input_ids],
+            )
+
+        shapes = [shape for shape, _ in shapes_and_pixel_counts]
+        pixel_counts = [pixel_counts for _, pixel_counts in shapes_and_pixel_counts]
+
+        all_keys = {key for d in pixel_counts for key in d.keys()}
+        all_pixel_counts = {int(label):sum(p.get(label,0) for p in pixel_counts) for label in all_keys} # save in kwyk_tranform? -> this might be slightly different after padding (more zeros)
+
+        # TODO: Matthias finds pixel_counts over training data only -> is this needed anymore?
+        # with open(os.path.join(TRANSFORM_DIR,'all_pixel_counts.pkl'), 'wb') as pickle_file:
+        #     pickle.dump(all_pixel_counts, pickle_file)
+        
+        # Step 2: determine slice dimensions based on max dataset dims
+        max_dims = np.max(np.vstack(shapes), axis=0)
+        print('max dims:', max_dims)
+
+        np.save(os.path.join(TRANSFORM_DIR,'max_dims.npy'), max_dims)
+
+    return max_dims #, all_pixel_counts
 
 
 def get_feature_label_pair(features_dir=SOURCE_DIR_00, labels_dir = SOURCE_DIR_00):
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:10]
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:10]
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:1000]
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:1000]
 
     return list(zip(features, labels))
 
@@ -221,6 +228,16 @@ def extract_feature_label_slices(
 
     label_vol = (utils.load_volume(label, im_only=True)).astype('int32')
     feature_vol = utils.load_volume(feature, im_only=True)
+
+    # Add random rotation to entire volume
+    if ROTATE_VOL:
+        # randomly choose an angle between 0 to 20 for all axes
+        angles = np.random.uniform(0,20,size=3)
+        assert feature_vol.shape == label_vol.shape
+
+        affine = nobrainer.transform.get_affine(feature_vol.shape,rotation=angles)
+        feature_vol = np.array(nobrainer.transform.warp(feature_vol,affine,order=1))
+        label_vol = np.array(nobrainer.transform.warp(label_vol,affine,order=0)).astype('int32') # Done: check whether this is necessary or can I leave as ints?
 
     slice_idx = 0
     if get_pixel_counts:
@@ -357,23 +374,13 @@ def extract_kwyk_slices(max_shape):
 
 @main_timer
 def main():
-    # Step 1: obtain shapes and pixel_counts after cropping full kwyk dataset
-    shapes, pixel_counts = transform_kwyk_dataset()
-    all_keys = {key for d in pixel_counts for key in d.keys()}
-    all_pixel_counts = {float(label):sum(p.get(label,0) for p in pixel_counts) for label in all_keys} # save in kwyk_tranform? -> this might be slightly different after padding (more zeros)
-
-    # TODO: Matthias finds pixel_counts over training data only -> is this needed anymore?
-    with open(os.path.join(TRANSFORM_DIR,'all_pixel_counts.pkl'), 'wb') as pickle_file:
-        pickle.dump(all_pixel_counts, pickle_file)
-    
-    # Step 2: determine slice dimensions based on max dataset dims
-    max_dims = np.max(np.vstack(shapes), axis=0)
-    print('max dims:', max_dims)
+    # Obtain shapes (and pixel_counts?) after cropping full kwyk dataset
+    max_dims = transform_kwyk_dataset()
 
     max_rows = max(max_dims[0], max_dims[1])
     max_cols = max(max_dims[1], max_dims[2])
 
-    # Step 3: extract slices, pad them to be of shape (max_rows, max_cols) and save them as .npy files
+    # Extract slices, pad them to be of shape (max_rows, max_cols) and save them as .npy files
     extract_kwyk_slices((max_rows,max_cols))
 
 
