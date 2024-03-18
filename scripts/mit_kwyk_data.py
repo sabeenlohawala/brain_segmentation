@@ -200,8 +200,8 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir = SOURCE_DIR_
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:10]
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:10]
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
 
     return list(zip(features, labels))
 
@@ -363,7 +363,7 @@ def extract_kwyk_slices(max_shape):
     train_pixel_counts = Counter()
     for mode, zipped in feature_label_pairs_by_mode.items():
         print(f"Extracting {mode} slices...")
-        
+
         n_procs = 1 if DEBUG else multiprocessing.cpu_count()
         with Pool(processes=n_procs) as pool:
             pixel_counts = pool.starmap(
@@ -394,7 +394,6 @@ def main():
 
     # Extract slices, pad them to be of shape (max_rows, max_cols) and save them as .npy files
     extract_kwyk_slices((max_rows,max_cols))
-
 
 if __name__ == "__main__":
     main()
