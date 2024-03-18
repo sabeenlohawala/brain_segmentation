@@ -19,7 +19,7 @@ from torchvision import transforms
 from TissueLabeling.brain_utils import mapping
 from TissueLabeling.data.cutout import Cutout
 from TissueLabeling.data.mask import Mask
-from TissueLabeling.brain_utils import mapping
+from TissueLabeling.brain_utils import mapping, create_affine_transformation_matrix, draw_value_from_distribution
 
 
 class NoBrainerDataset(Dataset):
@@ -113,7 +113,10 @@ class NoBrainerDataset(Dataset):
         augment_coin_toss = random.randint(0,1)
         if self.augment and augment_coin_toss == 1:
             # apply affine
-            affine = torch.from_numpy(np.load(self.affines[idx]))
+            if self.new_kwyk_data:
+                affine = torch.from_numpy(self._get_affine_matrix(image))
+            else:
+                affine = torch.from_numpy(np.load(self.affines[idx]))
             image = affine_transform(image.squeeze(),affine,mode="constant")
             mask = affine_transform(mask.squeeze(),affine,mode="constant",order=0)
 
@@ -145,13 +148,13 @@ class NoBrainerDataset(Dataset):
             image = image[:,1:161,1:193]
             mask = mask[:,1:161,1:193]
 
-        if self.nr_of_classes == 2:
-            mask[mask != 0] = 1
-        elif self.nr_of_classes == 7:
-            mask = mapping(mask,self.nr_of_classes,original=False)
-            
-        # normalize image
         if not self.new_kwyk_data:
+            if self.nr_of_classes == 2:
+                mask[mask != 0] = 1
+            elif self.nr_of_classes == 7:
+                mask = mapping(mask,self.nr_of_classes,original=False)
+            
+            # normalize image
             image = (
                 image - self.normalization_constants[0]
             ) / self.normalization_constants[1]
@@ -168,6 +171,55 @@ class NoBrainerDataset(Dataset):
     def __len__(self):
         return len(self.images)
 
+    def _get_affine_matrix(self,image):
+        # which augmentations to perform (based on SynthSeg)
+        scaling_bounds = 0.2  # the scaling coefficients will be sampled from U(1-scaling_bounds; 1+scaling_bounds)
+        rotation_bounds = 15  # the rotation angles will be sampled from U(-rotation_bounds; rotation_bounds)
+        shearing_bounds = 0.012  # the shearing coefficients will be sampled from U(-shearing_bounds; shearing_bounds)
+        translation_bounds = False  # no translation is performed, as this is already modelled by the random cropping
+        enable_90_rotations = False
+
+        # randomize augmentations
+        batchsize = 1
+        n_dims = 2
+        center = np.array([image.shape[0] // 2, image.shape[1] // 2])
+
+        scaling = draw_value_from_distribution(scaling_bounds,
+                                               size=n_dims,
+                                               centre=1,
+                                               default_range=.15,
+                                               return_as_tensor=False,
+                                               batchsize=batchsize)
+
+        rotation = draw_value_from_distribution(rotation_bounds,
+                                                size=1,
+                                                default_range=15.0,
+                                                return_as_tensor=False,
+                                                batchsize=batchsize)
+
+        shearing = draw_value_from_distribution(shearing_bounds,
+                                                size=n_dims ** 2 - n_dims,
+                                                default_range=.01,
+                                                return_as_tensor=False,
+                                                batchsize=batchsize)
+        affine_matrix = create_affine_transformation_matrix(n_dims = 2,
+                                                    scaling = scaling,
+                                                    rotation = rotation,
+                                                    shearing = shearing,
+                                                    translation = None)
+
+        # Translate the center back to the origin
+        translation_matrix1 = np.array([[1, 0, -center[0]],
+                                        [0, 1, -center[1]],
+                                        [0, 0, 1]])
+
+        # Translate the center to the original position
+        translation_matrix2 = np.array([[1, 0, center[0]],
+                                        [0, 1, center[1]],
+                                        [0, 0, 1]])
+
+        final_matrix = translation_matrix2 @ affine_matrix @ translation_matrix1
+        return final_matrix
 
 def get_data_loader(
     # data_dir: str,
