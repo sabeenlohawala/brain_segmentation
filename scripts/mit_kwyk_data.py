@@ -200,8 +200,8 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir = SOURCE_DIR_
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:100]
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:100]
 
     return list(zip(features, labels))
 
@@ -240,59 +240,101 @@ def extract_feature_label_slices(
         label_vol = np.array(nobrainer.transform.warp(label_vol,affine,order=0)).astype('int32') # Done: check whether this is necessary or can I leave as ints?
 
     slice_idx = 0
-    if get_pixel_counts:
-        pixel_counts = Counter()
-    else:
-        pixel_counts = None
+    # if get_pixel_counts:
+    pixel_counts = Counter()
+    # else:
+    #     pixel_counts = None
 
     for d in range(3):
-        for i in range(label_vol.shape[d]):
-            # get the slice
-            if d == 0:
-                feature_slice = feature_vol[i, :, :]
-                label_slice = label_vol[i, :, :]
-            elif d == 1:
-                feature_slice = feature_vol[:, i, :]
-                label_slice = label_vol[:, i, :]
-            elif d == 2:
-                feature_slice = feature_vol[:, :, i]
-                label_slice = label_vol[:, :, i]
+        # for i in range(label_vol.shape[d]):
+        #     # get the slice
+        #     if d == 0:
+        #         feature_slice = feature_vol[i, :, :]
+        #         label_slice = label_vol[i, :, :]
+        #     elif d == 1:
+        #         feature_slice = feature_vol[:, i, :]
+        #         label_slice = label_vol[:, i, :]
+        #     elif d == 2:
+        #         feature_slice = feature_vol[:, :, i]
+        #         label_slice = label_vol[:, :, i]
 
-            # discard slices with < 20% brain (> 80% background)
-            count_background = np.sum(label_slice == 0)
-            if count_background > 0.8 * (label_slice.shape[0] * label_slice.shape[1]):
-                continue
+        #     # discard slices with < 20% brain (> 80% background)
+        #     count_background = np.sum(label_slice == 0)
+        #     if count_background > 0.8 * (label_slice.shape[0] * label_slice.shape[1]):
+        #         continue
 
-            # pad slices
-            pad_rows = max(0,max_shape[0] - label_slice.shape[0])
-            pad_cols = max(0,max_shape[1] - label_slice.shape[1])
+        #     # pad slices
+        #     pad_rows = max(0,max_shape[0] - label_slice.shape[0])
+        #     pad_cols = max(0,max_shape[1] - label_slice.shape[1])
 
-            # padding for each side
-            pad_top = pad_rows // 2
-            pad_bottom = pad_rows - pad_top
-            pad_left = pad_cols // 2
-            pad_right = pad_cols - pad_left
+        #     # padding for each side
+        #     pad_top = pad_rows // 2
+        #     pad_bottom = pad_rows - pad_top
+        #     pad_left = pad_cols // 2
+        #     pad_right = pad_cols - pad_left
 
-            padded_feature_slice = np.pad(feature_slice, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=0)
-            padded_label_slice = np.pad(label_slice, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=0)
+        #     padded_feature_slice = np.pad(feature_slice, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=0)
+        #     padded_label_slice = np.pad(label_slice, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=0)
 
-            # save .npy files
-            feature_slice_filename = f"{os.path.basename(feature).split('.')[0]}_{slice_idx:03d}.npy"
-            label_slice_filename = f"{os.path.basename(label).split('.')[0]}_{slice_idx:03d}.npy"
-            np.save(os.path.join(feature_slice_dest_dir,feature_slice_filename), padded_feature_slice[np.newaxis,:])
-            np.save(os.path.join(label_slice_dest_dir,label_slice_filename), padded_label_slice[np.newaxis,:])
+        #     # save .npy files
+        #     feature_slice_filename = f"{os.path.basename(feature).split('.')[0]}_{slice_idx:03d}.npy"
+        #     label_slice_filename = f"{os.path.basename(label).split('.')[0]}_{slice_idx:03d}.npy"
+        #     np.save(os.path.join(feature_slice_dest_dir,feature_slice_filename), padded_feature_slice[np.newaxis,:])
+        #     np.save(os.path.join(label_slice_dest_dir,label_slice_filename), padded_label_slice[np.newaxis,:])
 
 
-            # Done: get pixel_counts
-            if get_pixel_counts:
-                unique,counts = np.unique(padded_label_slice,return_counts = True)
-                pixel_counts.update({label:count for label,count in zip(unique,counts)})
+        #     # Done: get pixel_counts
+        #     if get_pixel_counts:
+        #         unique,counts = np.unique(padded_label_slice,return_counts = True)
+        #         pixel_counts.update({label:count for label,count in zip(unique,counts)})
 
-            # increase slice_idx
-            slice_idx += 1
+        #     # increase slice_idx
+        #     slice_idx += 1
+        if d == 0:
+            idx_and_counts = list(map(lambda i: process_slice(feature_vol[i,:,:],label_vol[i,:,:],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = os.path.basename(feature).split('.')[0], label_base_filename = os.path.basename(label).split('.')[0], feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d])))
+        elif d == 1:
+            idx_and_counts = list(map(lambda i: process_slice(feature_vol[:,i,:],label_vol[:,i,:],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = os.path.basename(feature).split('.')[0], label_base_filename = os.path.basename(label).split('.')[0], feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d])))
+        else:
+            idx_and_counts = list(map(lambda i: process_slice(feature_vol[:,:,i],label_vol[:,:,i],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = os.path.basename(feature).split('.')[0], label_base_filename = os.path.basename(label).split('.')[0], feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d])))
+        slice_idx = idx_and_counts[-1][0] + 1
+        pixel_counts += sum([counts for _, counts in idx_and_counts], Counter())
 
     # TODO: generate synth affines? -> Or apply in dataset.py
     return pixel_counts
+
+def process_slice(feature_slice,label_slice,slice_idx,max_shape,get_pixel_counts,feature_base_filename,label_base_filename,feature_slice_dest_dir,label_slice_dest_dir):
+    slice_pixel_counts = Counter()
+    # discard slices with < 20% brain (> 80% background)
+    count_background = np.sum(label_slice == 0)
+    if count_background > 0.8 * (label_slice.shape[0] * label_slice.shape[1]):
+        return (slice_idx, slice_pixel_counts)
+
+    # pad slices
+    pad_rows = max(0,max_shape[0] - label_slice.shape[0])
+    pad_cols = max(0,max_shape[1] - label_slice.shape[1])
+
+    # padding for each side
+    pad_top = pad_rows // 2
+    pad_bottom = pad_rows - pad_top
+    pad_left = pad_cols // 2
+    pad_right = pad_cols - pad_left
+
+    padded_feature_slice = np.pad(feature_slice, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=0)
+    padded_label_slice = np.pad(label_slice, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=0)
+
+    # save .npy files
+    feature_slice_filename = f"{feature_base_filename}_{slice_idx:03d}.npy"
+    label_slice_filename = f"{label_base_filename}_{slice_idx:03d}.npy"
+    np.save(os.path.join(feature_slice_dest_dir,feature_slice_filename), padded_feature_slice[np.newaxis,:])
+    np.save(os.path.join(label_slice_dest_dir,label_slice_filename), padded_label_slice[np.newaxis,:])
+
+
+    # Done: get pixel_counts
+    if get_pixel_counts:
+        unique,counts = np.unique(padded_label_slice,return_counts = True)
+        slice_pixel_counts.update({label:count for label,count in zip(unique,counts)})
+    return (slice_idx, slice_pixel_counts)
+
 
 def get_train_val_test_split():
     """
@@ -377,6 +419,7 @@ def extract_kwyk_slices(max_shape):
                 ) for feature,label in zipped],
             )
             if mode == 'train':
+                # train_pixel_counts += sum(pixel_counts,Counter())
                 for item in pixel_counts:
                     train_pixel_counts += item
     
