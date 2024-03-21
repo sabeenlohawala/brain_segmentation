@@ -134,7 +134,7 @@ def transform_feature_label_pair(feature: str, label: str) -> Tuple[int, int, in
     label_vol, label_aff, label_hdr = utils.load_volume(label, im_only=False)
     feature_vol, feature_aff, feature_hdr = utils.load_volume(feature, im_only=False)
 
-    label_vol = label_vol.astype("int16")
+    label_vol = label_vol.astype("uint16")
 
     mask, cropping = cropLabelVol(label_vol)
     feature_vol = applyCropping(feature_vol, cropping)
@@ -196,8 +196,8 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir=SOURCE_DIR_00
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:10]
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:10]
 
     return list(zip(features, labels))
 
@@ -245,7 +245,7 @@ def extract_feature_label_slices(
         feature_vol = np.array(nobrainer.transform.warp(feature_vol, affine, order=1))
         label_vol = np.array(
             nobrainer.transform.warp(label_vol, affine, order=0)
-        ).astype("int16")
+        ).astype("uint16")
 
     slice_idx = 0
     pixel_counts = Counter()
