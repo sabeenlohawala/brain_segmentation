@@ -9,6 +9,7 @@ import torch
 import wandb
 from lightning.fabric import Fabric, seed_everything
 
+
 def main_timer(func):
     """Decorator to time any function"""
 
@@ -26,6 +27,7 @@ def main_timer(func):
 
     return function_wrapper
 
+
 def set_seed(seed: int = 0) -> None:
     """Set the seed before GPU training
 
@@ -42,6 +44,7 @@ def set_seed(seed: int = 0) -> None:
         # (!! use only for fixed size inputs !!)
         # False = Always same algo --> slower but reproducible
         torch.backends.cudnn.benchmark = True
+
 
 def init_cuda() -> None:
     torch.cuda.empty_cache()
@@ -66,6 +69,7 @@ def init_cuda() -> None:
             "Use the same CUDA algorithms for each forward pass: ",
             torch.backends.cudnn.benchmark,
         )
+
 
 def init_wandb(
     project_name: str,
@@ -101,6 +105,7 @@ def init_wandb(
         include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
     )
 
+
 def init_fabric(**kwargs) -> L.fabric:
     fabric = Fabric(**kwargs)
     fabric.launch()
@@ -117,6 +122,7 @@ def init_fabric(**kwargs) -> L.fabric:
         print(f"Initialize Process: {fabric.global_rank}")
 
     return fabric
+
 
 def finish_wandb(out_file: str) -> None:
     """

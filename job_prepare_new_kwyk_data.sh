@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -t 01:00:00
+#SBATCH -t 06:00:00
 #SBATCH -N 1
-#SBATCH -c 4
+#SBATCH -c 8
 #SBATCH -p gablab
 #SBATCH -o ./logs/new_prepare_data.out
 #SBATCH -e ./logs/new_prepare_data.err

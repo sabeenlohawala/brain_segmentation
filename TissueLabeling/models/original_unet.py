@@ -58,7 +58,7 @@ class OriginalUnet(nn.Module):
                 for i in range(len(down_channels) - 2)
             ]
         )
-        
+
         self.shared_block = Block(down_channels[-2], down_channels[-1], up=True)
 
         # Upsample

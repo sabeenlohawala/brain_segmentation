@@ -6,6 +6,7 @@ import nibabel as nib
 import numpy as np
 import torch
 
+
 def load_brains(image_file: str, mask_file: str, file_path: str):
     # ensure that mask and image numbers match
     image_nr = image_file.split("_")[1]
@@ -25,6 +26,7 @@ def load_brains(image_file: str, mask_file: str, file_path: str):
     brain[brain_mask == 0] = 0
 
     return brain, brain_mask, image_nr
+
 
 def crop(image: np.array, height: int, width: int) -> np.array:
     # find image-optimal crop
@@ -81,6 +83,7 @@ def crop(image: np.array, height: int, width: int) -> np.array:
 
     return image
 
+
 def brain_coord(slice: torch.tensor) -> Tuple[int, int, int, int]:
     """
     Computes the coordnates of a rectangle
@@ -135,8 +138,8 @@ def brain_area(slice: torch.tensor) -> torch.tensor:
 
     return slice[cut_top_temp : cut_bottom_temp + 1, cut_left_temp : cut_right_temp + 1]
 
-def mapping(mask: np.array, nr_of_classes=51, original=True):
 
+def mapping(mask: np.array, nr_of_classes=51, original=True):
     # if original == True, map from original --> num-class column
     # if original == False, map from index --> num-class column
 
@@ -150,11 +153,19 @@ def mapping(mask: np.array, nr_of_classes=51, original=True):
         spamreader = csv.reader(csvfile, delimiter=",", quotechar="|")
         # skip header
         header = next(spamreader, None)
-        original_index = header.index('original') # original numbered segments
-        new_index = header.index('index') # 107-class numbered segments
+        original_index = header.index("original")  # original numbered segments
+        new_index = header.index("index")  # 107-class numbered segments
         map_index = original_index if original else new_index
 
-        col_index = new_index if nr_of_classes == 107 else (header.index('2-class') if nr_of_classes == 2 else header.index(f'{nr_of_classes-1}-class'))
+        col_index = (
+            new_index
+            if nr_of_classes == 107
+            else (
+                header.index("2-class")
+                if nr_of_classes == 2
+                else header.index(f"{nr_of_classes-1}-class")
+            )
+        )
 
         for row in spamreader:
             class_mapping[int(row[map_index])] = int(row[col_index])
@@ -173,6 +184,7 @@ def mapping(mask: np.array, nr_of_classes=51, original=True):
     mask = mask * -1
 
     return mask
+
 
 def create_affine_transformation_matrix(
     n_dims, scaling=None, rotation=None, shearing=None, translation=None
@@ -193,9 +205,7 @@ def create_affine_transformation_matrix(
     T_translation = np.eye(n_dims + 1)
 
     if scaling is not None:
-        T_scaling[np.arange(n_dims + 1), np.arange(n_dims + 1)] = np.append(
-            scaling, 1
-        )
+        T_scaling[np.arange(n_dims + 1), np.arange(n_dims + 1)] = np.append(scaling, 1)
 
     if shearing is not None:
         shearing_index = np.ones((n_dims + 1, n_dims + 1), dtype="bool")
@@ -224,7 +234,6 @@ def create_affine_transformation_matrix(
         return T_translation @ T_rot @ T_shearing @ T_scaling
 
     else:
-
         if rotation is None:
             rotation = np.zeros(n_dims)
         else:
@@ -251,15 +260,18 @@ def create_affine_transformation_matrix(
             np.cos(rotation[2]),
         ]
         return T_translation @ T_rot3 @ T_rot2 @ T_rot1 @ T_shearing @ T_scaling
-    
-def draw_value_from_distribution(hyperparameter,
-                                 size=1,
-                                 distribution='uniform',
-                                 centre=0.,
-                                 default_range=10.0,
-                                 positive_only=False,
-                                 return_as_tensor=False,
-                                 batchsize=None):
+
+
+def draw_value_from_distribution(
+    hyperparameter,
+    size=1,
+    distribution="uniform",
+    centre=0.0,
+    default_range=10.0,
+    positive_only=False,
+    return_as_tensor=False,
+    batchsize=None,
+):
     """Sample values from a uniform, or normal distribution of given hyperparameters.
     These hyperparameters are to the number of 2 in both uniform and normal cases.
     :param hyperparameter: values of the hyperparameters. Can either be:
@@ -296,23 +308,33 @@ def draw_value_from_distribution(hyperparameter,
     hyperparameter = None
     if not isinstance(hyperparameter, np.ndarray):
         if hyperparameter is None:
-            hyperparameter = np.array([[centre - default_range] * size, [centre + default_range] * size])
+            hyperparameter = np.array(
+                [[centre - default_range] * size, [centre + default_range] * size]
+            )
         elif isinstance(hyperparameter, (int, float)):
-            hyperparameter = np.array([[centre - hyperparameter] * size, [centre + hyperparameter] * size])
+            hyperparameter = np.array(
+                [[centre - hyperparameter] * size, [centre + hyperparameter] * size]
+            )
         elif isinstance(hyperparameter, (list, tuple)):
-            assert len(hyperparameter) == 2, 'if list, parameter_range should be of length 2.'
+            assert (
+                len(hyperparameter) == 2
+            ), "if list, parameter_range should be of length 2."
             hyperparameter = np.transpose(np.tile(np.array(hyperparameter), (size, 1)))
         else:
-            raise ValueError('parameter_range should either be None, a number, a sequence, or a numpy array.')
+            raise ValueError(
+                "parameter_range should either be None, a number, a sequence, or a numpy array."
+            )
     elif isinstance(hyperparameter, np.ndarray):
-        assert hyperparameter.shape[0] % 2 == 0, 'number of rows of parameter_range should be divisible by 2'
+        assert (
+            hyperparameter.shape[0] % 2 == 0
+        ), "number of rows of parameter_range should be divisible by 2"
         n_modalities = int(hyperparameter.shape[0] / 2)
         modality_idx = 2 * np.random.randint(n_modalities)
-        hyperparameter = hyperparameter[modality_idx: modality_idx + 2, :]
+        hyperparameter = hyperparameter[modality_idx : modality_idx + 2, :]
 
     # draw values as tensor
     if return_as_tensor:
-        print('dont return as tensor?')
+        print("dont return as tensor?")
         parameter_value = None
         # shape = KL.Lambda(lambda x: tf.convert_to_tensor(hyperparameter.shape[1], 'int32'))([])
         # if batchsize is not None:
@@ -333,12 +355,18 @@ def draw_value_from_distribution(hyperparameter,
 
     # draw values as numpy array
     else:
-        if distribution == 'uniform':
-            parameter_value = np.random.uniform(low=hyperparameter[0, :], high=hyperparameter[1, :])
-        elif distribution == 'normal':
-            parameter_value = np.random.normal(loc=hyperparameter[0, :], scale=hyperparameter[1, :])
+        if distribution == "uniform":
+            parameter_value = np.random.uniform(
+                low=hyperparameter[0, :], high=hyperparameter[1, :]
+            )
+        elif distribution == "normal":
+            parameter_value = np.random.normal(
+                loc=hyperparameter[0, :], scale=hyperparameter[1, :]
+            )
         else:
-            raise ValueError("Distribution not supported, should be 'uniform' or 'normal'.")
+            raise ValueError(
+                "Distribution not supported, should be 'uniform' or 'normal'."
+            )
 
         if positive_only:
             parameter_value[parameter_value < 0] = 0

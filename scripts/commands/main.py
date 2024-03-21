@@ -24,16 +24,25 @@ from TissueLabeling.models.original_unet import OriginalUnet
 from TissueLabeling.models.attention_unet import AttentionUnet
 from TissueLabeling.parser import get_args
 from TissueLabeling.training.trainer import Trainer
-from TissueLabeling.utils import init_cuda, init_fabric, init_wandb, set_seed, main_timer
+from TissueLabeling.utils import (
+    init_cuda,
+    init_fabric,
+    init_wandb,
+    set_seed,
+    main_timer,
+)
+
 
 def select_model(config, image_dims):
     """
     Selects the model based on the model name provided in the config file.
     """
     if config.model_name == "segformer":
-        model = Segformer(config.nr_of_classes, pretrained=config.pretrained, image_dims=image_dims)
+        model = Segformer(
+            config.nr_of_classes, pretrained=config.pretrained, image_dims=image_dims
+        )
     elif config.model_name == "original_unet":
-        model = OriginalUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
+        model = OriginalUnet(image_channels=1, nr_of_classes=config.nr_of_classes)
     elif config.model_name == "attention_unet":
         model = AttentionUnet(
             dim=16,
@@ -41,7 +50,7 @@ def select_model(config, image_dims):
             dim_mults=(2, 4, 8, 16, 32, 64),
         )
     elif config.model_name == "nobrainer_unet":
-        model = OriginalUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
+        model = OriginalUnet(image_channels=1, nr_of_classes=config.nr_of_classes)
     else:
         print(f"Invalid model name provided: {config.model_name}")
         sys.exit()
@@ -49,8 +58,8 @@ def select_model(config, image_dims):
     print(f"{config.model_name} found")
     if config.checkpoint:
         print(f"Loading from checkpoint...")
-        model.load_state_dict(torch.load(config.checkpoint)['model'])
-        
+        model.load_state_dict(torch.load(config.checkpoint)["model"])
+
     return model
 
 
@@ -62,7 +71,7 @@ def update_config(config):
         config = Configuration(config)
 
     elif sys.argv[1] == "resume-train":
-        chkpt_folder = os.path.join('results/', config.logdir)
+        chkpt_folder = os.path.join("results/", config.logdir)
 
         config_file = os.path.join(chkpt_folder, "config.json")
         if not os.path.exists(config_file):
@@ -77,8 +86,10 @@ def update_config(config):
             sys.exit("No checkpoints exist to resume training")
 
         data["checkpoint"] = dice_list[-1]
-        data["start_epoch"] = int(os.path.basename(dice_list[-1]).split('.')[0].split('_')[-1])
-        
+        data["start_epoch"] = int(
+            os.path.basename(dice_list[-1]).split(".")[0].split("_")[-1]
+        )
+
         configs = sorted(glob.glob(os.path.join(chkpt_folder, "config*.json")))
         config_file_name = f"config_resume_{len(configs):02d}.json"
         args = argparse.Namespace(**data)
@@ -88,6 +99,7 @@ def update_config(config):
         sys.exit("Invalid Sub-command")
 
     return config
+
 
 @main_timer
 def main():
@@ -103,8 +115,17 @@ def main():
     init_cuda()
 
     # loss function
-    loss_fn = Dice(fabric, config, is_loss=True) if config.loss_fn == 'dice' else SoftmaxFocalLoss()
-    metric = Dice(fabric,config, is_loss=False, class_specific_scores=config.class_specific_scores)
+    loss_fn = (
+        Dice(fabric, config, is_loss=True)
+        if config.loss_fn == "dice"
+        else SoftmaxFocalLoss()
+    )
+    metric = Dice(
+        fabric,
+        config,
+        is_loss=False,
+        class_specific_scores=config.class_specific_scores,
+    )
 
     # get data loader
     train_loader, val_loader, _, image_dims = get_data_loader(config)
@@ -123,16 +144,20 @@ def main():
     if fabric.global_rank == 0 and config.wandb_on:
         # model params to track with wandb
         model_params = {
-            'learning rate': config.lr,
-            '# epochs': config.num_epochs,
-            'batch size': config.batch_size,
-            'model': config.model_name,
-            'dataset': config.data_dir,
-            'validation frequency': "epoch",
-            'precision': config.precision
-            }
+            "learning rate": config.lr,
+            "# epochs": config.num_epochs,
+            "batch size": config.batch_size,
+            "model": config.model_name,
+            "dataset": config.data_dir,
+            "validation frequency": "epoch",
+            "precision": config.precision,
+        }
         init_wandb("Brain Segmentation", fabric, model_params, config.wandb_description)
-        save_frequency = len(train_loader) if model_params['validation frequency'] == "epoch" else 1000
+        save_frequency = (
+            len(train_loader)
+            if model_params["validation frequency"] == "epoch"
+            else 1000
+        )
         wandb.watch(model, log_freq=save_frequency)
 
     trainer = Trainer(

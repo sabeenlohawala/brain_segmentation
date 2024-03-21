@@ -6,7 +6,9 @@ from transformers import SegformerConfig, SegformerForSemanticSegmentation
 
 # segformer model
 class Segformer(nn.Module):
-    def __init__(self, nr_of_classes: int, pretrained: bool = False, image_dims = (162,194)):
+    def __init__(
+        self, nr_of_classes: int, pretrained: bool = False, image_dims=(162, 194)
+    ):
         """
         Initialize Segformer mit-b1 calibration
 

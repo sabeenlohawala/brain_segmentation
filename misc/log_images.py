@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import wandb
+
 # from matplotlib.colors import BoundaryNorm, ListedColormap
 # import matplotlib.colors as mcolors
 from PIL import Image
@@ -21,14 +22,15 @@ from TissueLabeling.models.segformer import Segformer
 from TissueLabeling.models.original_unet import OriginalUnet
 from TissueLabeling.models.attention_unet import AttentionUnet
 
-def load_model(config, checkpoint_path = None):
+
+def load_model(config, checkpoint_path=None):
     """
     Selects the model based on the model name provided in the config file.
     """
     if config.model_name == "segformer":
         model = Segformer(config.nr_of_classes, pretrained=config.pretrained)
     elif config.model_name == "original_unet":
-        model = OriginalUnet(image_channels=1,nr_of_classes=config.nr_of_classes)
+        model = OriginalUnet(image_channels=1, nr_of_classes=config.nr_of_classes)
     elif config.model_name == "attention_unet":
         model = AttentionUnet(
             dim=16,
@@ -43,20 +45,25 @@ def load_model(config, checkpoint_path = None):
     if checkpoint_path:
         print(f"Loading from checkpoint...")
         if torch.cuda.is_available():
-            model.load_state_dict(torch.load(checkpoint_path)['model'])
+            model.load_state_dict(torch.load(checkpoint_path)["model"])
         else:
-            model.load_state_dict(torch.load(checkpoint_path,map_location=torch.device('cpu'))['model'])
-        
+            model.load_state_dict(
+                torch.load(checkpoint_path, map_location=torch.device("cpu"))["model"]
+            )
+
         # checkpoint path is something like: 'logdir/checkpoint_1000.chkpt'
-        config.start_epoch = int(checkpoint_path.split('/')[-1].split('.')[0].split('_')[-1])
+        config.start_epoch = int(
+            checkpoint_path.split("/")[-1].split(".")[0].split("_")[-1]
+        )
 
     return model
+
 
 def get_config(logdir):
     """
     Gets the config file based on the command line arguments.
     """
-    chkpt_folder = os.path.join('results/', logdir)
+    chkpt_folder = os.path.join("results/", logdir)
 
     config_file = os.path.join(chkpt_folder, "config.json")
     if not os.path.exists(config_file):
@@ -78,6 +85,7 @@ def get_config(logdir):
 
     return config, dice_list
 
+
 class Log_Images_v2:
     def __init__(
         self,
@@ -90,10 +98,10 @@ class Log_Images_v2:
         self.model_name = config.model_name
         self.nr_of_classes = config.nr_of_classes
         self.writer = writer
-        if 'unet' in self.model_name:
-            self.image_shape = (160,192)
+        if "unet" in self.model_name:
+            self.image_shape = (160, 192)
         else:
-            self.image_shape = (162,194)
+            self.image_shape = (162, 194)
 
         # color map to get always the same colors for classes
         if config.nr_of_classes == 51 or config.nr_of_classes == 107:
@@ -101,22 +109,22 @@ class Log_Images_v2:
             rgb = colors
         else:
             colors = plt.cm.hsv(np.linspace(0, 1, config.nr_of_classes))
-            rgb = colors[:,:-1] * 255
-        self.color_range = np.zeros((256,3))
-        self.color_range[:rgb.shape[0],:] = rgb
+            rgb = colors[:, :-1] * 255
+        self.color_range = np.zeros((256, 3))
+        self.color_range[: rgb.shape[0], :] = rgb
         # # new plt cmap
         # self.cmap = ListedColormap(colors)
         # # new plt norm
         # bounds = np.arange(0, config.nr_of_classes + 1)
         # self.norm = BoundaryNorm(bounds, self.cmap.N)
 
-        print('Loading brains...')
+        print("Loading brains...")
         # load always the same image from validation set
         image_file = "pac_36_orig.nii.gz"
         mask_file = "pac_36_aseg.nii.gz"
         file_path = "/nese/mit/group/sig/users/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs/"
         brain, mask, _ = load_brains(image_file, mask_file, file_path)
-        mask = mapping(mask,nr_of_classes=self.nr_of_classes)
+        mask = mapping(mask, nr_of_classes=self.nr_of_classes)
 
         self.brain_slices, self.mask_slices = [], []
 
@@ -125,26 +133,45 @@ class Log_Images_v2:
         normalization_constants = np.load(
             "/nese/mit/group/sig/users/matth406/nobrainer_data_norm/data_prepared_medium/normalization_constants.npy"
         )
-        self.brain_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]))
-        self.mask_slices = torch.empty((len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]),dtype=torch.long)
+        self.brain_slices = torch.empty(
+            (len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1])
+        )
+        self.mask_slices = torch.empty(
+            (len(self.slice_idx) * 3, 1, self.image_shape[0], self.image_shape[1]),
+            dtype=torch.long,
+        )
 
-        print('Initializing logging_dict...')
+        print("Initializing logging_dict...")
         i = 0
         self.logging_dict = {}
         for d in range(3):
             for slice_id in self.slice_idx:
                 if d == 0:
-                    brain_slice = crop(brain[slice_id, :, :], self.image_shape[0], self.image_shape[1])
-                    mask_slice = crop(mask[slice_id, :, :], self.image_shape[0], self.image_shape[1])
+                    brain_slice = crop(
+                        brain[slice_id, :, :], self.image_shape[0], self.image_shape[1]
+                    )
+                    mask_slice = crop(
+                        mask[slice_id, :, :], self.image_shape[0], self.image_shape[1]
+                    )
                 if d == 1:
-                    brain_slice = crop(brain[:, slice_id, :], self.image_shape[0], self.image_shape[1])
-                    mask_slice = crop(mask[:, slice_id, :], self.image_shape[0], self.image_shape[1])
+                    brain_slice = crop(
+                        brain[:, slice_id, :], self.image_shape[0], self.image_shape[1]
+                    )
+                    mask_slice = crop(
+                        mask[:, slice_id, :], self.image_shape[0], self.image_shape[1]
+                    )
                 if d == 2:
-                    brain_slice = crop(brain[:, :, slice_id], self.image_shape[0], self.image_shape[1])
-                    mask_slice = crop(mask[:, :, slice_id], self.image_shape[0], self.image_shape[1])
+                    brain_slice = crop(
+                        brain[:, :, slice_id], self.image_shape[0], self.image_shape[1]
+                    )
+                    mask_slice = crop(
+                        mask[:, :, slice_id], self.image_shape[0], self.image_shape[1]
+                    )
 
                 self.logging_dict[f"Image d{d} c{slice_id}"] = self.__create_plot(
-                    self.wandb_on, brain_slice, caption="Raw Image",#fig_path=f'/om2/user/sabeen/test_imgs/raw_d{d}_c{slice_id}_fs.png'
+                    self.wandb_on,
+                    brain_slice,
+                    caption="Raw Image",  # fig_path=f'/om2/user/sabeen/test_imgs/raw_d{d}_c{slice_id}_fs.png'
                 )
                 self.logging_dict[f"True Mask d{d} c{slice_id}"] = self.__create_plot(
                     self.wandb_on,
@@ -176,30 +203,30 @@ class Log_Images_v2:
         wandb_on: bool,
         image: np.array,
         caption: str,
-        color_range = None,
+        color_range=None,
         fig_path: str = None,
     ):
-        if fig_path is not None and len(fig_path.split('.')) == 1:
-            fig_path = fig_path + '.png'
-            
+        if fig_path is not None and len(fig_path.split(".")) == 1:
+            fig_path = fig_path + ".png"
+
         if color_range is not None:
             image = image.astype(np.uint8)
-            channels = [cv2.LUT(image, color_range[:,i]) for i in range(3)]
+            channels = [cv2.LUT(image, color_range[:, i]) for i in range(3)]
             new_img = np.dstack(channels)
-        
+
             if fig_path is not None:
-                new_img_bgr = np.dstack([channels[2],channels[1],channels[0]])
-                cv2.imwrite(fig_path,new_img_bgr)
+                new_img_bgr = np.dstack([channels[2], channels[1], channels[0]])
+                cv2.imwrite(fig_path, new_img_bgr)
             image = Image.fromarray(np.uint8(new_img))
         else:
             img_min = np.min(image)
             img_max = np.max(image)
             new_img = ((image - img_min) / (img_max - img_min) * 255).astype(np.uint8)
             if fig_path is not None:
-                cv2.imwrite(fig_path,new_img)
+                cv2.imwrite(fig_path, new_img)
             image = Image.fromarray(np.uint8(new_img))
         if wandb_on:
-                image = wandb.Image(image, caption=caption)
+            image = wandb.Image(image, caption=caption)
         return image
 
     @torch.no_grad()
@@ -225,18 +252,22 @@ class Log_Images_v2:
         current_logging_dict = self.logging_dict | logging_dict
         if self.wandb_on:
             wandb.log(current_logging_dict, commit=commit)
-        
+
         if self.writer is not None:
-            print('Logging images...')
+            print("Logging images...")
             for key, img in current_logging_dict.items():
                 img = np.array(img)
                 if len(img.shape) == 3:
-                    self.writer.add_image(key, np.array(img), config.start_epoch, dataformats='HWC')
+                    self.writer.add_image(
+                        key, np.array(img), config.start_epoch, dataformats="HWC"
+                    )
                 elif len(img.shape) == 2:
-                    self.writer.add_image(key, np.array(img), config.start_epoch, dataformats='HW')
+                    self.writer.add_image(
+                        key, np.array(img), config.start_epoch, dataformats="HW"
+                    )
         return current_logging_dict
-    
-    def __extract_numbers_names_colors(self,FreeSurferColorLUT=''):
+
+    def __extract_numbers_names_colors(self, FreeSurferColorLUT=""):
         """
         Extract lists of numbers, names, and colors representing anatomical brain
         regions from FreeSurfer's FreeSurferColorLUT.txt lookup table file.
@@ -279,7 +310,7 @@ class Log_Images_v2:
         #              os.environ['FREESURFER_HOME'], 'FreeSurferColorLUT.txt')
 
         if FreeSurferColorLUT and os.path.exists(FreeSurferColorLUT):
-            f = open(FreeSurferColorLUT, 'r')
+            f = open(FreeSurferColorLUT, "r")
             lines = f.readlines()
         # else:
         #     lut = lut_text()
@@ -293,8 +324,7 @@ class Log_Images_v2:
             if strings and is_number(strings[0]):
                 numbers.append(int(strings[0]))
                 names.append(strings[1])
-                colors.append([int(strings[2]), int(strings[3]),
-                            int(strings[4])])
+                colors.append([int(strings[2]), int(strings[3]), int(strings[4])])
 
         return numbers, names, colors
 
@@ -309,38 +339,47 @@ class Log_Images_v2:
         # get the last 24 lines of the readme file (format--> id: name)
         if nr_of_classes == 51:
             voxmorph_label_index = [
-                item.strip().split(":") for item in voxmorph_label_index[200:251] if item != ""
-            ] # HACK
+                item.strip().split(":")
+                for item in voxmorph_label_index[200:251]
+                if item != ""
+            ]  # HACK
         elif nr_of_classes == 107:
             voxmorph_label_index = [
-                item.strip().split(":") for item in voxmorph_label_index[91:198] if item != ""
-            ] # HACK
+                item.strip().split(":")
+                for item in voxmorph_label_index[91:198]
+                if item != ""
+            ]  # HACK
         elif nr_of_classes == 6:
             voxmorph_label_index = [
-                item.strip().split(":") for item in voxmorph_label_index[253:260] if item != ""
-            ] # HACK
+                item.strip().split(":")
+                for item in voxmorph_label_index[253:260]
+                if item != ""
+            ]  # HACK
         elif nr_of_classes == 2:
             voxmorph_label_index = [
-                item.strip().split(":") for item in voxmorph_label_index[262:264] if item != ""
-            ] # HACK
+                item.strip().split(":")
+                for item in voxmorph_label_index[262:264]
+                if item != ""
+            ]  # HACK
         else:
-            raise Exception(f'coloring for nr_of_classes = {nr_of_classes} not found')
-        
+            raise Exception(f"coloring for nr_of_classes = {nr_of_classes} not found")
+
         voxmorph_label_index = [
             [int(item[0]), item[1].strip()] for item in voxmorph_label_index
         ]
         voxmorph_label_index_dict = dict(voxmorph_label_index)
         my_colors = [
-            fs_colors[fs_names.index(item)] for item in voxmorph_label_index_dict.values()
+            fs_colors[fs_names.index(item)]
+            for item in voxmorph_label_index_dict.values()
         ]
 
         return np.array(my_colors)
 
 
-logdir = '20240122-multi-8gpu-Msegformer\Ldice\C51\B670\A0'
+logdir = "20240122-multi-8gpu-Msegformer\Ldice\C51\B670\A0"
 config, checkpoint_paths = get_config(logdir)
 
-writer=None
+writer = None
 writer = SummaryWriter(f"results/{logdir}")
 print("SummaryWriter created")
 
@@ -364,8 +403,8 @@ checkpoint_path = checkpoint_paths[-1]
 model = load_model(config, checkpoint_path)
 print(f"Epoch {config.start_epoch}")
 
-image_logger = Log_Images_v2(config,writer=writer)
-log = image_logger.logging(model,config.start_epoch,True)
+image_logger = Log_Images_v2(config, writer=writer)
+log = image_logger.logging(model, config.start_epoch, True)
 
 # print('Logging images...')
 # for key, img in log.items():
@@ -374,5 +413,5 @@ log = image_logger.logging(model,config.start_epoch,True)
 #         writer.add_image(key, np.array(img), config.start_epoch, dataformats='HWC')
 #     elif len(img.shape) == 2:
 #         writer.add_image(key, np.array(img), config.start_epoch, dataformats='HW')
-    
+
 writer.close()

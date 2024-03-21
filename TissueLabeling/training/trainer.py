@@ -11,6 +11,7 @@ from TissueLabeling.metrics.metrics import Classification_Metrics
 from TissueLabeling.training.logging import Log_Images
 from TissueLabeling.utils import finish_wandb
 
+
 class Trainer:
     def __init__(
         self,
@@ -44,7 +45,7 @@ class Trainer:
             print("SummaryWriter created")
         else:
             self.writer = None
-        
+
         if self.fabric.global_rank == 0 and self.config.log_images:
             self.image_logger = Log_Images(
                 self.fabric,
@@ -54,18 +55,18 @@ class Trainer:
 
     def train_and_validate(self) -> None:
         self.train_metrics = Classification_Metrics(
-            self.config.nr_of_classes, 
-            prefix="Train", 
-            wandb_on=self.config.wandb_on, 
-            loss_name=self.config.loss_fn, 
-            metric_name=self.config.metric
+            self.config.nr_of_classes,
+            prefix="Train",
+            wandb_on=self.config.wandb_on,
+            loss_name=self.config.loss_fn,
+            metric_name=self.config.metric,
         )
         self.validation_metrics = Classification_Metrics(
-            self.config.nr_of_classes, 
-            prefix=f"Validation", 
-            wandb_on=self.config.wandb_on, 
-            loss_name=self.config.loss_fn, 
-            metric_name=self.config.metric
+            self.config.nr_of_classes,
+            prefix=f"Validation",
+            wandb_on=self.config.wandb_on,
+            loss_name=self.config.loss_fn,
+            metric_name=self.config.metric,
         )
 
         print(
@@ -93,7 +94,7 @@ class Trainer:
         self._log_wandb(log=False)
 
     def _train(self) -> None:
-        print('Training...')
+        print("Training...")
         batch_idx = 0
         self.model.train()
         for i, (image, mask) in enumerate(self.train_loader):
@@ -112,13 +113,15 @@ class Trainer:
             else:
                 class_dice = None
                 overall_dice = self.metric(mask.long(), probs)
-            self.train_metrics.compute(loss = loss.item(), metric = overall_dice.item(), class_dice=class_dice)
+            self.train_metrics.compute(
+                loss=loss.item(), metric=overall_dice.item(), class_dice=class_dice
+            )
 
             batch_idx += 1
-        
+
     @torch.no_grad()
     def _validation(self) -> None:
-        print('Validation...')
+        print("Validation...")
         self.model.eval()
         for i, (image, mask) in enumerate(self.val_loader):
             # mask[mask != 0] = 1 # uncomment for binary classification check
@@ -134,26 +137,34 @@ class Trainer:
             else:
                 class_dice = None
                 overall_dice = self.metric(mask.long(), probs)
-            self.validation_metrics.compute(loss = loss.item(), metric = overall_dice.item(), class_dice=class_dice)
-    
+            self.validation_metrics.compute(
+                loss=loss.item(), metric=overall_dice.item(), class_dice=class_dice
+            )
+
     def _log_metrics(self, epoch) -> None:
         if self.fabric.global_rank == 0:
-            print(f'Process {self.fabric.global_rank} logging metrics...')
+            print(f"Process {self.fabric.global_rank} logging metrics...")
             self.train_metrics.log(epoch, commit=False, writer=self.writer)
             self.validation_metrics.log(epoch, commit=False, writer=self.writer)
-    
+
     def _log_image(self, epoch) -> None:
-        if self.config.log_images and self.fabric.global_rank == 0 and (epoch == 1 or epoch % self.config.image_log_freq == 0):
+        if (
+            self.config.log_images
+            and self.fabric.global_rank == 0
+            and (epoch == 1 or epoch % self.config.image_log_freq == 0)
+        ):
             print(f"Process {self.fabric.global_rank} saving image...")
             self.image_logger.logging(self.model, epoch, commit=True)
-    
+
     def _reset_metrics(self) -> None:
         print("Resetting metrics...")
         self.train_metrics.reset()
         self.validation_metrics.reset()
-    
+
     def _save_checkpoint(self, epoch) -> None:
-        if self.config.save_checkpoint and (epoch == 1 or epoch % self.config.checkpoint_freq == 0):
+        if self.config.save_checkpoint and (
+            epoch == 1 or epoch % self.config.checkpoint_freq == 0
+        ):
             print(f"Saving epoch {epoch} checkpoint...")
             model_save_path = f"{self.config.logdir}/checkpoint_{epoch:04d}.ckpt"
             state = {
@@ -161,12 +172,14 @@ class Trainer:
                 "optimizer": self.optimizer,
             }
             self.fabric.save(model_save_path, state)
-    
-    def _log_wandb(self,log) -> None:
+
+    def _log_wandb(self, log) -> None:
         if self.fabric.global_rank == 0 and self.config.wandb_on:
             print("Saving state to wandb...")
-            model_save_path = f"{self.config.logdir}/checkpoint_{self.config.num_epochs:04d}.ckpt"
-            self._save_state(model_save_path,log)
+            model_save_path = (
+                f"{self.config.logdir}/checkpoint_{self.config.num_epochs:04d}.ckpt"
+            )
+            self._save_state(model_save_path, log)
 
             # add .out file to wandb and terminate
             wandb_log_file = os.path.join(

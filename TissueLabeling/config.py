@@ -48,26 +48,36 @@ class Configuration:
         self.loss_fn = self.loss_fn.lower()
         self.metric = getattr(args, "metric", "dice")
         self.metric = self.metric.lower()
-        self.class_specific_scores = getattr(args, "class_specific_scores", 0) if self.metric == 'dice' else 0
+        self.class_specific_scores = (
+            getattr(args, "class_specific_scores", 0) if self.metric == "dice" else 0
+        )
 
-        self.new_kwyk_data = getattr(args, "new_kwyk_data",1)
-        self.data_dir = getattr(args, "data_dir",'')
-        self.data_size = getattr(args, "data_size",'small')
-        self.augment = getattr(args,"augment",0)
-        self.aug_mask = getattr(args,"aug_mask",0)
-        self.aug_cutout = getattr(args,"aug_cutout",0)
-        self.cutout_n_holes = getattr(args, "cutout_n_holes", 0) if self.aug_cutout == 1 else 0
-        self.cutout_length = getattr(args, "cutout_length", 0) if self.aug_cutout == 1 else 0
-        self.mask_n_holes = getattr(args, "mask_n_holes", 0) if self.aug_mask == 1 else 0
+        self.new_kwyk_data = getattr(args, "new_kwyk_data", 1)
+        self.data_dir = getattr(args, "data_dir", "")
+        self.data_size = getattr(args, "data_size", "small")
+        self.augment = getattr(args, "augment", 0)
+        self.aug_mask = getattr(args, "aug_mask", 0)
+        self.aug_cutout = getattr(args, "aug_cutout", 0)
+        self.cutout_n_holes = (
+            getattr(args, "cutout_n_holes", 0) if self.aug_cutout == 1 else 0
+        )
+        self.cutout_length = (
+            getattr(args, "cutout_length", 0) if self.aug_cutout == 1 else 0
+        )
+        self.mask_n_holes = (
+            getattr(args, "mask_n_holes", 0) if self.aug_mask == 1 else 0
+        )
         self.mask_length = getattr(args, "mask_length", 0) if self.aug_mask == 1 else 0
-        self.intensity_scale = getattr(args, "intensity_scale",0)
-        
+        self.intensity_scale = getattr(args, "intensity_scale", 0)
+
         self.debug = getattr(args, "debug", 0)
 
         self.seed = getattr(args, "seed", 42)
         self.precision = "32-true"  # "16-mixed"
 
-        self.save_checkpoint = True if getattr(args, "save_checkpoint", 1) == 1 else False
+        self.save_checkpoint = (
+            True if getattr(args, "save_checkpoint", 1) == 1 else False
+        )
         self.log_images = True if getattr(args, "log_images", 0) == 1 else False
         self.checkpoint_freq = getattr(args, "checkpoint_freq", 10)
         self.image_log_freq = getattr(args, "image_log_freq", 10)
@@ -121,25 +131,40 @@ class Configuration:
             self.data_dir = "/om2/user/sabeen/kwyk_final"
             self.aug_dir = ""
         else:
-            if self.data_size == 'small':
-                folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51", 2:"new_small_no_aug_51", 7: "new_small_aug_107"}
-            elif self.data_size == 'med' or self.data_size == 'medium':
-                folder_map = {51: "new_med_no_aug_51", 2:"new_med_no_aug_51"}
+            if self.data_size == "small":
+                folder_map = {
+                    107: "new_small_aug_107",
+                    51: "new_small_no_aug_51",
+                    2: "new_small_no_aug_51",
+                    7: "new_small_aug_107",
+                }
+            elif self.data_size == "med" or self.data_size == "medium":
+                folder_map = {51: "new_med_no_aug_51", 2: "new_med_no_aug_51"}
             else:
-                sys.exit(f"{self.data_size} is not a valid dataset size. Choose from 'small' or 'med'.")
+                sys.exit(
+                    f"{self.data_size} is not a valid dataset size. Choose from 'small' or 'med'."
+                )
 
             if self.nr_of_classes in folder_map:
-                self.data_dir = os.path.join(self.data_root_dir, folder_map[self.nr_of_classes])
+                self.data_dir = os.path.join(
+                    self.data_root_dir, folder_map[self.nr_of_classes]
+                )
             else:
-                sys.exit(f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size")
-            
-            if self.augment: 
-                if self.nr_of_classes == 51 and self.data_size == 'small':
-                    self.aug_dir = os.path.join(self.data_root_dir, "20240217_small_synth_aug")
-                if self.nr_of_classes == 51 and self.data_size == 'med':
-                    self.aug_dir = os.path.join(self.data_root_dir, "20240217_med_synth_aug")
+                sys.exit(
+                    f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size"
+                )
+
+            if self.augment:
+                if self.nr_of_classes == 51 and self.data_size == "small":
+                    self.aug_dir = os.path.join(
+                        self.data_root_dir, "20240217_small_synth_aug"
+                    )
+                if self.nr_of_classes == 51 and self.data_size == "med":
+                    self.aug_dir = os.path.join(
+                        self.data_root_dir, "20240217_med_synth_aug"
+                    )
             else:
-                self.aug_dir = ''
+                self.aug_dir = ""
 
 
 if __name__ == "__main__":
