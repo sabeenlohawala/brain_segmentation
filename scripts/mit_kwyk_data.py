@@ -7,6 +7,7 @@ import sys
 import numpy as np
 from typing import Optional, Tuple
 from collections import Counter
+from functools import reduce
 import random
 import pickle
 import json
@@ -239,7 +240,7 @@ def extract_feature_label_slices(
     if ROTATE_VOL:
         # randomly choose an angle between -20 to 20 for all axes
         angles = np.random.uniform(-20, 20, size=3)
-        assert feature_vol.shape == label_vol.shape
+        # assert feature_vol.shape == label_vol.shape
 
         affine = nobrainer.transform.get_affine(feature_vol.shape, rotation=angles)
         feature_vol = np.array(nobrainer.transform.warp(feature_vol, affine, order=1))
@@ -252,44 +253,44 @@ def extract_feature_label_slices(
 
     for d in range(3):
         # V1: not parallelized: for looping over all slices (currently faster than V2)
-        for i in range(label_vol.shape[d]):
-            # get the slice
-            if d == 0:
-                feature_slice = feature_vol[i, :, :]
-                label_slice = label_vol[i, :, :]
-            elif d == 1:
-                feature_slice = feature_vol[:, i, :]
-                label_slice = label_vol[:, i, :]
-            elif d == 2:
-                feature_slice = feature_vol[:, :, i]
-                label_slice = label_vol[:, :, i]
+        # for i in range(label_vol.shape[d]):
+        #     # get the slice
+        #     if d == 0:
+        #         feature_slice = feature_vol[i, :, :]
+        #         label_slice = label_vol[i, :, :]
+        #     elif d == 1:
+        #         feature_slice = feature_vol[:, i, :]
+        #         label_slice = label_vol[:, i, :]
+        #     elif d == 2:
+        #         feature_slice = feature_vol[:, :, i]
+        #         label_slice = label_vol[:, :, i]
 
-            idx_and_counts = process_slice(
-                feature_slice,
-                label_slice,
-                slice_idx,
-                max_shape,
-                get_pixel_counts,
-                feature_base_filename,
-                label_base_filename,
-                feature_slice_dest_dir,
-                label_slice_dest_dir,
-            )
-            pixel_counts += idx_and_counts[1]
-            # increase slice_idx
-            slice_idx += 1
+        #     idx_and_counts = process_slice(
+        #         feature_slice,
+        #         label_slice,
+        #         slice_idx,
+        #         max_shape,
+        #         get_pixel_counts,
+        #         feature_base_filename,
+        #         label_base_filename,
+        #         feature_slice_dest_dir,
+        #         label_slice_dest_dir,
+        #     )
+        #     pixel_counts += idx_and_counts
+        #     # increase slice_idx
+        #     slice_idx += 1
 
         # V2: trying to paralellize using map (currently slower than V1)
-        # feature_base_filename = os.path.basename(feature).split('.')[0]
-        # label_base_filename = os.path.basename(label).split('.')[0]
-        # if d == 0:
-        #     idx_and_counts = map(lambda i: process_slice(feature_vol[i,:,:],label_vol[i,:,:],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
-        # elif d == 1:
-        #     idx_and_counts = map(lambda i: process_slice(feature_vol[:,i,:],label_vol[:,i,:],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
-        # else:
-        #     idx_and_counts = map(lambda i: process_slice(feature_vol[:,:,i],label_vol[:,:,i],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
-        # slice_idx = idx_and_counts[-1][0] + 1
-        # pixel_counts += sum([counts for _, counts in idx_and_counts], Counter())
+        feature_base_filename = os.path.basename(feature).split('.')[0]
+        label_base_filename = os.path.basename(label).split('.')[0]
+        if d == 0:
+            slice_counts = map(lambda i: process_slice(feature_vol[i,:,:],label_vol[i,:,:],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
+        elif d == 1:
+            slice_counts = map(lambda i: process_slice(feature_vol[:,i,:],label_vol[:,i,:],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
+        else:
+            slice_counts = map(lambda i: process_slice(feature_vol[:,:,i],label_vol[:,:,i],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
+        slice_idx += feature_vol.shape[d]
+        pixel_counts += sum(slice_counts, Counter())
 
     return pixel_counts
 
@@ -329,7 +330,7 @@ def process_slice(
     # discard slices with < 20% brain (> 80% background)
     count_background = np.sum(label_slice == 0)
     if count_background > 0.8 * (label_slice.shape[0] * label_slice.shape[1]):
-        return (slice_idx, slice_pixel_counts)
+        return slice_pixel_counts
 
     # pad slices
     pad_rows = max(0, max_shape[0] - label_slice.shape[0])
@@ -371,7 +372,7 @@ def process_slice(
         slice_pixel_counts.update(
             {label: count for label, count in zip(unique, counts)}
         )
-    return (slice_idx, slice_pixel_counts)
+    return slice_pixel_counts
 
 
 def get_train_val_test_split():
