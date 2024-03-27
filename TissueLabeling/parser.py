@@ -216,6 +216,13 @@ def get_args():
         required=False,
         default=1,
     )
+    train.add_argument(
+        "--null_half",
+        help="Whether to null out half of the image when training: 0 = do not null, 1 = null left/right, 2 = null up/down, 3 = mix left/right and up/down",
+        type=int,
+        required=False,
+        default=0
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

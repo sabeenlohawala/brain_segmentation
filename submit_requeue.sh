@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --requeue
-#SBATCH -t 1-00:00:00
+#SBATCH -t 2-00:00:00
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH --ntasks-per-node=4
 #SBATCH --gres=gpu:a100:4
 #SBATCH --mem=40G # per node memory
-#SBATCH -p normal
-#SBATCH -o ./logs/requeue-intensity-scaling.out
-#SBATCH -e ./logs/requeue-intensity-scaling.err
+#SBATCH -p use-everything
+#SBATCH -o ./logs/requeue-null.out
+#SBATCH -e ./logs/requeue-null.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 
@@ -16,9 +16,9 @@ export PATH="/om2/user/sabeen/miniconda/bin:$PATH"
 conda init bash
 
 # Set default values
-BATCH_SIZE=128
+BATCH_SIZE=512
 LR=0.001
-NUM_EPOCHS=200
+NUM_EPOCHS=150
 MODEL_NAME="segformer"
 LOSS_FN="dice"
 DEBUG=0
@@ -28,15 +28,16 @@ LOG_IMAGES=0
 
 PRETRAINED=0
 
-AUGMENT=0
+AUGMENT=1
 AUG_CUTOUT=0
 CUTOUT_N_HOLES=1
 CUTOUT_LENGTH=8
-AUG_MASK=0
+AUG_MASK=1
 MASK_N_HOLES=1
-MASK_LENGTH=8
+MASK_LENGTH=16
 
-INTENSITY_SCALE=0
+INTENSITY_SCALE=1
+NULL_HALF=2
 
 # LOGDIR="/om2/scratch/tmp/sabeen/20240215-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\A0"
 # LOGDIR="/om2/scratch/tmp/sabeen/20240305-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
@@ -47,7 +48,11 @@ INTENSITY_SCALE=0
 # LOGDIR="/om2/scratch/tmp/sabeen/20240227-mask-$MASK_LENGTH-$MASK_N_HOLES-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 # LOGDIR="/om2/scratch/tmp/sabeen/20240313-mask-$MASK_LENGTH-$MASK_N_HOLES-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 
-LOGDIR="/om2/scratch/tmp/sabeen/20240314-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+# LOGDIR="/om2/scratch/tmp/sabeen/20240314-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+
+# LOGDIR="/om2/scratch/tmp/sabeen/20240325-mask-$MASK_LENGTH-$MASK_N_HOLES-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+LOGDIR="/om2/scratch/tmp/sabeen/20240325-null-$NULL_HALF-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+
 # CHECKPOINT_FILE="$LOGDIR/checkpoint_0001.ckpt"
 
 # Check if checkpoint file exists

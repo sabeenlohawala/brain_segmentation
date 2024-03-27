@@ -76,6 +76,7 @@ class NoBrainerDataset(Dataset):
             self.aug_mask = config.aug_mask
             self.aug_cutout = config.aug_cutout
             self.aug_mask = config.aug_mask
+            self.null_half = config.null_half
             self.cutout_obj = Cutout(config.cutout_n_holes, config.cutout_length)
             self.mask_obj = Mask(config.mask_n_holes, config.mask_length)
             self.intensity_scale = (
@@ -88,6 +89,7 @@ class NoBrainerDataset(Dataset):
             self.aug_mask = 0
             self.aug_cutout = 0
             self.aug_mask = 0
+            self.null_half = 0
             self.cutout_obj = None
             self.mask_obj = None
             self.intensity_scale = None
@@ -148,6 +150,27 @@ class NoBrainerDataset(Dataset):
             # apply mask
             if self.aug_mask == 1:  # TODO: if or elif?
                 image, mask = self.mask_obj(image, mask)
+            
+            # null half
+            left_right_null = self.null_half
+            if left_right_null == 3: # mix null left/right and null up/down
+                left_right_null = random.randint(1,2)
+            if left_right_null == 1: # null left/right
+                width_half = image.shape[1] // 2
+                if random.randint(0, 1):
+                    image[:,:width_half] = 0
+                    mask[:,:width_half] = 0
+                else:
+                    image[:,width_half:] = 0
+                    mask[:,width_half:] = 0
+            elif left_right_null == 2: # null up/down
+                height_half = image.shape[1] // 2
+                if random.randint(0, 1):
+                    image[:height_half,:] = 0
+                    mask[:height_half,:] = 0
+                else:
+                    image[height_half:,:] = 0
+                    mask[height_half:,:] = 0
 
             # resize image to [1,h,w] again
             image = image.unsqueeze(dim=0)

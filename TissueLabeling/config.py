@@ -69,6 +69,7 @@ class Configuration:
         )
         self.mask_length = getattr(args, "mask_length", 0) if self.aug_mask == 1 else 0
         self.intensity_scale = getattr(args, "intensity_scale", 0)
+        self.null_half = getattr(args,"null_half",0)
 
         self.debug = getattr(args, "debug", 0)
 
