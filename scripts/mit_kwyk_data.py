@@ -18,7 +18,7 @@ import nobrainer
 from ext.lab2im import utils, edit_volumes
 from datetime import datetime
 
-from TissueLabeling.brain_utils import mapping
+from TissueLabeling.brain_utils import mapping, load_brains_v2
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -45,15 +45,15 @@ SOURCE_DIR_00 = "/om2/scratch/tmp/sabeen/kwyk/rawdata/"
 
 TRANSFORM_DIR = args.transform_dir  # "/om2/user/sabeen/kwyk_tranform"
 FEATURE_TRANFORM_DIR = f"{TRANSFORM_DIR}/features" if TRANSFORM_DIR != SOURCE_DIR_00 else SOURCE_DIR_00
-LABEL_TRANFORM_DIR = f"{TRANSFORM_DIR}/labels" if TRANSFORM_DIR != SOURCE_DIR_00 else SOURCE_DIR_00
-IDX_PATH = f"{TRANSFORM_DIR}/idx.dat"
+LABEL_TRANFORM_DIR = f"{TRANSFORM_DIR}/labels" if TRANSFORM_DIR != SOURCE_DIR_00 else SOURCE_DIR_00\
 
 SLICE_DEST_DIR = args.slice_dest_dir  # "/om2/user/sabeen/kwyk_final"
+IDX_PATH = f"{SLICE_DEST_DIR}/idx.dat"
+os.makedirs(SLICE_DEST_DIR,exist_ok=True)
 
 ROTATE_VOL = args.rotate_vol
 
 SEED = 42
-
 
 def main_timer(func):
     """Decorator to time any function"""
@@ -136,6 +136,9 @@ def transform_feature_label_pair(feature: str, label: str) -> Tuple[int, int, in
     feature_vol, feature_aff, feature_hdr = utils.load_volume(feature, im_only=False)
 
     label_vol = label_vol.astype("uint16")
+    
+    # apply skull stripping (from Matthias's brain_utils.load_brains function)
+    feature_vol[label_vol == 0] = 0
 
     mask, cropping = cropLabelVol(label_vol)
     feature_vol = applyCropping(feature_vol, cropping)
@@ -197,8 +200,8 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir=SOURCE_DIR_00
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:10]
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:10]
 
     return list(zip(features, labels))
 
@@ -232,6 +235,9 @@ def extract_feature_label_slices(
 
     label_vol = (utils.load_volume(label, im_only=True)).astype("uint16")
     feature_vol = utils.load_volume(feature, im_only=True)
+    if TRANSFORM_DIR == SOURCE_DIR_00:
+        feature_vol[label_vol == 0] = 0 # skull stripping?
+        feature_vol = feature_vol / 255.0
 
     feature_base_filename = os.path.basename(feature).split(".")[0]
     label_base_filename = os.path.basename(label).split(".")[0]
@@ -250,6 +256,7 @@ def extract_feature_label_slices(
 
     slice_idx = 0
     pixel_counts = Counter()
+    all_percent_backgrounds = {}
 
     for d in range(3):
         # V1: not parallelized: for looping over all slices (currently faster than V2)
@@ -292,8 +299,9 @@ def extract_feature_label_slices(
         slice_counts, percent_backgrounds = zip(*slice_counts_and_percent_backgrounds)
         slice_idx += feature_vol.shape[d]
         pixel_counts += sum(slice_counts, Counter())
+        all_percent_backgrounds.update(dict(ChainMap(*percent_backgrounds)))
 
-    return pixel_counts, dict(ChainMap(*percent_backgrounds))
+    return pixel_counts, all_percent_backgrounds
 
 
 def process_slice(
