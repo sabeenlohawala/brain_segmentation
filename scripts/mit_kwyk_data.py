@@ -200,8 +200,8 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir=SOURCE_DIR_00
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:10]
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:10]
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
 
     return list(zip(features, labels))
 

@@ -12,4 +12,4 @@ conda init bash
 # source activate tissue_labeling
 
 # -u ensures that the output is unbuffered, and written immediately to stdout.
-srun python -u scripts/mit_kwyk_data.py "/om2/scratch/tmp/sabeen/kwyk/rawdata/" "/om2/scratch/tmp/sabeen/kwyk_final_uncrop_new/" --rotate_vol=0
+srun python -u scripts/mit_kwyk_data.py "/om2/scratch/tmp/sabeen/kwyk/rawdata/" "/om2/scratch/tmp/sabeen/kwyk_final_uncrop/" --rotate_vol=0
