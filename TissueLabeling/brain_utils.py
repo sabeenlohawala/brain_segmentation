@@ -4,6 +4,7 @@ from typing import Tuple
 
 import nibabel as nib
 import numpy as np
+import pandas as pd
 import torch
 
 
@@ -139,36 +140,16 @@ def brain_area(slice: torch.tensor) -> torch.tensor:
     return slice[cut_top_temp : cut_bottom_temp + 1, cut_left_temp : cut_right_temp + 1]
 
 
-def mapping(mask: np.array, nr_of_classes=51, original=True):
-    # if original == True, map from original --> num-class column
-    # if original == False, map from index --> num-class column
+def mapping(mask: np.array, nr_of_classes=51, reference_col='original'):
 
-    # TODO: handle binary case!!
-
+    new_col = f"2-class" if nr_of_classes == 2 else f"{nr_of_classes-1}-class"
     class_mapping = {}
-    # labels = []
-    with open(
-        "/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv", newline=""
-    ) as csvfile:
-        spamreader = csv.reader(csvfile, delimiter=",", quotechar="|")
-        # skip header
-        header = next(spamreader, None)
-        original_index = header.index("original")  # original numbered segments
-        new_index = header.index("index")  # 107-class numbered segments
-        map_index = original_index if original else new_index
-
-        col_index = (
-            new_index
-            if nr_of_classes == 107
-            else (
-                header.index("2-class")
-                if nr_of_classes == 2
-                else header.index(f"{nr_of_classes-1}-class")
-            )
-        )
-
-        for row in spamreader:
-            class_mapping[int(row[map_index])] = int(row[col_index])
+    df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
+    for value in df[reference_col].unique():
+        filtered_rows = df[df[reference_col] == value]
+        numbers = list(set(filtered_rows[new_col].tolist()))
+        assert len(numbers) <= 1, 'unique mapping does not exist'
+        class_mapping[value] = numbers[0]
 
     # class_mapping = {value.item(): index for index, value in enumerate(labels)}
     u, inv = np.unique(mask, return_inverse=True)
@@ -184,6 +165,58 @@ def mapping(mask: np.array, nr_of_classes=51, original=True):
     mask = mask * -1
 
     return mask
+
+# def mapping(mask: np.array, nr_of_classes=51, original=True, map_class_num = None):
+#     # if original == True, map from original --> num-class column
+#     # if original == False, map from index --> num-class column
+
+#     # TODO: handle binary case!!
+
+#     class_mapping = {}
+#     # labels = []
+#     with open(
+#         "/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv", newline=""
+#     ) as csvfile:
+#         spamreader = csv.reader(csvfile, delimiter=",", quotechar="|")
+#         # skip header
+#         header = next(spamreader, None)
+#         original_index = header.index("original")  # original numbered segments
+#         new_index = header.index("index")  # 107-class numbered segments
+#         class_num_index = None
+#         if map_class_num is not None:
+#             if f'{map_class_num}-class' in header:
+#                 class_num_index = header.index(f'{map_class_num}-class')
+#             else:
+#                 class_num_index = header.index(f'{map_class_num-1}-class')
+#         map_index = original_index if original else class_num_index if class_num_index is not None else new_index
+
+#         col_index = (
+#             new_index
+#             if nr_of_classes == 107
+#             else (
+#                 header.index("2-class")
+#                 if nr_of_classes == 2
+#                 else header.index(f"{nr_of_classes-1}-class")
+#             )
+#         )
+
+#         for row in spamreader:
+#             class_mapping[int(row[map_index])] = int(row[col_index])
+
+#     # class_mapping = {value.item(): index for index, value in enumerate(labels)}
+#     u, inv = np.unique(mask, return_inverse=True)
+#     # num_classes = 50  # len(class_mapping)
+#     for x in u:
+#         if x not in class_mapping:
+#             class_mapping[x] = nr_of_classes - 1
+
+#     # we collect all classes not in the mapping table as an additional "other" class
+#     # mask = np.array([class_mapping[int(x)] if x in labels else len(labels) for x in u])[inv].reshape(mask.shape)
+#     for old, new in class_mapping.items():
+#         mask[mask == old] = -1 * new
+#     mask = mask * -1
+
+#     return mask
 
 
 def create_affine_transformation_matrix(

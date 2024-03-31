@@ -18,8 +18,6 @@ import nobrainer
 from ext.lab2im import utils, edit_volumes
 from datetime import datetime
 
-from TissueLabeling.brain_utils import mapping, load_brains_v2
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "transform_dir", help="Where to save the transformed volumes", type=str

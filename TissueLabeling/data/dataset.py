@@ -16,14 +16,9 @@ from torch.utils.data import Dataset
 from scipy.ndimage import affine_transform
 from torchvision import transforms
 
-from TissueLabeling.brain_utils import mapping
 from TissueLabeling.data.cutout import Cutout
 from TissueLabeling.data.mask import Mask
-from TissueLabeling.brain_utils import (
-    mapping,
-    create_affine_transformation_matrix,
-    draw_value_from_distribution,
-)
+from TissueLabeling.brain_utils import mapping, create_affine_transformation_matrix, draw_value_from_distribution
 
 
 class NoBrainerDataset(Dataset):
@@ -51,6 +46,7 @@ class NoBrainerDataset(Dataset):
         self.model_name = config.model_name
 
         self.nr_of_classes = config.nr_of_classes
+        self.data_size = config.data_size
 
         # Set the pretrained attribute
         self.pretrained = config.pretrained
@@ -186,8 +182,12 @@ class NoBrainerDataset(Dataset):
         if not self.new_kwyk_data:
             if self.nr_of_classes == 2:
                 mask[mask != 0] = 1
+            elif self.nr_of_classes == 7 and self.data_size == 'small':
+                # mask = mapping(mask, self.nr_of_classes, original=False) # mapping mod
+                mask = mapping(mask, self.nr_of_classes, reference_col='index')
             elif self.nr_of_classes == 7:
-                mask = mapping(mask, self.nr_of_classes, original=False)
+                # mask = mapping(mask, self.nr_of_classes, original=False, map_class_num=51) # mapping mod
+                mask = mapping(mask, self.nr_of_classes, reference_col='50-class')
 
             # normalize image
             image = (
@@ -199,9 +199,10 @@ class NoBrainerDataset(Dataset):
 
         if self.new_kwyk_data:
             image = image.to(torch.float32)
-            mask = torch.tensor(
-                mapping(np.array(mask), self.nr_of_classes, original=True)
-            )
+            # mask = torch.tensor(
+            #     mapping(np.array(mask), self.nr_of_classes, original=True)
+            # ) # mapping mod
+            mask = mapping(np.array(mask), self.nr_of_classes)
 
         return image, mask
 

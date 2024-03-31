@@ -49,9 +49,10 @@ class Dice(Metric):
 
             # map counts from original freesurfer labels to nr_of_classes labels
             key_arr = np.array(list(train_pixel_counts.keys()))
-            mapped_keys = mapping(
-                key_arr.copy(), nr_of_classes=config.nr_of_classes, original=True
-            )
+            # mapped_keys = mapping(
+            #     key_arr.copy(), nr_of_classes=config.nr_of_classes, original=True
+            # ) # mapping mod
+            mapped_keys = mapping(key_arr.copy(), config.nr_of_classes)
             mapped_pixel_counts = {
                 class_num: sum(
                     [
@@ -79,11 +80,28 @@ class Dice(Metric):
                 pixel_counts = torch.from_numpy(
                     np.array([pixel_counts[0], sum(pixel_counts[1:])])
                 )  # uncomment for binary classification
-            elif config.nr_of_classes == 7:
+            elif config.nr_of_classes == 7 and config.data_size == 'small':
+                # new_indices = mapping(
+                #     torch.tensor(list(range(107))),
+                #     nr_of_classes=config.nr_of_classes,
+                #     original=False,
+                # ) # mapping mod
                 new_indices = mapping(
                     torch.tensor(list(range(107))),
                     nr_of_classes=config.nr_of_classes,
-                    original=False,
+                    reference_col='index',
+                )
+                unique_indices = np.unique(new_indices)
+                new_counts = torch.zeros(config.nr_of_classes)
+                for ind in unique_indices:
+                    mask = new_indices == ind
+                    new_counts[ind] = torch.sum(pixel_counts[mask])
+                pixel_counts = new_counts
+            elif config.nr_of_classes == 7:
+                new_indices = mapping(
+                    torch.tensor(list(range(51))),
+                    nr_of_classes=config.nr_of_classes,
+                    reference_col='50-class',
                 )
                 unique_indices = np.unique(new_indices)
                 new_counts = torch.zeros(config.nr_of_classes)
