@@ -49,8 +49,6 @@ def select_model(config, image_dims):
             channels=1,
             dim_mults=(2, 4, 8, 16, 32, 64),
         )
-    elif config.model_name == "nobrainer_unet":
-        model = OriginalUnet(image_channels=1, nr_of_classes=config.nr_of_classes)
     else:
         print(f"Invalid model name provided: {config.model_name}")
         sys.exit()
