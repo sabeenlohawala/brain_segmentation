@@ -10,6 +10,7 @@ import glob
 import os
 
 import random
+import json
 import numpy as np
 import torch
 from torch.utils.data import Dataset
@@ -33,6 +34,8 @@ class NoBrainerDataset(Dataset):
         Returns:
             None
         """
+        random.seed(42)
+
         if mode == "val":
             mode = "validation"
 
@@ -52,9 +55,42 @@ class NoBrainerDataset(Dataset):
         self.pretrained = config.pretrained
 
         self.new_kwyk_data = config.new_kwyk_data
-        if config.new_kwyk_data:
-            self.images = sorted(glob.glob(f"{config.data_dir}/{mode}/features/*.npy"))
-            self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/labels/*.npy"))
+        if self.new_kwyk_data:
+            background_percent_cutoff = 0.99
+            valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
+            valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
+            if os.path.exists(valid_feature_filename) and os.path.exists(valid_label_filename):
+                with open(valid_feature_filename) as f:
+                    images = json.load(f)
+                with open(valid_label_filename) as f:
+                    masks = json.load(f)
+            else:
+                with open(os.path.join(config.data_dir,'percent_backgrounds.json')) as f:
+                    percent_backgrounds = json.load(f)
+                # keep only files from current mode with percent_background < cutoff
+                images = sorted([file for file, percent_background in percent_backgrounds.items() if percent_background < background_percent_cutoff and mode in file and 'features' in file])
+                masks = sorted([file for file, percent_background in percent_backgrounds.items() if percent_background < background_percent_cutoff and mode in file and 'labels' in file])
+                with open(valid_feature_filename, 'w') as f:
+                    json.dump(images,f)
+                with open(valid_label_filename, 'w') as f:
+                    json.dump(masks,f)
+            
+            combined_data = list(zip(images, masks))
+
+            # Shuffle the combined list using a specific seed
+            random.seed(42)
+            random.shuffle(combined_data)
+            shuffled_images, shuffled_masks = zip(*combined_data)
+
+            if config.data_size == 'small':
+                num_files = int(len(shuffled_images) * 0.001)
+            elif config.data_size == 'med' or config.data_size == 'medium':
+                num_files = int(len(shuffled_images) * 0.1)
+            else:
+                num_files = len(shuffled_images)
+
+            self.images = shuffled_images[:num_files]
+            self.masks = shuffled_masks[:num_files]
             self.affines = []
         else:
             # Get a list of all the brain image files in the specified directory
@@ -104,7 +140,7 @@ class NoBrainerDataset(Dataset):
             self.affines = self.affines[:100]
 
         # Load the normalization constants from the file directory
-        if not config.new_kwyk_data:
+        if not self.new_kwyk_data:
             self.normalization_constants = np.load(
                 os.path.join(
                     f"{config.data_dir}/{mode}", "..", "normalization_constants.npy"
@@ -116,8 +152,8 @@ class NoBrainerDataset(Dataset):
 
     def __getitem__(self, idx):
         # returns (image, mask)
-        image = torch.from_numpy(np.load(self.images[idx]))
-        mask = torch.from_numpy(np.load(self.masks[idx]))
+        image = torch.from_numpy(np.load(self.images[idx]).astype(np.int16))
+        mask = torch.from_numpy(np.load(self.masks[idx]).astype(np.int16))
 
         # randomly augment
         augment_coin_toss = random.randint(0, 1)
@@ -173,7 +209,10 @@ class NoBrainerDataset(Dataset):
             mask = mask.unsqueeze(dim=0)
 
         if self.intensity_scale and augment_coin_toss:
-            image = self.intensity_scale(image)
+            if not self.new_kwyk_data:
+                image = self.intensity_scale(image)
+            else:
+                image = self.intensity_scale(image / 255.0) * 255
 
         if "unet" in self.model_name:
             image = image[:, 1:161, 1:193]

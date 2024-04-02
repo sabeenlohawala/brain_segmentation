@@ -39,6 +39,8 @@ MASK_LENGTH=16
 INTENSITY_SCALE=0
 NULL_HALF=0
 
+NEW_KWYK_DATA=0
+
 # LOGDIR="/om2/scratch/tmp/sabeen/20240215-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\A0"
 # LOGDIR="/om2/scratch/tmp/sabeen/20240305-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 LOGDIR="/om2/scratch/tmp/sabeen/20240330-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
@@ -83,5 +85,6 @@ else
 						--cutout_length $CUTOUT_LENGTH \
 						--mask_n_holes $MASK_N_HOLES \
 						--mask_length $MASK_LENGTH \
-						--intensity_scale $INTENSITY_SCALE
+						--intensity_scale $INTENSITY_SCALE \
+						--new_kwyk_data $NEW_KWYK_DATA
 fi

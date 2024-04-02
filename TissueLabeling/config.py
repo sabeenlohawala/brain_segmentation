@@ -129,7 +129,7 @@ class Configuration:
     def _update_data_dir(self):
         """Update the data directory based on the number of classes"""
         if self.new_kwyk_data:
-            self.data_dir = "/om2/user/sabeen/kwyk_final"
+            self.data_dir = "/om2/scratch/tmp/sabeen/kwyk_data/kwyk_final_uncrop"
             self.aug_dir = ""
         else:
             if self.data_size == "small":

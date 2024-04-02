@@ -133,7 +133,7 @@ def transform_feature_label_pair(feature: str, label: str) -> Tuple[int, int, in
     label_vol, label_aff, label_hdr = utils.load_volume(label, im_only=False)
     feature_vol, feature_aff, feature_hdr = utils.load_volume(feature, im_only=False)
 
-    label_vol = label_vol.astype("uint16")
+    label_vol = label_vol.astype("int16")
     
     # apply skull stripping (from Matthias's brain_utils.load_brains function)
     feature_vol[label_vol == 0] = 0
@@ -231,7 +231,7 @@ def extract_feature_label_slices(
     os.makedirs(feature_slice_dest_dir, exist_ok=True)
     os.makedirs(label_slice_dest_dir, exist_ok=True)
 
-    label_vol = (utils.load_volume(label, im_only=True)).astype("uint16")
+    label_vol = (utils.load_volume(label, im_only=True)).astype("int16")
     feature_vol = utils.load_volume(feature, im_only=True)
     if TRANSFORM_DIR == SOURCE_DIR_00:
         feature_vol[label_vol == 0] = 0 # skull stripping?
@@ -250,7 +250,7 @@ def extract_feature_label_slices(
         feature_vol = np.array(nobrainer.transform.warp(feature_vol, affine, order=1))
         label_vol = np.array(
             nobrainer.transform.warp(label_vol, affine, order=0)
-        ).astype("uint16")
+        ).astype("int16")
 
     slice_idx = 0
     pixel_counts = Counter()
