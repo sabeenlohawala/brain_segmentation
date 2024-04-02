@@ -179,6 +179,12 @@ def rgb_map_for_data(nr_of_classes):
             for item in voxmorph_label_index[262:264]
             if item != ""
         ]  # HACK
+    elif nr_of_classes == 17:
+        voxmorph_label_index = [
+            item.strip().split(":")
+            for item in voxmorph_label_index[266:283]
+            if item != ""
+        ]  # HACK
     else:
         raise Exception(f"coloring for nr_of_classes = {nr_of_classes} not found")
 

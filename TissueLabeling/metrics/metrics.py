@@ -97,7 +97,7 @@ class Dice(Metric):
                     mask = new_indices == ind
                     new_counts[ind] = torch.sum(pixel_counts[mask])
                 pixel_counts = new_counts
-            elif config.nr_of_classes == 7:
+            elif config.nr_of_classes == 7 or config.nr_of_classes == 17:
                 new_indices = mapping(
                     torch.tensor(list(range(51))),
                     nr_of_classes=config.nr_of_classes,

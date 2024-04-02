@@ -185,7 +185,7 @@ class NoBrainerDataset(Dataset):
             elif self.nr_of_classes == 7 and self.data_size == 'small':
                 # mask = mapping(mask, self.nr_of_classes, original=False) # mapping mod
                 mask = mapping(mask, self.nr_of_classes, reference_col='index')
-            elif self.nr_of_classes == 7:
+            elif self.nr_of_classes == 7 or self.nr_of_classes == 17:
                 # mask = mapping(mask, self.nr_of_classes, original=False, map_class_num=51) # mapping mod
                 mask = mapping(mask, self.nr_of_classes, reference_col='50-class')
 
