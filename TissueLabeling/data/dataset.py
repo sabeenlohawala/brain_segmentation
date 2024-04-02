@@ -19,7 +19,11 @@ from torchvision import transforms
 
 from TissueLabeling.data.cutout import Cutout
 from TissueLabeling.data.mask import Mask
-from TissueLabeling.brain_utils import mapping, create_affine_transformation_matrix, draw_value_from_distribution
+from TissueLabeling.brain_utils import (
+    mapping,
+    create_affine_transformation_matrix,
+    draw_value_from_distribution,
+)
 
 
 class NoBrainerDataset(Dataset):
@@ -59,22 +63,42 @@ class NoBrainerDataset(Dataset):
             background_percent_cutoff = 0.99
             valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
             valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
-            if os.path.exists(valid_feature_filename) and os.path.exists(valid_label_filename):
+            if os.path.exists(valid_feature_filename) and os.path.exists(
+                valid_label_filename
+            ):
                 with open(valid_feature_filename) as f:
                     images = json.load(f)
                 with open(valid_label_filename) as f:
                     masks = json.load(f)
             else:
-                with open(os.path.join(config.data_dir,'percent_backgrounds.json')) as f:
+                with open(
+                    os.path.join(config.data_dir, "percent_backgrounds.json")
+                ) as f:
                     percent_backgrounds = json.load(f)
                 # keep only files from current mode with percent_background < cutoff
-                images = sorted([file for file, percent_background in percent_backgrounds.items() if percent_background < background_percent_cutoff and mode in file and 'features' in file])
-                masks = sorted([file for file, percent_background in percent_backgrounds.items() if percent_background < background_percent_cutoff and mode in file and 'labels' in file])
-                with open(valid_feature_filename, 'w') as f:
-                    json.dump(images,f)
-                with open(valid_label_filename, 'w') as f:
-                    json.dump(masks,f)
-            
+                images = sorted(
+                    [
+                        file
+                        for file, percent_background in percent_backgrounds.items()
+                        if percent_background < background_percent_cutoff
+                        and mode in file
+                        and "features" in file
+                    ]
+                )
+                masks = sorted(
+                    [
+                        file
+                        for file, percent_background in percent_backgrounds.items()
+                        if percent_background < background_percent_cutoff
+                        and mode in file
+                        and "labels" in file
+                    ]
+                )
+                with open(valid_feature_filename, "w") as f:
+                    json.dump(images, f)
+                with open(valid_label_filename, "w") as f:
+                    json.dump(masks, f)
+
             combined_data = list(zip(images, masks))
 
             # Shuffle the combined list using a specific seed
@@ -82,9 +106,9 @@ class NoBrainerDataset(Dataset):
             random.shuffle(combined_data)
             shuffled_images, shuffled_masks = zip(*combined_data)
 
-            if config.data_size == 'small':
+            if config.data_size == "small":
                 num_files = int(len(shuffled_images) * 0.001)
-            elif config.data_size == 'med' or config.data_size == 'medium':
+            elif config.data_size == "med" or config.data_size == "medium":
                 num_files = int(len(shuffled_images) * 0.1)
             else:
                 num_files = len(shuffled_images)
@@ -182,27 +206,27 @@ class NoBrainerDataset(Dataset):
             # apply mask
             if self.aug_mask == 1:  # TODO: if or elif?
                 image, mask = self.mask_obj(image, mask)
-            
+
             # null half
             left_right_null = self.null_half
-            if left_right_null == 3: # mix null left/right and null up/down
-                left_right_null = random.randint(1,2)
-            if left_right_null == 1: # null left/right
+            if left_right_null == 3:  # mix null left/right and null up/down
+                left_right_null = random.randint(1, 2)
+            if left_right_null == 1:  # null left/right
                 width_half = image.shape[1] // 2
                 if random.randint(0, 1):
-                    image[:,:width_half] = 0
-                    mask[:,:width_half] = 0
+                    image[:, :width_half] = 0
+                    mask[:, :width_half] = 0
                 else:
-                    image[:,width_half:] = 0
-                    mask[:,width_half:] = 0
-            elif left_right_null == 2: # null up/down
+                    image[:, width_half:] = 0
+                    mask[:, width_half:] = 0
+            elif left_right_null == 2:  # null up/down
                 height_half = image.shape[1] // 2
                 if random.randint(0, 1):
-                    image[:height_half,:] = 0
-                    mask[:height_half,:] = 0
+                    image[:height_half, :] = 0
+                    mask[:height_half, :] = 0
                 else:
-                    image[height_half:,:] = 0
-                    mask[height_half:,:] = 0
+                    image[height_half:, :] = 0
+                    mask[height_half:, :] = 0
 
             # resize image to [1,h,w] again
             image = image.unsqueeze(dim=0)
@@ -221,12 +245,9 @@ class NoBrainerDataset(Dataset):
         if not self.new_kwyk_data:
             if self.nr_of_classes == 2:
                 mask[mask != 0] = 1
-            elif self.nr_of_classes == 7 and self.data_size == 'small':
-                # mask = mapping(mask, self.nr_of_classes, original=False) # mapping mod
-                mask = mapping(mask, self.nr_of_classes, reference_col='index')
             elif self.nr_of_classes == 7 or self.nr_of_classes == 17:
                 # mask = mapping(mask, self.nr_of_classes, original=False, map_class_num=51) # mapping mod
-                mask = mapping(mask, self.nr_of_classes, reference_col='50-class')
+                mask = mapping(mask, self.nr_of_classes, reference_col="50-class")
 
             # normalize image
             image = (

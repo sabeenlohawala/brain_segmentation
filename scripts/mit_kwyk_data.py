@@ -42,16 +42,20 @@ DEBUG = True if gettrace() else False
 SOURCE_DIR_00 = "/om2/scratch/tmp/sabeen/kwyk/rawdata/"
 
 TRANSFORM_DIR = args.transform_dir  # "/om2/user/sabeen/kwyk_tranform"
-FEATURE_TRANFORM_DIR = f"{TRANSFORM_DIR}/features" if TRANSFORM_DIR != SOURCE_DIR_00 else SOURCE_DIR_00
-LABEL_TRANFORM_DIR = f"{TRANSFORM_DIR}/labels" if TRANSFORM_DIR != SOURCE_DIR_00 else SOURCE_DIR_00\
-
+FEATURE_TRANFORM_DIR = (
+    f"{TRANSFORM_DIR}/features" if TRANSFORM_DIR != SOURCE_DIR_00 else SOURCE_DIR_00
+)
+LABEL_TRANFORM_DIR = (
+    f"{TRANSFORM_DIR}/labels" if TRANSFORM_DIR != SOURCE_DIR_00 else SOURCE_DIR_00
+)
 SLICE_DEST_DIR = args.slice_dest_dir  # "/om2/user/sabeen/kwyk_final"
 IDX_PATH = f"{SLICE_DEST_DIR}/idx.dat"
-os.makedirs(SLICE_DEST_DIR,exist_ok=True)
+os.makedirs(SLICE_DEST_DIR, exist_ok=True)
 
 ROTATE_VOL = args.rotate_vol
 
 SEED = 42
+
 
 def main_timer(func):
     """Decorator to time any function"""
@@ -134,7 +138,7 @@ def transform_feature_label_pair(feature: str, label: str) -> Tuple[int, int, in
     feature_vol, feature_aff, feature_hdr = utils.load_volume(feature, im_only=False)
 
     label_vol = label_vol.astype("int16")
-    
+
     # apply skull stripping (from Matthias's brain_utils.load_brains function)
     feature_vol[label_vol == 0] = 0
 
@@ -234,7 +238,7 @@ def extract_feature_label_slices(
     label_vol = (utils.load_volume(label, im_only=True)).astype("int16")
     feature_vol = utils.load_volume(feature, im_only=True)
     if TRANSFORM_DIR == SOURCE_DIR_00:
-        feature_vol[label_vol == 0] = 0 # skull stripping?
+        feature_vol[label_vol == 0] = 0  # skull stripping?
         feature_vol = feature_vol / 255.0
 
     feature_base_filename = os.path.basename(feature).split(".")[0]
@@ -286,14 +290,53 @@ def extract_feature_label_slices(
         #     slice_idx += 1
 
         # V2: trying to paralellize using map (currently slower than V1)
-        feature_base_filename = os.path.basename(feature).split('.')[0]
-        label_base_filename = os.path.basename(label).split('.')[0]
+        feature_base_filename = os.path.basename(feature).split(".")[0]
+        label_base_filename = os.path.basename(label).split(".")[0]
         if d == 0:
-            slice_counts_and_percent_backgrounds = map(lambda i: process_slice(feature_vol[i,:,:],label_vol[i,:,:],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
+            slice_counts_and_percent_backgrounds = map(
+                lambda i: process_slice(
+                    feature_vol[i, :, :],
+                    label_vol[i, :, :],
+                    slice_idx=slice_idx + i,
+                    max_shape=max_shape,
+                    get_pixel_counts=get_pixel_counts,
+                    feature_base_filename=feature_base_filename,
+                    label_base_filename=label_base_filename,
+                    feature_slice_dest_dir=feature_slice_dest_dir,
+                    label_slice_dest_dir=label_slice_dest_dir,
+                ),
+                range(feature_vol.shape[d]),
+            )
         elif d == 1:
-            slice_counts_and_percent_backgrounds = map(lambda i: process_slice(feature_vol[:,i,:],label_vol[:,i,:],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
+            slice_counts_and_percent_backgrounds = map(
+                lambda i: process_slice(
+                    feature_vol[:, i, :],
+                    label_vol[:, i, :],
+                    slice_idx=slice_idx + i,
+                    max_shape=max_shape,
+                    get_pixel_counts=get_pixel_counts,
+                    feature_base_filename=feature_base_filename,
+                    label_base_filename=label_base_filename,
+                    feature_slice_dest_dir=feature_slice_dest_dir,
+                    label_slice_dest_dir=label_slice_dest_dir,
+                ),
+                range(feature_vol.shape[d]),
+            )
         else:
-            slice_counts_and_percent_backgrounds = map(lambda i: process_slice(feature_vol[:,:,i],label_vol[:,:,i],slice_idx = slice_idx + i, max_shape = max_shape, get_pixel_counts = get_pixel_counts, feature_base_filename = feature_base_filename, label_base_filename = label_base_filename, feature_slice_dest_dir = feature_slice_dest_dir, label_slice_dest_dir = label_slice_dest_dir), range(feature_vol.shape[d]))
+            slice_counts_and_percent_backgrounds = map(
+                lambda i: process_slice(
+                    feature_vol[:, :, i],
+                    label_vol[:, :, i],
+                    slice_idx=slice_idx + i,
+                    max_shape=max_shape,
+                    get_pixel_counts=get_pixel_counts,
+                    feature_base_filename=feature_base_filename,
+                    label_base_filename=label_base_filename,
+                    feature_slice_dest_dir=feature_slice_dest_dir,
+                    label_slice_dest_dir=label_slice_dest_dir,
+                ),
+                range(feature_vol.shape[d]),
+            )
         slice_counts, percent_backgrounds = zip(*slice_counts_and_percent_backgrounds)
         slice_idx += feature_vol.shape[d]
         pixel_counts += sum(slice_counts, Counter())
@@ -336,7 +379,9 @@ def process_slice(
     slice_pixel_counts = Counter()
     # discard slices with < 20% brain (> 80% background)
     count_background = np.sum(label_slice == 0)
-    percent_background = count_background / (label_slice.shape[0] * label_slice.shape[1])
+    percent_background = count_background / (
+        label_slice.shape[0] * label_slice.shape[1]
+    )
     # if count_background > 0.8 * (label_slice.shape[0] * label_slice.shape[1]):
     #     return slice_pixel_counts
 
@@ -380,7 +425,12 @@ def process_slice(
         slice_pixel_counts.update(
             {label: count for label, count in zip(unique, counts)}
         )
-    return slice_pixel_counts, {os.path.join(feature_slice_dest_dir, feature_slice_filename): percent_background, os.path.join(label_slice_dest_dir, label_slice_filename): percent_background}
+    return slice_pixel_counts, {
+        os.path.join(
+            feature_slice_dest_dir, feature_slice_filename
+        ): percent_background,
+        os.path.join(label_slice_dest_dir, label_slice_filename): percent_background,
+    }
 
 
 def get_train_val_test_split():
@@ -506,8 +556,8 @@ def extract_kwyk_slices(max_shape):
         os.path.join(SLICE_DEST_DIR, "train_pixel_counts.pkl"), "wb"
     ) as pickle_file:
         pickle.dump(dict(train_pixel_counts), pickle_file)
-    with open(os.path.join(SLICE_DEST_DIR,"percent_backgrounds.json"), "w") as f:
-        json.dump(all_percent_backgrounds,f)
+    with open(os.path.join(SLICE_DEST_DIR, "percent_backgrounds.json"), "w") as f:
+        json.dump(all_percent_backgrounds, f)
 
 
 def get_max_slice_dims(max_vol_dims):
@@ -530,7 +580,7 @@ def get_max_slice_dims(max_vol_dims):
 def main():
     # Obtain shapes (and pixel_counts?) after cropping full kwyk dataset
     if TRANSFORM_DIR == SOURCE_DIR_00:
-        max_vol_dims = (256,256,256)
+        max_vol_dims = (256, 256, 256)
     else:
         max_vol_dims = transform_kwyk_dataset()
 

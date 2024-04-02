@@ -140,15 +140,14 @@ def brain_area(slice: torch.tensor) -> torch.tensor:
     return slice[cut_top_temp : cut_bottom_temp + 1, cut_left_temp : cut_right_temp + 1]
 
 
-def mapping(mask: np.array, nr_of_classes=51, reference_col='original'):
-
+def mapping(mask: np.array, nr_of_classes=51, reference_col="original"):
     new_col = f"2-class" if nr_of_classes == 2 else f"{nr_of_classes-1}-class"
     class_mapping = {}
     df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
     for value in df[reference_col].unique():
         filtered_rows = df[df[reference_col] == value]
         numbers = list(set(filtered_rows[new_col].tolist()))
-        assert len(numbers) <= 1, 'unique mapping does not exist'
+        assert len(numbers) <= 1, "unique mapping does not exist"
         class_mapping[value] = numbers[0]
 
     # class_mapping = {value.item(): index for index, value in enumerate(labels)}
@@ -165,6 +164,7 @@ def mapping(mask: np.array, nr_of_classes=51, reference_col='original'):
     mask = mask * -1
 
     return mask
+
 
 # def mapping(mask: np.array, nr_of_classes=51, original=True, map_class_num = None):
 #     # if original == True, map from original --> num-class column

@@ -69,7 +69,7 @@ class Configuration:
         )
         self.mask_length = getattr(args, "mask_length", 0) if self.aug_mask == 1 else 0
         self.intensity_scale = getattr(args, "intensity_scale", 0)
-        self.null_half = getattr(args,"null_half",0)
+        self.null_half = getattr(args, "null_half", 0)
 
         self.debug = getattr(args, "debug", 0)
 
@@ -137,11 +137,16 @@ class Configuration:
                     107: "new_small_aug_107",
                     51: "new_small_no_aug_51",
                     2: "new_small_no_aug_51",
-                    7: "new_small_aug_107",
-                    17: "new_small_no_aug_51"
+                    7: "new_small_no_aug_51",
+                    17: "new_small_no_aug_51",
                 }
             elif self.data_size == "med" or self.data_size == "medium":
-                folder_map = {51: "new_med_no_aug_51", 2: "new_med_no_aug_51", 7: "new_med_no_aug_51", 17: "new_med_no_aug_51"}
+                folder_map = {
+                    51: "new_med_no_aug_51",
+                    2: "new_med_no_aug_51",
+                    7: "new_med_no_aug_51",
+                    17: "new_med_no_aug_51",
+                }
             else:
                 sys.exit(
                     f"{self.data_size} is not a valid dataset size. Choose from 'small' or 'med'."

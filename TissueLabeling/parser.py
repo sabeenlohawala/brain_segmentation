@@ -221,7 +221,7 @@ def get_args():
         help="Whether to null out half of the image when training: 0 = do not null, 1 = null left/right, 2 = null up/down, 3 = mix left/right and up/down",
         type=int,
         required=False,
-        default=0
+        default=0,
     )
 
     # Parse the command line arguments
