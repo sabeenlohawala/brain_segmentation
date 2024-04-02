@@ -52,7 +52,7 @@ class Configuration:
             getattr(args, "class_specific_scores", 0) if self.metric == "dice" else 0
         )
 
-        self.new_kwyk_data = getattr(args, "new_kwyk_data", 1)
+        self.new_kwyk_data = getattr(args, "new_kwyk_data", 0)
         self.data_dir = getattr(args, "data_dir", "")
         self.data_size = getattr(args, "data_size", "small")
         self.augment = getattr(args, "augment", 0)

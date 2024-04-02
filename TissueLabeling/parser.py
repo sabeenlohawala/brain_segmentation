@@ -214,7 +214,7 @@ def get_args():
         help="Debugging flag, remove later: whether to use new dataset",
         type=int,
         required=False,
-        default=1,
+        default=0,
     )
     train.add_argument(
         "--null_half",
