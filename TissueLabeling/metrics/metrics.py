@@ -71,7 +71,7 @@ class Dice(Metric):
                 key=lambda x: x[0],
             )
             pixel_counts = torch.tensor(list(count for _, count in sorted_counts))
-        else:
+        else: # these prob don't work anymore
             pixel_counts = torch.from_numpy(
                 np.load(f"{config.data_dir}/pixel_counts.npy")
             )

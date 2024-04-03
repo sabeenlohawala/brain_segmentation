@@ -50,7 +50,7 @@ class Segformer(nn.Module):
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = Segformer(51, pretrained=True)
+    model = Segformer(50, pretrained=True)
 
     summary(
         model,

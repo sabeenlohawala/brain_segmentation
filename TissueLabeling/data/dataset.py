@@ -242,7 +242,7 @@ class NoBrainerDataset(Dataset):
             image = image[:, 1:161, 1:193]
             mask = mask[:, 1:161, 1:193]
 
-        if not self.new_kwyk_data:
+        if not self.new_kwyk_data: # these prob don't work anymore
             if self.nr_of_classes == 2:
                 mask[mask != 0] = 1
             elif self.nr_of_classes == 7 or self.nr_of_classes == 17:

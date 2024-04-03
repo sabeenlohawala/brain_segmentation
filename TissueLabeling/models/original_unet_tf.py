@@ -154,7 +154,7 @@ if __name__ == "__main__":
     # Note: For (28, 28), remove 2 up/down channels.
 
     model = OriginalUnetTF(
-        image_channels=image_channels, nr_of_classes=51
+        image_channels=image_channels, nr_of_classes=50
     )  # .to(device)
 
     # model.build(input_shape=(batch_size,image_channels,*image_size))

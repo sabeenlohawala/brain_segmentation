@@ -30,7 +30,7 @@ class Log_Images:
             self.image_shape = (162, 194)
 
         # color map to get always the same colors for classes
-        if config.nr_of_classes in [2, 7, 51, 107]:  # freesurfer colors available
+        if config.nr_of_classes in [2, 6, 16, 50, 106]:  # freesurfer colors available
             colors = self.__rgb_map_for_data(config.nr_of_classes)
         else:
             colors = plt.cm.hsv(np.linspace(0, 1, config.nr_of_classes))
@@ -265,22 +265,22 @@ class Log_Images:
             voxmorph_label_index = f.read().splitlines()
 
         # get the last 24 lines of the readme file (format--> id: name)
-        if nr_of_classes == 51:
+        if nr_of_classes == 50:
             voxmorph_label_index = [
                 item.strip().split(":")
-                for item in voxmorph_label_index[200:251]
+                for item in voxmorph_label_index[200:250]
                 if item != ""
             ]  # HACK
-        elif nr_of_classes == 107:
+        elif nr_of_classes == 106:
             voxmorph_label_index = [
                 item.strip().split(":")
-                for item in voxmorph_label_index[91:198]
+                for item in voxmorph_label_index[91:197]
                 if item != ""
             ]  # HACK
-        elif nr_of_classes == 7:
+        elif nr_of_classes == 6:
             voxmorph_label_index = [
                 item.strip().split(":")
-                for item in voxmorph_label_index[253:260]
+                for item in voxmorph_label_index[253:259]
                 if item != ""
             ]  # HACK
         elif nr_of_classes == 2:
@@ -289,10 +289,10 @@ class Log_Images:
                 for item in voxmorph_label_index[262:264]
                 if item != ""
             ]  # HACK
-        elif nr_of_classes == 17:
+        elif nr_of_classes == 16:
             voxmorph_label_index = [
                 item.strip().split(":")
-                for item in voxmorph_label_index[266:283]
+                for item in voxmorph_label_index[266:282]
                 if item != ""
             ]  # HACK
         else:

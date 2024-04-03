@@ -17,8 +17,8 @@ conda init bash
 # -u ensures that the output is unbuffered, and written immediately to stdout.
 # 24 batch size per A100 GPU
 # For multi GPU training
-srun python -u scripts/commands/main.py train --logdir='/om2/scratch/Sat/sabeen/20240212-grid-Msegformer\\Smed\\C51\\B128\\LR0.0001\\A0/' --num_epochs=100 --batch_size=128 --model_name='segformer' --nr_of_classes=51 --lr=0.0001 --data_size='med'
-# srun python -u scripts/commands/main.py train --logdir='20240205-single-4gpu-Msimple_unet\Ssmall\Ldice\C51\B370\A1' --num_epochs=1000 --batch_size=370 --model_name='simple_unet' --nr_of_classes=51 --lr=5e-5 --data_size='small' --augment=1
+srun python -u scripts/commands/main.py train --logdir='/om2/scratch/Sat/sabeen/20240212-grid-Msegformer\\Smed\\C51\\B128\\LR0.0001\\A0/' --num_epochs=100 --batch_size=128 --model_name='segformer' --nr_of_classes=50 --lr=0.0001 --data_size='med'
+# srun python -u scripts/commands/main.py train --logdir='20240205-single-4gpu-Msimple_unet\Ssmall\Ldice\C51\B370\A1' --num_epochs=1000 --batch_size=370 --model_name='simple_unet' --nr_of_classes=50 --lr=5e-5 --data_size='small' --augment=1
 
 # to run:
 # sbatch --export=ALL,wandb_description='testrun' jobs/job.sh

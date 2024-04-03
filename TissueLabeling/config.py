@@ -39,7 +39,7 @@ class Configuration:
         self.pretrained = (
             getattr(args, "pretrained", 0) == 1 and self.model_name == "segformer"
         )
-        self.nr_of_classes = getattr(args, "nr_of_classes", 51)
+        self.nr_of_classes = getattr(args, "nr_of_classes", 50)
         self.num_epochs = getattr(args, "num_epochs", 20)
         self.batch_size = getattr(args, "batch_size", 64)
         self.lr = getattr(args, "lr", 1e-3)
@@ -131,7 +131,7 @@ class Configuration:
         if self.new_kwyk_data:
             self.data_dir = "/om2/scratch/tmp/sabeen/kwyk_data/kwyk_final_uncrop"
             self.aug_dir = ""
-        else:
+        else: # these prob don't work anymore
             if self.data_size == "small":
                 folder_map = {
                     107: "new_small_aug_107",
@@ -161,7 +161,7 @@ class Configuration:
                     f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size"
                 )
 
-            if self.augment:
+            if self.augment and not self.new_kwyk_data:
                 if self.nr_of_classes == 51 and self.data_size == "small":
                     self.aug_dir = os.path.join(
                         self.data_root_dir, "20240217_small_synth_aug"

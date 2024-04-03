@@ -140,8 +140,8 @@ def brain_area(slice: torch.tensor) -> torch.tensor:
     return slice[cut_top_temp : cut_bottom_temp + 1, cut_left_temp : cut_right_temp + 1]
 
 
-def mapping(mask: np.array, nr_of_classes=51, reference_col="original"):
-    new_col = f"2-class" if nr_of_classes == 2 else f"{nr_of_classes-1}-class"
+def mapping(mask: np.array, nr_of_classes=50, reference_col="original"):
+    new_col = "index" if nr_of_classes==106 else f"{nr_of_classes}-class"
     class_mapping = {}
     df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
     for value in df[reference_col].unique():
@@ -155,7 +155,8 @@ def mapping(mask: np.array, nr_of_classes=51, reference_col="original"):
     # num_classes = 50  # len(class_mapping)
     for x in u:
         if x not in class_mapping:
-            class_mapping[x] = nr_of_classes - 1
+            # class_mapping[x] = nr_of_classes - 1
+            class_mapping[x] = 0
 
     # we collect all classes not in the mapping table as an additional "other" class
     # mask = np.array([class_mapping[int(x)] if x in labels else len(labels) for x in u])[inv].reshape(mask.shape)

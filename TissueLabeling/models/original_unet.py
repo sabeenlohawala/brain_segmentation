@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     # Note: For (28, 28), remove 2 up/down channels.
 
-    model = OriginalUnet(image_channels=image_channels, nr_of_classes=51).to(device)
+    model = OriginalUnet(image_channels=image_channels, nr_of_classes=50).to(device)
     summary(
         model,
         input_size=(batch_size, image_channels, *image_size),
