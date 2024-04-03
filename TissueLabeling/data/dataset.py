@@ -238,7 +238,7 @@ class NoBrainerDataset(Dataset):
             else:
                 image = self.intensity_scale(image / 255.0) * 255
 
-        if "unet" in self.model_name:
+        if not self.new_kwyk_data and "unet" in self.model_name:
             image = image[:, 1:161, 1:193]
             mask = mask[:, 1:161, 1:193]
 
