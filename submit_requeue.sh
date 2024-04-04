@@ -7,41 +7,42 @@
 #SBATCH --gres=gpu:a100:4
 #SBATCH --mem=40G # per node memory
 #SBATCH -p use-everything
-#SBATCH -o ./logs/new-kwyk-null-512.out
-#SBATCH -e ./logs/new-kwyk-null-512.err
+#SBATCH -o ./logs/new-kwyk-grid-288.out
+#SBATCH -e ./logs/new-kwyk-grid-288.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 
 export PATH="/om2/user/sabeen/miniconda/bin:$PATH"
 conda init bash
 
-# Set default values
-BATCH_SIZE=512
+# General hyperparams
+BATCH_SIZE=288
 LR=0.001
 NUM_EPOCHS=150
 MODEL_NAME="segformer"
+PRETRAINED=0
 LOSS_FN="dice"
 DEBUG=0
-NR_OF_CLASSES=50
-DATA_SIZE="large"
+NR_OF_CLASSES=6
 LOG_IMAGES=0
-CLASS_SPECIFIC_SCORES=1
+CLASS_SPECIFIC_SCORES=0
 CHECKPOINT_FREQ=5
 
-PRETRAINED=0
+# Dataset params
+NEW_KWYK_DATA=1
+ROTATE_VOL=0
+DATA_SIZE="large"
 
-AUGMENT=1
+# Data augmentation params
+AUGMENT=0
 AUG_CUTOUT=0
 CUTOUT_N_HOLES=1
 CUTOUT_LENGTH=8
 AUG_MASK=0
 MASK_N_HOLES=1
-MASK_LENGTH=16
-
-INTENSITY_SCALE=1
-NULL_HALF=2
-
-NEW_KWYK_DATA=1
+MASK_LENGTH=32
+AUG_NULL_HALF=0
+INTENSITY_SCALE=0
 
 # pre 202404 logdirs
 # LOGDIR="/om2/scratch/tmp/sabeen/20240215-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\A0"
@@ -56,12 +57,12 @@ NEW_KWYK_DATA=1
 # LOGDIR="/om2/scratch/tmp/sabeen/20240314-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 
 # LOGDIR="/om2/scratch/tmp/sabeen/20240325-mask-$MASK_LENGTH-$MASK_N_HOLES-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
-# LOGDIR="/om2/scratch/tmp/sabeen/20240330-null-$NULL_HALF-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+# LOGDIR="/om2/scratch/tmp/sabeen/20240330-null-$AUG_NULL_HALF-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 
-# 202404 logdirs
-# LOGDIR="/om2/scratch/tmp/sabeen/results/20240402-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
-# LOGDIR="/om2/scratch/tmp/sabeen/results/20240402-mask-$MASK_LENGTH-$MASK_N_HOLES-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
-LOGDIR="/om2/scratch/tmp/sabeen/results/20240402-null-$NULL_HALF-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+# 202404__ logdirs
+LOGDIR="/om2/scratch/tmp/sabeen/results/20240403-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+# LOGDIR="/om2/scratch/tmp/sabeen/results/20240403-mask-$MASK_LENGTH-$MASK_N_HOLES-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+# LOGDIR="/om2/scratch/tmp/sabeen/results/20240403-null-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 
 # Check if checkpoint file exists
 if ls "$LOGDIR"/*.ckpt 1> /dev/null 2>&1; then
@@ -92,7 +93,7 @@ else
 						--mask_n_holes $MASK_N_HOLES \
 						--mask_length $MASK_LENGTH \
 						--intensity_scale $INTENSITY_SCALE \
-						--null_half $NULL_HALF \
+						--aug_null_half $AUG_NULL_HALF \
 						--new_kwyk_data $NEW_KWYK_DATA \
 						--class_specific_scores $CLASS_SPECIFIC_SCORES \
 						--checkpoint_freq $CHECKPOINT_FREQ
