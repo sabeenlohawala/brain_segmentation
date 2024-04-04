@@ -39,7 +39,7 @@ args = parser.parse_args()
 gettrace = getattr(sys, "gettrace", None)
 DEBUG = True if gettrace() else False
 
-SOURCE_DIR_00 = "/om2/scratch/tmp/sabeen/kwyk/rawdata/"
+SOURCE_DIR_00 = "/om2/scratch/tmp/sabeen/kwyk_data/kwyk/rawdata/"
 
 TRANSFORM_DIR = args.transform_dir  # "/om2/user/sabeen/kwyk_tranform"
 FEATURE_TRANFORM_DIR = (
