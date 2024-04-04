@@ -140,6 +140,13 @@ def get_args():
         default=0,
     )
     train.add_argument(
+        "--aug_percent",
+        help="What fraction of the data should be augmented (between 0 and 1)",
+        type=float,
+        required=False,
+        default=0.8
+    )
+    train.add_argument(
         "--aug_mask",
         help="Flag for whether to augment the data by masking",
         type=int,
@@ -217,8 +224,8 @@ def get_args():
         default=0,
     )
     train.add_argument(
-        "--null_half",
-        help="Whether to null out half of the image when training: 0 = do not null, 1 = null left/right, 2 = null up/down, 3 = mix left/right and up/down",
+        "--aug_null_half",
+        help="Whether to null out half of the brain when training",
         type=int,
         required=False,
         default=0,

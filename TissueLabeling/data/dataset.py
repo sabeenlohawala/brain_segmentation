@@ -23,6 +23,7 @@ from TissueLabeling.brain_utils import (
     mapping,
     create_affine_transformation_matrix,
     draw_value_from_distribution,
+    null_half
 )
 
 
@@ -129,10 +130,11 @@ class NoBrainerDataset(Dataset):
         # only augment the train, not validation or test
         if self.mode == "train":
             self.augment = config.augment
+            self.aug_percent = config.aug_percent
             self.aug_mask = config.aug_mask
             self.aug_cutout = config.aug_cutout
             self.aug_mask = config.aug_mask
-            self.null_half = config.null_half
+            self.aug_null_half = config.aug_null_half
             self.cutout_obj = Cutout(config.cutout_n_holes, config.cutout_length)
             self.mask_obj = Mask(config.mask_n_holes, config.mask_length)
             self.intensity_scale = (
@@ -142,19 +144,14 @@ class NoBrainerDataset(Dataset):
             )
         else:
             self.augment = 0
+            self.aug_percent = 0
             self.aug_mask = 0
             self.aug_cutout = 0
             self.aug_mask = 0
-            self.null_half = 0
+            self.aug_null_half = 0
             self.cutout_obj = None
             self.mask_obj = None
             self.intensity_scale = None
-
-        if self.augment or self.intensity_scale:
-            print(f"augmenting data!")
-            self.images = self.images[:] + self.images[:]
-            self.masks = self.masks[:] + self.masks[:]
-            self.affines = self.affines[:] + self.affines[:]
 
         # Limit the number of images and masks to the first 100 during debugging
         if config.debug:
@@ -180,7 +177,7 @@ class NoBrainerDataset(Dataset):
         mask = torch.from_numpy(np.load(self.masks[idx]).astype(np.int16))
 
         # randomly augment
-        augment_coin_toss = random.randint(0, 1)
+        augment_coin_toss = 1 if random.random() < self.aug_percent else 0
         if self.augment and augment_coin_toss == 1:
             # apply affine
             if self.new_kwyk_data:
@@ -189,6 +186,10 @@ class NoBrainerDataset(Dataset):
                 affine = torch.from_numpy(np.load(self.affines[idx]))
             image = affine_transform(image.squeeze(), affine, mode="constant")
             mask = affine_transform(mask.squeeze(), affine, mode="constant", order=0)
+
+            # null half
+            if self.aug_null_half:
+                image, mask = null_half(image, mask, random.randint(0, 1) == 1)
 
             image = torch.from_numpy(image)
             mask = torch.from_numpy(mask)
@@ -206,27 +207,6 @@ class NoBrainerDataset(Dataset):
             # apply mask
             if self.aug_mask == 1:  # TODO: if or elif?
                 image, mask = self.mask_obj(image, mask)
-
-            # null half
-            left_right_null = self.null_half
-            if left_right_null == 3:  # mix null left/right and null up/down
-                left_right_null = random.randint(1, 2)
-            if left_right_null == 1:  # null left/right
-                width_half = image.shape[1] // 2
-                if random.randint(0, 1):
-                    image[:, :width_half] = 0
-                    mask[:, :width_half] = 0
-                else:
-                    image[:, width_half:] = 0
-                    mask[:, width_half:] = 0
-            elif left_right_null == 2:  # null up/down
-                height_half = image.shape[1] // 2
-                if random.randint(0, 1):
-                    image[:height_half, :] = 0
-                    mask[:height_half, :] = 0
-                else:
-                    image[height_half:, :] = 0
-                    mask[height_half:, :] = 0
 
             # resize image to [1,h,w] again
             image = image.unsqueeze(dim=0)

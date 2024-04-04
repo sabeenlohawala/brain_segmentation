@@ -166,6 +166,21 @@ def mapping(mask: np.array, nr_of_classes=50, reference_col="original"):
 
     return mask
 
+def null_half(image: np.array, mask: np.array, keep_left=True):
+    df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
+    null_image = image.copy()
+    null_mask = mask.copy()
+    if keep_left:
+        # label_mapping = {df['original'][i]: (df['original'][i] if not ('Right-' in df['label'][i] or '-rh-' in df['label'][i]) else 0) for i in df['index']}
+        null_classes = {df['original'][i] for i in df['index'] if 'Right' in df['label'][i] or '-rh-' in df['label'][i]}
+    else:
+        # label_mapping = {df['original'][i]: (df['original'][i] if not ('Left-' in df['label'][i] or '-lh-' in df['label'][i]) else 0) for i in df['index']}
+        null_classes = {df['original'][i] for i in df['index'] if 'Right' in df['label'][i] or '-rh-' in df['label'][i]}
+    for label in null_classes:
+        null_image[mask == label] = 0
+        null_mask[mask == label] = 0
+    
+    return null_image, null_mask
 
 # def mapping(mask: np.array, nr_of_classes=51, original=True, map_class_num = None):
 #     # if original == True, map from original --> num-class column

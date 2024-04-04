@@ -56,6 +56,7 @@ class Configuration:
         self.data_dir = getattr(args, "data_dir", "")
         self.data_size = getattr(args, "data_size", "small")
         self.augment = getattr(args, "augment", 0)
+        self.aug_percent = getattr(args, "aug_percent", 0.8)
         self.aug_mask = getattr(args, "aug_mask", 0)
         self.aug_cutout = getattr(args, "aug_cutout", 0)
         self.cutout_n_holes = (
@@ -69,7 +70,7 @@ class Configuration:
         )
         self.mask_length = getattr(args, "mask_length", 0) if self.aug_mask == 1 else 0
         self.intensity_scale = getattr(args, "intensity_scale", 0)
-        self.null_half = getattr(args, "null_half", 0)
+        self.aug_null_half = getattr(args, "aug_null_half", 0)
 
         self.debug = getattr(args, "debug", 0)
 
