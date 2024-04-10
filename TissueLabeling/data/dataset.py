@@ -61,7 +61,7 @@ class NoBrainerDataset(Dataset):
 
         self.new_kwyk_data = config.new_kwyk_data
         if self.new_kwyk_data:
-            background_percent_cutoff = 0.99
+            background_percent_cutoff = 0.8
             valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
             valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
             if os.path.exists(valid_feature_filename) and os.path.exists(
@@ -173,7 +173,7 @@ class NoBrainerDataset(Dataset):
 
     def __getitem__(self, idx):
         # returns (image, mask)
-        image = torch.from_numpy(np.load(self.images[idx]).astype(np.int16))
+        image = torch.from_numpy(np.load(self.images[idx]).astype(np.float32))
         mask = torch.from_numpy(np.load(self.masks[idx]).astype(np.int16))
 
         # randomly augment
@@ -234,16 +234,15 @@ class NoBrainerDataset(Dataset):
                 image - self.normalization_constants[0]
             ) / self.normalization_constants[1]
 
-        if self.pretrained:
-            return image.repeat((3, 1, 1)), mask
-
         if self.new_kwyk_data:
             image = image.to(torch.float32)
             # mask = torch.tensor(
             #     mapping(np.array(mask), self.nr_of_classes, original=True)
             # ) # mapping mod
-            mask = mapping(np.array(mask), self.nr_of_classes)
+            mask = torch.from_numpy(mapping(np.array(mask), self.nr_of_classes))
 
+        if self.pretrained:
+            image = image.repeat((3, 1, 1))
         return image, mask
 
     def __len__(self):

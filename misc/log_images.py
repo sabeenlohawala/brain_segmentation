@@ -98,10 +98,13 @@ class Log_Images_v2:
         self.model_name = config.model_name
         self.nr_of_classes = config.nr_of_classes
         self.writer = writer
-        if "unet" in self.model_name:
-            self.image_shape = (160, 192)
+        if not config.new_kwyk_data:
+            if "unet" in self.model_name:
+                self.image_shape = (160, 192)
+            else:
+                self.image_shape = (162, 194)
         else:
-            self.image_shape = (162, 194)
+            self.image_shape = (256, 256)
 
         # color map to get always the same colors for classes
         if config.nr_of_classes in [51, 106, 7, 17, 2]:
@@ -382,7 +385,7 @@ class Log_Images_v2:
         return np.array(my_colors)
 
 
-logdir = "20240122-multi-8gpu-Msegformer\Ldice\C51\B670\A0"
+logdir = "20240120-multi-4gpu-Msegformer\Ldice\C2\B670\A0"
 config, checkpoint_paths = get_config(logdir)
 
 writer = None

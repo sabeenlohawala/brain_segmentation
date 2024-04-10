@@ -24,10 +24,13 @@ class Log_Images:
         self.model_name = config.model_name
         self.nr_of_classes = config.nr_of_classes
         self.writer = writer
-        if "unet" in self.model_name:
-            self.image_shape = (160, 192)
+        if not config.new_kwyk_data:
+            if "unet" in self.model_name:
+                self.image_shape = (160, 192)
+            else:
+                self.image_shape = (162, 194)
         else:
-            self.image_shape = (162, 194)
+            self.image_shape = (256, 256)
 
         # color map to get always the same colors for classes
         if config.nr_of_classes in [2, 6, 16, 50, 106]:  # freesurfer colors available

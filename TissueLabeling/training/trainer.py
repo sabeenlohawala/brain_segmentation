@@ -11,7 +11,6 @@ from TissueLabeling.metrics.metrics import Classification_Metrics
 from TissueLabeling.training.logging import Log_Images
 from TissueLabeling.utils import finish_wandb
 
-
 class Trainer:
     def __init__(
         self,
@@ -60,6 +59,7 @@ class Trainer:
             wandb_on=self.config.wandb_on,
             loss_name=self.config.loss_fn,
             metric_name=self.config.metric,
+            class_specific_scores=self.config.class_specific_scores,
         )
         self.validation_metrics = Classification_Metrics(
             self.config.nr_of_classes,
@@ -67,6 +67,7 @@ class Trainer:
             wandb_on=self.config.wandb_on,
             loss_name=self.config.loss_fn,
             metric_name=self.config.metric,
+            class_specific_scores=self.config.class_specific_scores,
         )
 
         print(
