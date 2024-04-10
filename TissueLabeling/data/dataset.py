@@ -61,7 +61,7 @@ class NoBrainerDataset(Dataset):
 
         self.new_kwyk_data = config.new_kwyk_data
         if self.new_kwyk_data:
-            background_percent_cutoff = 0.8
+            background_percent_cutoff = 0.99
             valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
             valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
             if os.path.exists(valid_feature_filename) and os.path.exists(
@@ -188,7 +188,8 @@ class NoBrainerDataset(Dataset):
             mask = affine_transform(mask.squeeze(), affine, mode="constant", order=0)
 
             # null half
-            if self.aug_null_half:
+            null_coin_toss = 1 if random.random() < 0.5 else 0
+            if self.aug_null_half and null_coin_toss:
                 image, mask = null_half(image, mask, random.randint(0, 1) == 1)
 
             image = torch.from_numpy(image)
@@ -212,11 +213,11 @@ class NoBrainerDataset(Dataset):
             image = image.unsqueeze(dim=0)
             mask = mask.unsqueeze(dim=0)
 
-        if self.intensity_scale and augment_coin_toss:
-            if not self.new_kwyk_data:
-                image = self.intensity_scale(image)
-            else:
-                image = self.intensity_scale(image / 255.0) * 255
+            if self.intensity_scale:
+                if not self.new_kwyk_data:
+                    image = self.intensity_scale(image)
+                else:
+                    image = self.intensity_scale(image / 255.0) * 255
 
         if not self.new_kwyk_data and "unet" in self.model_name:
             image = image[:, 1:161, 1:193]
