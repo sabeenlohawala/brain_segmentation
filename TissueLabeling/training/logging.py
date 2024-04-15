@@ -23,6 +23,7 @@ class Log_Images:
         self.pretrained = config.pretrained
         self.model_name = config.model_name
         self.nr_of_classes = config.nr_of_classes
+        self.class_mapping = None
         self.writer = writer
         if not config.new_kwyk_data:
             if "unet" in self.model_name:
@@ -46,7 +47,8 @@ class Log_Images:
         mask_file = "pac_36_aseg.nii.gz"
         file_path = "/nese/mit/group/sig/users/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs/"
         brain, mask, _ = load_brains(image_file, mask_file, file_path)
-        mask = mapping(mask, nr_of_classes=self.nr_of_classes)
+        mask,class_mapping = mapping(mask, nr_of_classes=self.nr_of_classes, class_mapping=self.class_mapping)
+        self.class_mapping = class_mapping
 
         self.brain_slices, self.mask_slices = [], []
 

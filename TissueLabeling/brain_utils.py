@@ -140,31 +140,33 @@ def brain_area(slice: torch.tensor) -> torch.tensor:
     return slice[cut_top_temp : cut_bottom_temp + 1, cut_left_temp : cut_right_temp + 1]
 
 
-def mapping(mask: np.array, nr_of_classes=50, reference_col="original"):
-    new_col = "index" if nr_of_classes==106 else f"{nr_of_classes}-class"
-    class_mapping = {}
-    df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
-    for value in df[reference_col].unique():
-        filtered_rows = df[df[reference_col] == value]
-        numbers = list(set(filtered_rows[new_col].tolist()))
-        assert len(numbers) <= 1, "unique mapping does not exist"
-        class_mapping[value] = numbers[0]
+def mapping(mask: np.array, nr_of_classes=50, reference_col="original", class_mapping=None):
+    if class_mapping is None:
+        new_col = "index" if nr_of_classes==106 else f"{nr_of_classes}-class"
+        class_mapping = {}
+        df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
+        for value in df[reference_col].unique():
+            filtered_rows = df[df[reference_col] == value]
+            numbers = list(set(filtered_rows[new_col].tolist()))
+            assert len(numbers) <= 1, "unique mapping does not exist"
+            class_mapping[value] = numbers[0]
 
     # class_mapping = {value.item(): index for index, value in enumerate(labels)}
     u, inv = np.unique(mask, return_inverse=True)
     # num_classes = 50  # len(class_mapping)
-    for x in u:
-        if x not in class_mapping:
-            # class_mapping[x] = nr_of_classes - 1
-            class_mapping[x] = 0
+    # for x in u:
+    #     if x not in class_mapping:
+    #         # class_mapping[x] = nr_of_classes - 1
+    #         class_mapping[x] = 0
 
     # we collect all classes not in the mapping table as an additional "other" class
     # mask = np.array([class_mapping[int(x)] if x in labels else len(labels) for x in u])[inv].reshape(mask.shape)
     for old, new in class_mapping.items():
         mask[mask == old] = -1 * new
+    mask[mask > 0] = 0
     mask = mask * -1
 
-    return mask
+    return mask, class_mapping
 
 def null_half(image: np.array, mask: np.array, keep_left=True):
     df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
@@ -246,7 +248,7 @@ def create_affine_transformation_matrix(
     :param rotation: list of 3 angles (degrees) for rotations around 1st, 2nd, 3rd axis
     :param shearing: list of 6 shearing values
     :param translation: list of 3 values
-    :return: 4x4 numpy matrix
+    :return: 4x4 numpy affine
     """
 
     T_scaling = np.eye(n_dims + 1)

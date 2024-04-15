@@ -16,6 +16,7 @@ import torch
 from torch.utils.data import Dataset
 from scipy.ndimage import affine_transform
 from torchvision import transforms
+import albumentations as A
 
 from TissueLabeling.data.cutout import Cutout
 from TissueLabeling.data.mask import Mask
@@ -170,6 +171,34 @@ class NoBrainerDataset(Dataset):
 
         if os.path.exists(f"{config.data_dir}/{mode}/keys.npy"):
             self.keys = np.load(f"{config.data_dir}/{mode}/keys.npy")
+        
+        self.class_mapping = None
+        transform_list = [
+            A.Affine(rotate=(-15,15),scale=(1-0.2,1+0.2),shear=(-0.69,0.69),interpolation=2,mask_interpolation=0,always_apply=True),
+            A.HorizontalFlip(p=0.5),
+            A.RandomBrightnessContrast(always_apply=True),
+            A.ElasticTransform(always_apply=True),
+        ]
+        if not config.aug_null_half and config.aug_mask:
+            transform_list.append(A.CoarseDropout(max_holes=config.mask_n_holes,
+                                                  max_height=config.mask_length,
+                                                  max_width=config.mask_length,
+                                                  min_holes=config.mask_n_holes,
+                                                  min_height=config.mask_length,
+                                                  min_width=config.mask_length,
+                                                  mask_fill_value=0,
+                                                  always_apply=True))
+        elif not config.aug_null_half and config.aug_cutout:
+            transform_list.append(A.CoarseDropout(max_holes=config.cutout_n_holes,
+                                                  max_height=config.cutout_length,
+                                                  max_width=config.cutout_length,
+                                                  min_holes=config.cutout_n_holes,
+                                                  min_height=config.cutout_length,
+                                                  min_width=config.cutout_length,
+                                                  mask_fill_value=None, # mask will not be affected
+                                                  always_apply=True))
+        self.transform = A.Compose(transform_list)
+
 
     def __getitem__(self, idx):
         # returns (image, mask)
@@ -180,44 +209,60 @@ class NoBrainerDataset(Dataset):
         augment_coin_toss = 1 if random.random() < self.aug_percent else 0
         if self.augment and augment_coin_toss == 1:
             # apply affine
-            if self.new_kwyk_data:
-                affine = torch.from_numpy(self._get_affine_matrix(image))
-            else:
-                affine = torch.from_numpy(np.load(self.affines[idx]))
-            image = affine_transform(image.squeeze(), affine, mode="constant")
-            mask = affine_transform(mask.squeeze(), affine, mode="constant", order=0)
+            # if self.new_kwyk_data:
+            #     affine = torch.from_numpy(self._get_affine_matrix(image))
+            # else:
+            #     affine = torch.from_numpy(np.load(self.affines[idx]))
+            # image = affine_transform(image.squeeze(), affine, mode="constant")
+            # mask = affine_transform(mask.squeeze(), affine, mode="constant", order=0)
+
+            # image = torch.from_numpy(image)
+            # mask = torch.from_numpy(mask)
+
+            # # random left/right flip
+            # flip_coin_toss = random.randint(0, 1)
+            # if flip_coin_toss == 1:
+            #     image = torch.flip(image, dims=(1,))
+            #     mask = torch.flip(mask, dims=(1,))
+
+            # # apply cutout
+            # cutout_coin_toss = random.randint(0, 1)
+            # if self.aug_cutout == 1 and cutout_coin_toss:
+            #     image = self.cutout_obj(image)
+
+            # # apply mask
+            # mask_coin_toss = random.randint(0,1)
+            # if self.aug_mask == 1 and mask_coin_toss:  # TODO: if or elif?
+            #     image, mask = self.mask_obj(image, mask)
+
+            # if self.intensity_scale:
+            #     if not self.new_kwyk_data:
+            #         image = self.intensity_scale(image)
+            #     else:
+            #         image = self.intensity_scale(image / 255.0) * 255
+
+            # Albumentations
+            image = np.array(image.squeeze(0))
+            mask = np.array(mask.squeeze(0))
+            if not self.new_kwyk_data:
+                image = image / 255.0
+
+            transformed = self.transform(image = image.astype(np.float32), mask = mask)
+            image = transformed['image']
+            mask = transformed['mask']
+            if not self.new_kwyk_data:
+                image = image * 255.0
 
             # null half
             null_coin_toss = 1 if random.random() < 0.5 else 0
             if self.aug_null_half and null_coin_toss:
                 image, mask = null_half(image, mask, random.randint(0, 1) == 1)
 
+            # resize image to [1,h,w] again
             image = torch.from_numpy(image)
             mask = torch.from_numpy(mask)
-
-            # random left/right flip
-            flip_coin_toss = random.randint(0, 1)
-            if flip_coin_toss == 1:
-                image = torch.flip(image, dims=(1,))
-                mask = torch.flip(mask, dims=(1,))
-
-            # apply cutout
-            if self.aug_cutout == 1:
-                image = self.cutout_obj(image)
-
-            # apply mask
-            if self.aug_mask == 1:  # TODO: if or elif?
-                image, mask = self.mask_obj(image, mask)
-
-            # resize image to [1,h,w] again
             image = image.unsqueeze(dim=0)
             mask = mask.unsqueeze(dim=0)
-
-            if self.intensity_scale:
-                if not self.new_kwyk_data:
-                    image = self.intensity_scale(image)
-                else:
-                    image = self.intensity_scale(image / 255.0) * 255
 
         if not self.new_kwyk_data and "unet" in self.model_name:
             image = image[:, 1:161, 1:193]
@@ -228,7 +273,8 @@ class NoBrainerDataset(Dataset):
                 mask[mask != 0] = 1
             elif self.nr_of_classes == 7 or self.nr_of_classes == 17:
                 # mask = mapping(mask, self.nr_of_classes, original=False, map_class_num=51) # mapping mod
-                mask = mapping(mask, self.nr_of_classes, reference_col="50-class")
+                mask, class_mapping = mapping(mask, nr_of_classes=self.nr_of_classes, reference_col="50-class", class_mapping=self.class_mapping)
+                self.class_mapping = class_mapping
 
             # normalize image
             image = (
@@ -240,7 +286,9 @@ class NoBrainerDataset(Dataset):
             # mask = torch.tensor(
             #     mapping(np.array(mask), self.nr_of_classes, original=True)
             # ) # mapping mod
-            mask = torch.from_numpy(mapping(np.array(mask), self.nr_of_classes))
+            mask, class_mapping = mapping(np.array(mask), nr_of_classes=self.nr_of_classes, reference_col='original', class_mapping=self.class_mapping)
+            mask = torch.from_numpy(mask)
+            self.class_mapping = class_mapping
 
         if self.pretrained:
             image = image.repeat((3, 1, 1))
