@@ -8,6 +8,7 @@
 """
 import glob
 import os
+import sys
 
 import random
 import json
@@ -24,7 +25,10 @@ from TissueLabeling.brain_utils import (
     mapping,
     create_affine_transformation_matrix,
     draw_value_from_distribution,
-    null_half
+    null_half,
+    apply_background,
+    draw_random_shapes_background,
+    draw_random_grid_background,
 )
 
 
@@ -143,6 +147,9 @@ class NoBrainerDataset(Dataset):
                 if config.intensity_scale
                 else None
             )
+            self.aug_background_manipulation = config.aug_background_manipulation
+            self.aug_shapes_background = config.aug_shapes_background
+            self.aug_grid_background = config.aug_grid_background
         else:
             self.augment = 0
             self.aug_percent = 0
@@ -153,6 +160,9 @@ class NoBrainerDataset(Dataset):
             self.cutout_obj = None
             self.mask_obj = None
             self.intensity_scale = None
+            self.aug_background_manipulation = 0
+            self.aug_shapes_background = 0
+            self.aug_grid_background = 0
 
         # Limit the number of images and masks to the first 100 during debugging
         if config.debug:
@@ -252,6 +262,18 @@ class NoBrainerDataset(Dataset):
             mask = transformed['mask']
             if not self.new_kwyk_data:
                 image = image * 255.0
+            
+            if self.aug_background_manipulation:
+                apply_background_coin_toss = random.random() < 0.5
+                if apply_background_coin_toss:
+                    shapes_background_coin_toss = random.random() < 0.5 if self.aug_grid_background == self.aug_shapes_background else self.aug_shapes_background
+
+                    if shapes_background_coin_toss:
+                        background = draw_random_shapes_background(image.shape)
+                    else:
+                        background = draw_random_grid_background(image.shape)
+                        
+                    image = apply_background(image,mask,background)
 
             # null half
             null_coin_toss = 1 if random.random() < 0.5 else 0

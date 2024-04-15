@@ -6,7 +6,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 import torch
-
+import cv2
 
 def load_brains(image_file: str, mask_file: str, file_path: str):
     # ensure that mask and image numbers match
@@ -236,6 +236,58 @@ def null_half(image: np.array, mask: np.array, keep_left=True):
 
 #     return mask
 
+def apply_background(image,mask,background):
+    assert image.shape == background.shape
+    combined = np.where(mask == 0, background, image)
+    return combined
+
+def draw_random_shapes_background(shape=(256, 256), num_shapes=5):
+    canvas = np.zeros(shape, dtype=np.uint8)  # Create a blank canvas
+    
+    for _ in range(num_shapes):
+        shape_type = np.random.choice(['line', 'rectangle', 'circle', 'ellipse', 'polygon'])
+        color = np.random.randint(0,255)  # Random intensity value between 0 and 1
+        
+        if shape_type == 'line':
+            pt1 = (np.random.randint(0, shape[1]), np.random.randint(0, shape[0]))
+            pt2 = (np.random.randint(0, shape[1]), np.random.randint(0, shape[0]))
+            cv2.line(canvas, pt1, pt2, color, thickness=np.random.randint(1, 5))
+        elif shape_type == 'rectangle':
+            pt1 = (np.random.randint(0, shape[1]), np.random.randint(0, shape[0]))
+            pt2 = (np.random.randint(pt1[0], shape[1]), np.random.randint(pt1[1], shape[0]))
+            cv2.rectangle(canvas, pt1, pt2, color, thickness=-1)#np.random.randint(1, 5))
+        elif shape_type == 'circle':
+            center = (np.random.randint(0, shape[1]), np.random.randint(0, shape[0]))
+            radius = np.random.randint(10, min(shape) // 4)
+            cv2.circle(canvas, center, radius, color, thickness=-1)#np.random.randint(1, 5))
+        elif shape_type == 'ellipse':
+            center = (np.random.randint(0, shape[1]), np.random.randint(0, shape[0]))
+            axes = (np.random.randint(10, min(shape) // 4), np.random.randint(10, min(shape) // 4))
+            angle = np.random.randint(0, 180)
+            cv2.ellipse(canvas, center, axes, angle, 0, 360, color, thickness=-1)#np.random.randint(1, 5))
+        elif shape_type == 'polygon':
+            num_vertices = np.random.randint(3, 10)
+            vertices = np.random.randint(0, shape[1], size=(num_vertices, 2))
+            vertices = vertices.reshape((-1, 1, 2))
+            cv2.polylines(canvas, [vertices], isClosed=True, color=color, thickness=np.random.randint(1, 5))
+
+    return canvas.astype(np.float32) / 255.0  # Normalize to range [0, 1]
+
+def draw_random_grid_background(shape=(256, 256), intensity_range=(0,1), thickness_range=(1, 5), spacing_range=(5, 20)):
+    background_intensity = np.random.uniform(*intensity_range)  # Random background intensity
+    line_intensity = np.random.uniform(*intensity_range)  # Random line intensity
+    line_thickness = np.random.randint(*thickness_range)  # Random line thickness
+    grid_spacing = np.random.randint(*spacing_range)  # Random grid spacing
+    
+    canvas = np.ones(shape, dtype=np.float32) * background_intensity  # Fill the canvas with the background intensity
+    
+    # Create horizontal lines
+    canvas[::grid_spacing, :] = line_intensity
+    
+    # Create vertical lines
+    canvas[:, ::grid_spacing] = line_intensity
+    
+    return canvas
 
 def create_affine_transformation_matrix(
     n_dims, scaling=None, rotation=None, shearing=None, translation=None

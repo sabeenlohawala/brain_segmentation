@@ -230,6 +230,27 @@ def get_args():
         required=False,
         default=0,
     )
+    train.add_argument(
+        "--aug_background_manipulation",
+        help="Whether to do background manipulation as an augmentation",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
+        "--aug_shapes_background",
+        help="Whether to do random shapes as a background manipulation as an augmentation",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
+        "--aug_grid_background",
+        help="Whether to do random grid as a background manipulation as an augmentation",
+        type=int,
+        required=False,
+        default=0
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

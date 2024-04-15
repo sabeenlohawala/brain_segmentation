@@ -89,7 +89,7 @@ def update_config(config):
         )
 
         configs = sorted(glob.glob(os.path.join(chkpt_folder, "config*.json")))
-        config_file_name = f"config_resume_{len(configs):02d}.json"
+        config_file_name = f"config_resume_{len(configs):02d}.json" 
         args = argparse.Namespace(**data)
         config = Configuration(args, config_file_name)
 

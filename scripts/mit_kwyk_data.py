@@ -1,7 +1,7 @@
 import glob
 import os
 from multiprocessing import Pool
-import multiprocessing
+# import multiprocessing
 
 import sys
 import numpy as np
@@ -13,10 +13,29 @@ import pickle
 import json
 import argparse
 from sklearn.model_selection import train_test_split
-import nobrainer
+# import nobrainer
+from TissueLabeling.brain_utils import get_affine, warp_features_labels
 
 from ext.lab2im import utils, edit_volumes
 from datetime import datetime
+# import tensorflow as tf
+from memory_profiler import profile
+
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+
+def center_crop_and_pad(original_shape,ref_vol):
+  ref_shape = ref_vol.shape
+  # shape_diff = (np.array(ref_shape) - np.array(original_shape))
+  skip = (np.array(ref_shape) - np.array(original_shape))
+  skip[skip < 0] = 0
+  skip = skip // 2
+  pad = (np.array(ref_shape) - np.array(original_shape))
+  pad[pad>0] = 0
+  pad = pad*-1
+  
+  new_vol = ref_vol[skip[0]: skip[0] + original_shape[0],skip[1]: skip[1] + original_shape[1],skip[2]: skip[2] + original_shape[2]]
+  new_vol = np.pad(new_vol,tuple(((item//2,item-item//2) for item in pad)))
+  return new_vol
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -181,7 +200,8 @@ def transform_kwyk_dataset() -> np.ndarray:
 
         input_ids = np.random.choice(range(file_count), file_count, replace=False)
 
-        n_procs = 1 if DEBUG else multiprocessing.cpu_count()
+        n_procs = 1 if DEBUG else len(os.sched_getaffinity(0))#multiprocessing.cpu_count()
+        print(f'N PROC {n_procs}')
 
         with Pool(processes=n_procs) as pool:
             shapes = pool.starmap(
@@ -202,12 +222,12 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir=SOURCE_DIR_00
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:600]
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:600]
 
     return list(zip(features, labels))
 
-
+@profile
 def extract_feature_label_slices(
     feature: str,
     label: str,
@@ -247,47 +267,19 @@ def extract_feature_label_slices(
     # Add random rotation to entire volume
     if ROTATE_VOL:
         # randomly choose an angle between -20 to 20 for all axes
-        angles = np.random.uniform(-20, 20, size=3)
-        # assert feature_vol.shape == label_vol.shape
-
-        affine = nobrainer.transform.get_affine(feature_vol.shape, rotation=angles)
-        feature_vol = np.array(nobrainer.transform.warp(feature_vol, affine, order=1))
-        label_vol = np.array(
-            nobrainer.transform.warp(label_vol, affine, order=0)
-        ).astype("int16")
+        angles = np.radians(np.random.uniform(-20, 20, size=3))
+        # affine = nobrainer.transform.get_affine(feature_vol.shape, rotation=angles)
+        affine = get_affine(feature_vol.shape, rotation=angles)
+        # feature_vol, label_vol = nobrainer.transform.warp_features_labels(feature_vol, label_vol, affine)
+        feature_vol, label_vol = warp_features_labels(feature_vol, label_vol, affine)
+        feature_vol = np.array(feature_vol)
+        label_vol = np.array(label_vol).astype("int16")
 
     slice_idx = 0
     pixel_counts = Counter()
     all_percent_backgrounds = {}
 
     for d in range(3):
-        # V1: not parallelized: for looping over all slices (currently faster than V2)
-        # for i in range(label_vol.shape[d]):
-        #     # get the slice
-        #     if d == 0:
-        #         feature_slice = feature_vol[i, :, :]
-        #         label_slice = label_vol[i, :, :]
-        #     elif d == 1:
-        #         feature_slice = feature_vol[:, i, :]
-        #         label_slice = label_vol[:, i, :]
-        #     elif d == 2:
-        #         feature_slice = feature_vol[:, :, i]
-        #         label_slice = label_vol[:, :, i]
-
-        #     idx_and_counts = process_slice(
-        #         feature_slice,
-        #         label_slice,
-        #         slice_idx,
-        #         max_shape,
-        #         get_pixel_counts,
-        #         feature_base_filename,
-        #         label_base_filename,
-        #         feature_slice_dest_dir,
-        #         label_slice_dest_dir,
-        #     )
-        #     pixel_counts += idx_and_counts
-        #     # increase slice_idx
-        #     slice_idx += 1
 
         # V2: trying to paralellize using map (currently slower than V1)
         feature_base_filename = os.path.basename(feature).split(".")[0]
@@ -341,7 +333,7 @@ def extract_feature_label_slices(
         slice_idx += feature_vol.shape[d]
         pixel_counts += sum(slice_counts, Counter())
         all_percent_backgrounds.update(dict(ChainMap(*percent_backgrounds)))
-
+    print(f"Done extracting slices for subject: {os.path.basename(feature)}")
     return pixel_counts, all_percent_backgrounds
 
 
@@ -378,9 +370,9 @@ def process_slice(
     """
     slice_pixel_counts = Counter()
     # discard slices with < 20% brain (> 80% background)
-    count_background = np.sum(label_slice == 0)
+    count_background = np.sum(label_slice == 0) + (256**2 - label_slice.shape[0] * label_slice.shape[1])
     percent_background = count_background / (
-        label_slice.shape[0] * label_slice.shape[1]
+        256 * 256 # label_slice.shape[0] * label_slice.shape[1]
     )
     # if count_background > 0.8 * (label_slice.shape[0] * label_slice.shape[1]):
     #     return slice_pixel_counts
@@ -530,7 +522,8 @@ def extract_kwyk_slices(max_shape):
     for mode, zipped in feature_label_pairs_by_mode.items():
         print(f"Extracting {mode} slices...")
 
-        n_procs = 1 if DEBUG else multiprocessing.cpu_count()
+        n_procs = 1 if DEBUG else len(os.sched_getaffinity(0))#multiprocessing.cpu_count()
+        print(f'N PROC {n_procs}')
         with Pool(processes=n_procs) as pool:
             pixel_counts_and_percent_backgrounds = pool.starmap(
                 extract_feature_label_slices,
@@ -540,7 +533,8 @@ def extract_kwyk_slices(max_shape):
                         label,
                         max_shape,
                         os.path.join(SLICE_DEST_DIR, mode),
-                        mode == "train",
+                        # mode == "train",
+                        False
                     )
                     for feature, label in zipped
                 ],
@@ -552,10 +546,10 @@ def extract_kwyk_slices(max_shape):
             train_pixel_counts += sum(pixel_counts, Counter())
 
     # Aggregate and save pixel counts
-    with open(
-        os.path.join(SLICE_DEST_DIR, "train_pixel_counts.pkl"), "wb"
-    ) as pickle_file:
-        pickle.dump(dict(train_pixel_counts), pickle_file)
+    # with open(
+    #     os.path.join(SLICE_DEST_DIR, "train_pixel_counts.pkl"), "wb"
+    # ) as pickle_file:
+    #     pickle.dump(dict(train_pixel_counts), pickle_file)
     with open(os.path.join(SLICE_DEST_DIR, "percent_backgrounds.json"), "w") as f:
         json.dump(all_percent_backgrounds, f)
 

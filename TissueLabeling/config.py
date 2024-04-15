@@ -71,6 +71,9 @@ class Configuration:
         self.mask_length = getattr(args, "mask_length", 0) if self.aug_mask == 1 else 0
         self.intensity_scale = getattr(args, "intensity_scale", 0)
         self.aug_null_half = getattr(args, "aug_null_half", 0)
+        self.aug_background_manipulation = getattr(args,"aug_background_manipulation",0)
+        self.aug_shapes_background = getattr(args,"aug_shapes_background",0) if self.aug_background_manipulation else 0
+        self.aug_grid_background = getattr(args,"aug_grid_background",0) if self.aug_background_manipulation else 0
 
         self.debug = getattr(args, "debug", 0)
 
