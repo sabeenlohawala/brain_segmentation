@@ -15,6 +15,7 @@ import argparse
 from sklearn.model_selection import train_test_split
 # import nobrainer
 from TissueLabeling.brain_utils import get_affine, warp_features_labels
+from scipy.ndimage import affine_transform
 
 from ext.lab2im import utils, edit_volumes
 from datetime import datetime
@@ -222,8 +223,8 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir=SOURCE_DIR_00
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:600]
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:600]
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
 
     return list(zip(features, labels))
 
@@ -269,9 +270,11 @@ def extract_feature_label_slices(
         # randomly choose an angle between -20 to 20 for all axes
         angles = np.radians(np.random.uniform(-20, 20, size=3))
         # affine = nobrainer.transform.get_affine(feature_vol.shape, rotation=angles)
-        affine = get_affine(feature_vol.shape, rotation=angles)
         # feature_vol, label_vol = nobrainer.transform.warp_features_labels(feature_vol, label_vol, affine)
-        feature_vol, label_vol = warp_features_labels(feature_vol, label_vol, affine)
+        affine = get_affine(feature_vol.shape, rotation=angles)
+        # feature_vol, label_vol = warp_features_labels(feature_vol, label_vol, affine)
+        feature_vol = affine_transform(input=feature_vol,matrix=affine,order=1)
+        label_vol = affine_transform(input=label_vol,matrix=affine,order=0)
         feature_vol = np.array(feature_vol)
         label_vol = np.array(label_vol).astype("int16")
 
@@ -333,7 +336,6 @@ def extract_feature_label_slices(
         slice_idx += feature_vol.shape[d]
         pixel_counts += sum(slice_counts, Counter())
         all_percent_backgrounds.update(dict(ChainMap(*percent_backgrounds)))
-    print(f"Done extracting slices for subject: {os.path.basename(feature)}")
     return pixel_counts, all_percent_backgrounds
 
 

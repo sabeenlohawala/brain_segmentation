@@ -475,3 +475,269 @@ def draw_value_from_distribution(
             parameter_value[parameter_value < 0] = 0
 
     return parameter_value
+
+
+### NOBRAINER FUNCTIONS: CONVERTED FROM TF TO NP ###
+# def _get_coordinates(volume_shape):
+#     Nx, Ny, Nz = volume_shape
+#     x = np.linspace(0, Nx - 1, Nx)
+#     y = np.linspace(0, Ny - 1, Ny)
+#     z = np.linspace(0, Nz - 1, Nz)
+#     xx, yy, zz = np.meshgrid(x,y,z, indexing='ij')
+#     coords = np.stack((xx,yy,zz),axis=3)
+#     return np.reshape(coords,(-1,3))
+
+# def _warp_coords(affine, volume_shape):
+#     coords = _get_coordinates(volume_shape=volume_shape)
+#     coor_homog = np.concatenate([coords,np.ones((coords.shape[0],1)).astype(coords.dtype)], axis=1)
+#     return (coor_homog @ np.transpose(affine))[..., :3]
+
+# def _get_voxels(volume, coords):
+#     """Get voxels from volume at points. These voxels are in a flat tensor."""
+#     x = volume.astype(np.float32)
+#     coords = coords.astype(np.float32)
+
+#     if len(x.shape) < 3:
+#         raise ValueError("`volume` must be at least rank 3")
+#     if len(coords.shape) != 2 or coords.shape[1] != 3:
+#         raise ValueError("`coords` must have shape `(N, 3)`.")
+
+#     rows, cols, depth, *n_channels = x.shape
+
+#     # Points in flattened array representation.
+#     fcoords = coords[:, 0] * cols * depth + coords[:, 1] * depth + coords[:, 2]
+
+#     # Some computed finds are out of range of the image's flattened size.
+#     # Zero those so we don't get errors. These points in the volume are filled later.
+#     fcoords_size = np.size(fcoords) * 1.0
+#     fcoords = np.clip(fcoords, 0, fcoords_size - 1)
+#     xflat = np.squeeze(np.reshape(x, [np.prod(x.shape[:3]), -1]))
+
+#     # Reorder image data to transformed space.
+#     xflat = np.take(xflat, indices=fcoords.astype(np.int32))
+
+#     # Zero image data that was out of frame.
+#     outofframe = (
+#         np.any(coords < 0, -1)
+#         | (coords[:, 0] > rows)
+#         | (coords[:, 1] > cols)
+#         | (coords[:, 2] > depth)
+#     )
+
+#     if n_channels:
+#         outofframe = np.stack([outofframe for _ in range(n_channels[0])], axis=-1)
+
+#     xflat = xflat * np.logical_not(outofframe).astype(xflat.dtype)
+
+#     return xflat
+
+# def _trilinear_interpolation(volume, coords): # MATCHES NOBRAINER RESULTS
+#     """Trilinear interpolation.
+
+#     Implemented according to
+#     https://en.wikipedia.org/wiki/Trilinear_interpolation#Method
+#     https://github.com/Ryo-Ito/spatial_transformer_network/blob/2555e846b328e648a456f92d4c80fce2b111599e/warp.py#L137-L222
+#     """
+#     volume = volume.astype(np.float32)
+#     coords = coords.astype(np.float32)
+#     coords_floor = np.floor(coords)
+
+#     shape = volume.shape
+#     xlen = shape[0]
+#     ylen = shape[1]
+#     zlen = shape[2]
+
+#     # Get lattice points. x0 is point below x, and x1 is point above x. Same for y and
+#     # z.
+#     x0 = coords_floor[:, 0].astype(np.int32)
+#     x1 = x0 + 1
+#     y0 = coords_floor[:, 1].astype(np.int32)
+#     y1 = y0 + 1
+#     z0 = coords_floor[:, 2].astype(np.int32)
+#     z1 = z0 + 1
+
+#     # Clip values to the size of the volume array.
+#     x0 = np.clip(x0, 0, xlen - 1)
+#     x1 = np.clip(x1, 0, xlen - 1)
+#     y0 = np.clip(y0, 0, ylen - 1)
+#     y1 = np.clip(y1, 0, ylen - 1)
+#     z0 = np.clip(z0, 0, zlen - 1)
+#     z1 = np.clip(z1, 0, zlen - 1)
+
+#     i000 = x0 * ylen * zlen + y0 * zlen + z0
+#     i001 = x0 * ylen * zlen + y0 * zlen + z1
+#     i010 = x0 * ylen * zlen + y1 * zlen + z0
+#     i011 = x0 * ylen * zlen + y1 * zlen + z1
+#     i100 = x1 * ylen * zlen + y0 * zlen + z0
+#     i101 = x1 * ylen * zlen + y0 * zlen + z1
+#     i110 = x1 * ylen * zlen + y1 * zlen + z0
+#     i111 = x1 * ylen * zlen + y1 * zlen + z1
+
+#     if len(volume.shape) == 3:
+#         volume_flat = np.reshape(volume, [-1])
+#     else:
+#         volume_flat = np.reshape(volume, [-1, volume.shape[-1]])
+
+#     c000 = np.take(volume_flat, i000)
+#     c001 = np.take(volume_flat, i001)
+#     c010 = np.take(volume_flat, i010)
+#     c011 = np.take(volume_flat, i011)
+#     c100 = np.take(volume_flat, i100)
+#     c101 = np.take(volume_flat, i101)
+#     c110 = np.take(volume_flat, i110)
+#     c111 = np.take(volume_flat, i111)
+
+#     xd = coords[:, 0] - x0.astype(np.float32)
+#     yd = coords[:, 1] - y0.astype(np.float32)
+#     zd = coords[:, 2] - z0.astype(np.float32)
+
+#     # Interpolate along x-axis.
+#     c00 = c000 * (1 - xd) + c100 * xd
+#     c01 = c001 * (1 - xd) + c101 * xd
+#     c10 = c010 * (1 - xd) + c110 * xd
+#     c11 = c011 * (1 - xd) + c111 * xd
+
+#     # Interpolate along y-axis.
+#     c0 = c00 * (1 - yd) + c10 * yd
+#     c1 = c01 * (1 - yd) + c11 * yd
+
+#     c = c0 * (1 - zd) + c1 * zd
+
+#     return np.reshape(c, volume.shape)
+
+# def _nearest_neighbor_interpolation(volume, coords): #MATCHES NOBRAINER VERSION
+#     """Three-dimensional nearest neighbors interpolation."""
+#     volume_f = _get_voxels(volume=volume, coords=np.round(coords))
+#     return np.reshape(volume_f, volume.shape)
+
+# def warp_features_labels(features, labels, affine, scalar_label=False):
+#     """Warp features and labels tensors according to affine matrix.
+
+#     Trilinear interpolation is used for features, and nearest neighbor
+#     interpolation is used for labels.
+
+#     Parameters
+#     ----------
+#     features: Rank 3 tensor, volumetric feature data.
+#     labels: Rank 3 tensor or N
+#     affine: Tensor with shape `(4, 4)`, affine affine.
+
+#     Returns
+#     -------
+#     Tuple of warped features, warped labels.
+#     """
+#     # features = tf.convert_to_tensor(features)
+#     # labels = tf.convert_to_tensor(labels)
+
+#     warped_coords = _warp_coords(affine=affine, volume_shape=features.shape)
+#     features = _trilinear_interpolation(volume=features, coords=warped_coords)
+#     if not scalar_label:
+#         labels = _nearest_neighbor_interpolation(volume=labels, coords=warped_coords)
+#     return (features, labels)
+
+def get_affine(volume_shape, rotation=[0, 0, 0], translation=[0, 0, 0]):
+    """Return 4x4 affine, which encodes rotation and translation of 3D tensors.
+
+    Parameters
+    ----------
+    rotation: iterable of three numbers, the yaw, pitch, and roll,
+        respectively, in radians.
+    translation: iterable of three numbers, the number of voxels to translate
+        in the x, y, and z directions.
+
+    Returns
+    -------
+    Tensor with shape `(4, 4)` and dtype float32.
+    """
+    volume_shape = np.array(volume_shape).astype(np.float32)
+    rotation = np.array(rotation).astype(np.float32)
+    translation = np.array(translation).astype(np.float32)
+    if volume_shape.shape[0] < 3:
+        raise ValueError("`volume_shape` must have at least three values")
+    if rotation.shape[0] != 3:
+        raise ValueError("`rotation` must have three values")
+    if translation.shape[0] != 3:
+        raise ValueError("`translation` must have three values")
+
+    # ROTATION
+    # yaw
+    rx = np.array(
+        [
+            [1, 0, 0, 0],
+            [0, np.cos(rotation[0]), -np.sin(rotation[0]), 0],
+            [0, np.sin(rotation[0]), np.cos(rotation[0]), 0],
+            [0, 0, 0, 1],
+        ],
+        dtype=np.float32
+    )
+
+    # pitch
+    ry = np.array(
+        [
+            [np.cos(rotation[1]), 0, np.sin(rotation[1]), 0],
+            [0, 1, 0, 0],
+            [-np.sin(rotation[1]), 0, np.cos(rotation[1]), 0],
+            [0, 0, 0, 1],
+        ],
+        dtype=np.float32
+    )
+
+    # roll
+    rz = np.array(
+        [
+            [np.cos(rotation[2]), -np.sin(rotation[2]), 0, 0],
+            [np.sin(rotation[2]), np.cos(rotation[2]), 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+        ],
+        dtype=np.float32
+    )
+
+    # Rotation around origin.
+    transform = rz @ ry @ rx
+
+    center = (volume_shape[:3] / 2 - 0.5).astype(np.float32)
+    neg_center = -1 * center
+    center_to_origin = np.array(
+        [
+            [1, 0, 0, neg_center[0]],
+            [0, 1, 0, neg_center[1]],
+            [0, 0, 1, neg_center[2]],
+            [0, 0, 0, 1],
+        ],
+        dtype=np.float32,
+    )
+
+    origin_to_center = np.array(
+        [
+            [1, 0, 0, center[0]],
+            [0, 1, 0, center[1]],
+            [0, 0, 1, center[2]],
+            [0, 0, 0, 1],
+        ],
+        dtype=np.float32,
+    )
+
+    # Rotation around center of volume.
+    transform = origin_to_center @ transform @ center_to_origin
+
+    # TRANSLATION
+    translation = np.array(
+        [
+            [1, 0, 0, translation[0]],
+            [0, 1, 0, translation[1]],
+            [0, 0, 1, translation[2]],
+            [0, 0, 0, 1],
+        ],
+        dtype=np.float32,
+    )
+
+    transform = translation @ transform
+
+    # REFLECTION
+    #
+    # TODO.
+    # See http://web.iitd.ac.in/~hegde/cad/lecture/L6_3dtrans.pdf#page=7
+    # and https://en.wikipedia.org/wiki/Transformation_matrix#Reflection_2
+
+    return transform
