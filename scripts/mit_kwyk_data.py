@@ -14,7 +14,7 @@ import json
 import argparse
 from sklearn.model_selection import train_test_split
 # import nobrainer
-from TissueLabeling.brain_utils import get_affine, warp_features_labels
+from TissueLabeling.brain_utils import get_affine#, warp_features_labels
 from scipy.ndimage import affine_transform
 
 from ext.lab2im import utils, edit_volumes
