@@ -293,10 +293,12 @@ class NoBrainerDataset(Dataset):
         if not self.new_kwyk_data: # these prob don't work anymore
             if self.nr_of_classes == 2:
                 mask[mask != 0] = 1
-            elif self.nr_of_classes == 7 or self.nr_of_classes == 17:
+            elif self.nr_of_classes == 6 or self.nr_of_classes == 16:
                 # mask = mapping(mask, self.nr_of_classes, original=False, map_class_num=51) # mapping mod
                 mask, class_mapping = mapping(mask, nr_of_classes=self.nr_of_classes, reference_col="50-class", class_mapping=self.class_mapping)
                 self.class_mapping = class_mapping
+            elif self.nr_of_classes == 50:
+                mask[mask > 49] = 0
 
             # normalize image
             image = (

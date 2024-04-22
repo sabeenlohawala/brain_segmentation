@@ -188,6 +188,7 @@ class Classification_Metrics:
         self.class_dice = torch.zeros((self.nr_of_classes,), device="cpu")
 
         self.Assert = torch.Tensor([1])
+        self.class_specific_scores = class_specific_scores
 
     def compute(
         self, loss: float, metric: float, class_dice=None
@@ -213,7 +214,7 @@ class Classification_Metrics:
             f"Assert": self.Assert.item(),
         }
 
-        if len(self.class_dice) > 0:
+        if len(self.class_dice) > 0 and self.class_specific_scores:
             for i in range(len(self.class_dice)):
                 logging_dict[f"{self.prefix}/Metric/ClassDice/{i}"] = self.class_dice[
                     i

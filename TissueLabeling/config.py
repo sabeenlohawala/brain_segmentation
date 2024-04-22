@@ -140,16 +140,18 @@ class Configuration:
                 folder_map = {
                     107: "new_small_aug_107",
                     51: "new_small_no_aug_51",
+                    50: "new_small_no_aug_51",
                     2: "new_small_no_aug_51",
-                    7: "new_small_no_aug_51",
-                    17: "new_small_no_aug_51",
+                    6: "new_small_no_aug_51",
+                    16: "new_small_no_aug_51",
                 }
             elif self.data_size == "med" or self.data_size == "medium":
                 folder_map = {
                     51: "new_med_no_aug_51",
+                    50: "new_med_no_aug_51",
                     2: "new_med_no_aug_51",
-                    7: "new_med_no_aug_51",
-                    17: "new_med_no_aug_51",
+                    6: "new_med_no_aug_51",
+                    16: "new_med_no_aug_51",
                 }
             else:
                 sys.exit(

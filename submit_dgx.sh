@@ -7,9 +7,9 @@
 #SBATCH --gres=gpu:4
 #SBATCH --constraint=volta
 #SBATCH --mem=40G # per node memory
-#SBATCH -p normal
-#SBATCH -o ./logs/new-kwyk-grid-288.out
-#SBATCH -e ./logs/new-kwyk-grid-288.err
+#SBATCH -p use-everything
+#SBATCH -o ./logs/new-kwyk-grid-288-dgx.out
+#SBATCH -e ./logs/new-kwyk-grid-288-dgx.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 
@@ -27,7 +27,7 @@ DEBUG=0
 NR_OF_CLASSES=16
 LOG_IMAGES=0
 CLASS_SPECIFIC_SCORES=0
-CHECKPOINT_FREQ=5
+CHECKPOINT_FREQ=2
 
 # Dataset params
 NEW_KWYK_DATA=1
@@ -61,7 +61,7 @@ AUG_NULL_HALF=0
 # LOGDIR="/om2/scratch/tmp/sabeen/20240330-null-$AUG_NULL_HALF-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 
 # 202404__ logdirs
-LOGDIR="/om2/scratch/tmp/sabeen/results/20240417-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+LOGDIR="/om2/scratch/tmp/sabeen/results/20240418-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 # LOGDIR="/om2/scratch/tmp/sabeen/results/20240410-mask-$MASK_LENGTH-$MASK_N_HOLES-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 # LOGDIR="/om2/scratch/tmp/sabeen/results/20240410-null-intensity-0.2-0.2-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 # LOGDIR="20240410-test-new-kwyk-med-10epoch-time"
