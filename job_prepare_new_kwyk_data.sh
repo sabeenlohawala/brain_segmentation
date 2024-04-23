@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH -t 02:00:00
-#SBATCH -c 8
+#SBATCH -t 1-00:00:00
+#SBATCH -c 48
 #SBATCH --mem-per-cpu=12G # per node memory
-#SBATCH -p normal
+#SBATCH -p gablab
 #SBATCH -o ./logs/new_prepare_data_uncrop.out
 #SBATCH -e ./logs/new_prepare_data_uncrop.err
 

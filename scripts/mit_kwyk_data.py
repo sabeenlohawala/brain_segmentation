@@ -285,59 +285,87 @@ def extract_feature_label_slices(
     all_percent_backgrounds = {}
 
     for d in range(3):
+        # V1: not parallelized: for looping over all slices (currently faster than V2)
+        for i in range(label_vol.shape[d]):
+            # get the slice
+            if d == 0:
+                feature_slice = feature_vol[i, :, :]
+                label_slice = label_vol[i, :, :]
+            elif d == 1:
+                feature_slice = feature_vol[:, i, :]
+                label_slice = label_vol[:, i, :]
+            elif d == 2:
+                feature_slice = feature_vol[:, :, i]
+                label_slice = label_vol[:, :, i]
+            slice_counts, slice_percent_background = process_slice(
+                feature_slice,
+                label_slice,
+                slice_idx,
+                max_shape,
+                get_pixel_counts,
+                feature_base_filename,
+                label_base_filename,
+                feature_slice_dest_dir,
+                label_slice_dest_dir,
+            )
+            pixel_counts += sum(slice_counts, Counter())
+            all_percent_backgrounds.update(dict(slice_percent_background))
+            # increase slice_idx
+            slice_idx += 1
 
         # V2: trying to paralellize using map (currently slower than V1)
-        feature_base_filename = os.path.basename(feature).split(".")[0]
-        label_base_filename = os.path.basename(label).split(".")[0]
-        if d == 0:
-            slice_counts_and_percent_backgrounds = map(
-                lambda i: process_slice(
-                    feature_vol[i, :, :],
-                    label_vol[i, :, :],
-                    slice_idx=slice_idx + i,
-                    max_shape=max_shape,
-                    get_pixel_counts=get_pixel_counts,
-                    feature_base_filename=feature_base_filename,
-                    label_base_filename=label_base_filename,
-                    feature_slice_dest_dir=feature_slice_dest_dir,
-                    label_slice_dest_dir=label_slice_dest_dir,
-                ),
-                range(feature_vol.shape[d]),
-            )
-        elif d == 1:
-            slice_counts_and_percent_backgrounds = map(
-                lambda i: process_slice(
-                    feature_vol[:, i, :],
-                    label_vol[:, i, :],
-                    slice_idx=slice_idx + i,
-                    max_shape=max_shape,
-                    get_pixel_counts=get_pixel_counts,
-                    feature_base_filename=feature_base_filename,
-                    label_base_filename=label_base_filename,
-                    feature_slice_dest_dir=feature_slice_dest_dir,
-                    label_slice_dest_dir=label_slice_dest_dir,
-                ),
-                range(feature_vol.shape[d]),
-            )
-        else:
-            slice_counts_and_percent_backgrounds = map(
-                lambda i: process_slice(
-                    feature_vol[:, :, i],
-                    label_vol[:, :, i],
-                    slice_idx=slice_idx + i,
-                    max_shape=max_shape,
-                    get_pixel_counts=get_pixel_counts,
-                    feature_base_filename=feature_base_filename,
-                    label_base_filename=label_base_filename,
-                    feature_slice_dest_dir=feature_slice_dest_dir,
-                    label_slice_dest_dir=label_slice_dest_dir,
-                ),
-                range(feature_vol.shape[d]),
-            )
-        slice_counts, percent_backgrounds = zip(*slice_counts_and_percent_backgrounds)
-        slice_idx += feature_vol.shape[d]
-        pixel_counts += sum(slice_counts, Counter())
-        all_percent_backgrounds.update(dict(ChainMap(*percent_backgrounds)))
+        # feature_base_filename = os.path.basename(feature).split(".")[0]
+        # label_base_filename = os.path.basename(label).split(".")[0]
+        # if d == 0:
+        #     slice_counts_and_percent_backgrounds = map(
+        #         lambda i: process_slice(
+        #             feature_vol[i, :, :],
+        #             label_vol[i, :, :],
+        #             slice_idx=slice_idx + i,
+        #             max_shape=max_shape,
+        #             get_pixel_counts=get_pixel_counts,
+        #             feature_base_filename=feature_base_filename,
+        #             label_base_filename=label_base_filename,
+        #             feature_slice_dest_dir=feature_slice_dest_dir,
+        #             label_slice_dest_dir=label_slice_dest_dir,
+        #         ),
+        #         range(feature_vol.shape[d]),
+        #     )
+        # elif d == 1:
+        #     slice_counts_and_percent_backgrounds = map(
+        #         lambda i: process_slice(
+        #             feature_vol[:, i, :],
+        #             label_vol[:, i, :],
+        #             slice_idx=slice_idx + i,
+        #             max_shape=max_shape,
+        #             get_pixel_counts=get_pixel_counts,
+        #             feature_base_filename=feature_base_filename,
+        #             label_base_filename=label_base_filename,
+        #             feature_slice_dest_dir=feature_slice_dest_dir,
+        #             label_slice_dest_dir=label_slice_dest_dir,
+        #         ),
+        #         range(feature_vol.shape[d]),
+        #     )
+        # else:
+        #     slice_counts_and_percent_backgrounds = map(
+        #         lambda i: process_slice(
+        #             feature_vol[:, :, i],
+        #             label_vol[:, :, i],
+        #             slice_idx=slice_idx + i,
+        #             max_shape=max_shape,
+        #             get_pixel_counts=get_pixel_counts,
+        #             feature_base_filename=feature_base_filename,
+        #             label_base_filename=label_base_filename,
+        #             feature_slice_dest_dir=feature_slice_dest_dir,
+        #             label_slice_dest_dir=label_slice_dest_dir,
+        #         ),
+        #         range(feature_vol.shape[d]),
+        #     )
+        # slice_counts, percent_backgrounds = zip(*slice_counts_and_percent_backgrounds)
+        # slice_idx += feature_vol.shape[d]
+        # pixel_counts += sum(slice_counts, Counter())
+        # all_percent_backgrounds.update(dict(ChainMap(*percent_backgrounds)))
+        
     return pixel_counts, all_percent_backgrounds
 
 
