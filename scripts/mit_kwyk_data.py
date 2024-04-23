@@ -407,14 +407,14 @@ def process_slice(
     # save .npy files
     feature_slice_filename = f"{feature_base_filename}_{slice_idx:03d}.npy"
     label_slice_filename = f"{label_base_filename}_{slice_idx:03d}.npy"
-    # np.save(
-    #     os.path.join(feature_slice_dest_dir, feature_slice_filename),
-    #     padded_feature_slice[np.newaxis, :],
-    # )
-    # np.save(
-    #     os.path.join(label_slice_dest_dir, label_slice_filename),
-    #     padded_label_slice[np.newaxis, :],
-    # )
+    np.save(
+        os.path.join(feature_slice_dest_dir, feature_slice_filename),
+        padded_feature_slice[np.newaxis, :],
+    )
+    np.save(
+        os.path.join(label_slice_dest_dir, label_slice_filename),
+        padded_label_slice[np.newaxis, :],
+    )
 
     if get_pixel_counts:
         unique, counts = np.unique(padded_label_slice, return_counts=True)
