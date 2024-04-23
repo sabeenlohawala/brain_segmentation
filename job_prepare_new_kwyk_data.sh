@@ -2,10 +2,10 @@
 #SBATCH -t 02:00:00
 #SBATCH -c 8
 #SBATCH --mem-per-cpu=12G # per node memory
-#SBATCH -w node115
+#SBATCH -w node106
 #SBATCH -p normal
-#SBATCH -o ./logs/new_prepare_data_8cpu_any.out
-#SBATCH -e ./logs/new_prepare_data_8cpu_any.err
+#SBATCH -o ./logs/new_kwyk_tests/new_prepare_data_8cpu_no_save_2.out
+#SBATCH -e ./logs/new_kwyk_tests/new_prepare_data_8cpu_no_save_2.err
 
 export PATH="/om2/user/sabeen/miniconda/envs/tissue_labeling/bin/:$PATH"
 conda init bash

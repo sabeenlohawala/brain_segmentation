@@ -223,8 +223,8 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir=SOURCE_DIR_00
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:1000]
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:1000]
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
 
     return list(zip(features, labels))
 
@@ -250,6 +250,8 @@ def extract_feature_label_slices(
         pixel_counts (Counter): A Counter where the keys are the class labels in the label
         and the values are the number of pixels in the slice equal to each key.
     """
+    print(f"Processing subject: {os.path.basename(feature)}")
+
     feature_slice_dest_dir = os.path.join(slice_dir, "features")
     label_slice_dest_dir = os.path.join(slice_dir, "labels")
 
@@ -405,14 +407,14 @@ def process_slice(
     # save .npy files
     feature_slice_filename = f"{feature_base_filename}_{slice_idx:03d}.npy"
     label_slice_filename = f"{label_base_filename}_{slice_idx:03d}.npy"
-    np.save(
-        os.path.join(feature_slice_dest_dir, feature_slice_filename),
-        padded_feature_slice[np.newaxis, :],
-    )
-    np.save(
-        os.path.join(label_slice_dest_dir, label_slice_filename),
-        padded_label_slice[np.newaxis, :],
-    )
+    # np.save(
+    #     os.path.join(feature_slice_dest_dir, feature_slice_filename),
+    #     padded_feature_slice[np.newaxis, :],
+    # )
+    # np.save(
+    #     os.path.join(label_slice_dest_dir, label_slice_filename),
+    #     padded_label_slice[np.newaxis, :],
+    # )
 
     if get_pixel_counts:
         unique, counts = np.unique(padded_label_slice, return_counts=True)
