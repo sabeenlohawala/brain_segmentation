@@ -59,7 +59,7 @@ args = parser.parse_args()
 gettrace = getattr(sys, "gettrace", None)
 DEBUG = True if gettrace() else False
 
-SOURCE_DIR_00 = "/om2/scratch/tmp/sabeen-kwyk-data/kwyk-volumes/rawdata/"
+SOURCE_DIR_00 = "/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/"
 
 TRANSFORM_DIR = args.transform_dir  # "/om2/user/sabeen/kwyk_tranform"
 FEATURE_TRANFORM_DIR = (
@@ -223,8 +223,8 @@ def get_feature_label_pairs(features_dir=SOURCE_DIR_00, labels_dir=SOURCE_DIR_00
     """
     Get pairs of feature and label filenames.
     """
-    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))
-    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))
+    features = sorted(glob.glob(os.path.join(features_dir, "*orig*")))[:1000]
+    labels = sorted(glob.glob(os.path.join(labels_dir, "*aseg*")))[:1000]
 
     return list(zip(features, labels))
 
