@@ -66,7 +66,7 @@ class NoBrainerDataset(Dataset):
 
         self.new_kwyk_data = config.new_kwyk_data
         if self.new_kwyk_data:
-            background_percent_cutoff = 0.99
+            background_percent_cutoff = config.background_percent_cutoff # 0.99
             valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
             valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
             if os.path.exists(valid_feature_filename) and os.path.exists(

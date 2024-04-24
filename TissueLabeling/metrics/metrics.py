@@ -118,7 +118,8 @@ class Dice(Metric):
         self.weights[:] = self.smooth
         for i,label in enumerate(unique):
             self.weights[label] += counts[i]
-        self.weights = 1 / (self.weights**2)
+        self.weights = 1 / self.weights
+        self.weights = self.weights / self.weights.sum()
 
         # convert mask to one-hot
         y_true_oh = torch.nn.functional.one_hot(

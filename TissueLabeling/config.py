@@ -53,6 +53,7 @@ class Configuration:
         )
 
         self.new_kwyk_data = getattr(args, "new_kwyk_data", 0)
+        self.background_percent_cutoff = getattr(args, "background_percent_cutoff", 0.99)
         self.data_dir = getattr(args, "data_dir", "")
         self.data_size = getattr(args, "data_size", "small")
         self.augment = getattr(args, "augment", 0)

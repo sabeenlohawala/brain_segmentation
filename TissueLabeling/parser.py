@@ -224,6 +224,13 @@ def get_args():
         default=0,
     )
     train.add_argument(
+        "--background_percent_cutoff",
+        help="Max percent of slice that can be background",
+        type=float,
+        required=False,
+        default=0.99,
+    )
+    train.add_argument(
         "--aug_null_half",
         help="Whether to null out half of the brain when training",
         type=int,
