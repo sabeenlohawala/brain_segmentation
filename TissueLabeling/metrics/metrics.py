@@ -114,35 +114,29 @@ class Dice(Metric):
             preds (torch.tensor): Predicted class probabilities. Tensor with shape [B, C, H, W]
         """
 
-        unique, counts = torch.unique(target, return_counts=True)
-        self.weights[:] = self.smooth
-        for i,label in enumerate(unique):
-            self.weights[label] += counts[i]
-        self.weights = 1 / self.weights
-        self.weights = self.weights / self.weights.sum()
-
         # convert mask to one-hot
         y_true_oh = torch.nn.functional.one_hot(
             target.long().squeeze(1), num_classes=self.nr_of_classes
         ).permute(0, 3, 1, 2)
 
-        # class specific intersection and union: sum over voxels
-        class_intersect = torch.sum(
-            (self.weights.view(1, -1, 1, 1) * (y_true_oh * preds)), axis=(2, 3)
-        )
-        class_union = torch.sum(
-            (self.weights.view(1, -1, 1, 1) * (y_true_oh + preds)), axis=(2, 3)
-        )
+        weights = y_true_oh.sum(axis=(0,2,3))
+        weights = 1 / (weights)
+        # set inf weights (when count = 0) to max(weights)
+        weights[weights == float('inf')] = -float('inf')
+        weights[weights == -float('inf')] = torch.max(weights)
+        weights = weights / weights.sum()
 
-        # overall intersection and union: sum over classes
-        intersect = torch.sum(class_intersect, axis=1)
-        union = torch.sum(class_union, axis=1)
+        class_intersect = torch.sum(y_true_oh * preds, axis=(2,3)) # [batch_size, nr_of_classes]
+        class_union = torch.sum(y_true_oh + preds, axis=(2,3)) # [batch_size, nr_of_classes]
 
-        # average over samples in the batch
-        self.class_dice = torch.mean(
-            2.0 * class_intersect / (class_union + self.smooth), axis=0
-        )
-        self.dice = torch.mean(2.0 * intersect / (union + self.smooth), axis=0)
+        # sum over classes
+        overall_intersect = (class_intersect * weights.view(1,-1)).sum(axis=1)
+        overall_union = (class_union * weights.view(1,-1)).sum(axis=1)
+
+        # average over batch
+        self.class_dice = 2.0 * (torch.mean(class_intersect, axis=0) + self.smooth) / (torch.mean(class_union, axis=0) + self.smooth)
+        self.class_dice[self.class_dice > 1] = 0
+        self.dice = torch.mean(2.0 * (overall_intersect + self.smooth) / (overall_union + self.smooth), axis=0)
 
     def compute(self) -> Tensor:
         """
