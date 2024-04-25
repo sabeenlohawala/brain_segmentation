@@ -36,34 +36,31 @@ from TissueLabeling.brain_utils import (
 class KWYKVolumeDataset(torch.utils.data.Dataset):
     def __init__(self, mode, config, volume_data_dir, slice_info_file, bg_percent=0.99):
         self.mode = mode
-        self.matrix = np.load(slice_info_file, allow_pickle=True)
-        self.matrix = torch.Tensor(self.matrix)
+        self.matrix = torch.from_numpy(np.load(slice_info_file, allow_pickle=True))
 
         self.feature_label_files = list(zip(
             sorted(glob.glob(os.path.join(volume_data_dir, "*orig*.nii.gz")))[:self.matrix.shape[0]],
             sorted(glob.glob(os.path.join(volume_data_dir, "*aseg*.nii.gz")))[:self.matrix.shape[0]]
         ))
 
-        # perform train-val-test split and apply to self.matrix and self.feature_label_files
-        indices = np.arange(self.matrix.shape[0])
-        train_indices, remaining_indices = train_test_split(indices, test_size=0.2, random_state=42)
-        validation_indices, test_indices = train_test_split(remaining_indices, test_size=0.5, random_state=42)
-        if mode == 'train':
-            keep_indices = train_indices
-        elif mode == 'val' or mode == 'validation':
-            keep_indices = validation_indices
-        elif mode == 'test':
-            keep_indices = test_indices
-        else:
-            raise Exception(
-                f"{mode} is not a valid data mode. Choose from 'train', 'test', or 'validation'."
-            )
-        self.matrix = self.matrix[keep_indices]
-        self.feature_label_files = [feature_label_pair for i, feature_label_pair in enumerate(self.feature_label_files) if i in keep_indices]
+        # perform train-val-test split to both self.matrix and self.feature_label_files
+        train_matrix, rem_matrix, train_files, rem_files = train_test_split(
+            self.matrix, self.feature_label_files, test_size=0.2, random_state=42
+        )
+        val_matrix, test_matrix, val_files, test_files = train_test_split(
+            rem_matrix, rem_files, test_size=0.5, random_state=42
+        )
+        mode_dict = {
+            "train": [train_matrix, train_files],
+            "val": [val_matrix, val_files],
+            "validation": [val_matrix, val_files],
+            "test": [test_matrix, test_files]
+        }
+        self.matrix, self.feature_label_files = mode_dict.get(mode, [None, None])
+        assert self.matrix is not None, "mode must be in 'train', 'val', or 'test'"
 
-        self.filtered_matrix = self.matrix < bg_percent
         self.nonzero_indices = torch.nonzero(
-            self.filtered_matrix
+            self.matrix < bg_percent
         )  # [num_slices, 3] - (file_idx, direction_idx, slice_idx)
 
         assert self.nonzero_indices.shape[0] <= torch.numel(
@@ -81,7 +78,7 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
         # Limit the number of images and masks to the first 100 during debugging
         if config.debug:
             print("debug mode")
-            num_files = min(num_files,40)
+            num_files = min(num_files,100)
         self.nonzero_indices = self.nonzero_indices[:num_files,:]
 
         self.nr_of_classes = config.nr_of_classes
@@ -123,7 +120,6 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
             A.ElasticTransform(always_apply=True),
         ]
         if not config.aug_null_half and config.aug_mask:
-            print('adding mask!')
             transform_list.append(A.CoarseDropout(max_holes=config.mask_n_holes,
                                                   max_height=config.mask_length,
                                                   max_width=config.mask_length,
@@ -133,7 +129,6 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
                                                   mask_fill_value=0,
                                                   always_apply=True))
         elif not config.aug_null_half and config.aug_cutout:
-            print('adding cutout!')
             transform_list.append(A.CoarseDropout(max_holes=config.cutout_n_holes,
                                                   max_height=config.cutout_length,
                                                   max_width=config.cutout_length,
@@ -170,7 +165,6 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
 
         augment_coin_toss = 1 if random.random() < self.aug_percent else 0
         if self.augment and augment_coin_toss == 1:
-            print('augmenting!')
             feature_slice = np.array(feature_slice)
             label_slice = np.array(label_slice)
 
@@ -181,7 +175,6 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
             # null half
             null_coin_toss = 1 if random.random() < 0.5 else 0
             if self.aug_null_half and null_coin_toss:
-                print('nulling half!')
                 feature_slice, label_slice = null_half(feature_slice, label_slice, random.randint(0, 1) == 1)
             
             if self.aug_background_manipulation:
@@ -189,10 +182,8 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
                 if apply_background_coin_toss:
                     shapes_background_coin_toss = random.random() < 0.5 if self.aug_grid_background == self.aug_shapes_background else self.aug_shapes_background
                     if shapes_background_coin_toss:
-                        print('shapes background')
                         background = draw_random_shapes_background(feature_slice.shape)
                     else:
-                        print('grid background')
                         background = draw_random_grid_background(label_slice.shape)
                         
                     feature_slice = apply_background(feature_slice,label_slice,background)

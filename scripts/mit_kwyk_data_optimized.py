@@ -2,16 +2,39 @@ import glob
 import os
 from datetime import datetime
 from multiprocessing import Pool
-
+import argparse
 import nibabel as nib
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 
-DATA_DIR = "/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/"
-SAVE_DIR = os.getcwd()  # "/om2/user/sabeen/kwyk_data/"
-SAVE_NAME = "new_kwyk_full.npy"
-N_VOLS = 100  # number of volumes to load (this is only for testing)
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "data_dir", help="Directory where KWYK volumes are to be read from", type=str
+)
+parser.add_argument(
+    "save_dir",
+    help="Directory where output .npy file will be saved",
+    type=str,
+)
+parser.add_argument(
+    "save_name",
+    help="Name of output .npy file",
+    type=str,
+)
+parser.add_argument(
+    "--n_vols",
+    help="Number of volumes to process",
+    type=int,
+    required=False,
+    default=10,
+)
+args = parser.parse_args()
+
+DATA_DIR = args.data_dir # "/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/"
+SAVE_DIR = args.save_dir # "/om2/user/sabeen/kwyk_data/"
+SAVE_NAME = args.save_name # "new_kwyk_full.npy"
+N_VOLS = args.n_vols  # number of volumes to load (this is only for testing)
 
 
 def main_timer(func):
@@ -63,15 +86,15 @@ def main():
 
 
 class SampleDataset(torch.utils.data.Dataset):
-    def __init__(self, mode, bg_percent=0.99):
-        self.matrix = torch.from_numpy(np.load(SAVE_NAME, allow_pickle=True))
+    def __init__(self, mode, volume_data_dir, slice_info_file, bg_percent=0.99):
+        self.matrix = torch.from_numpy(np.load(slice_info_file, allow_pickle=True))
 
         self.feature_label_files = list(
             zip(
-                sorted(glob.glob(os.path.join(DATA_DIR, "*orig*.nii.gz")))[
+                sorted(glob.glob(os.path.join(volume_data_dir, "*orig*.nii.gz")))[
                     : self.matrix.shape[0]
                 ],
-                sorted(glob.glob(os.path.join(DATA_DIR, "*aseg*.nii.gz")))[
+                sorted(glob.glob(os.path.join(volume_data_dir, "*aseg*.nii.gz")))[
                     : self.matrix.shape[0]
                 ],
             )
@@ -125,8 +148,8 @@ class SampleDataset(torch.utils.data.Dataset):
 
 if __name__ == "__main__":
     main()
-    dataset = SampleDataset(mode="train", bg_percent=0.8)
+    dataset = SampleDataset(mode="train", volume_data_dir=DATA_DIR, slice_info_file=os.path.join(SAVE_DIR,SAVE_NAME),bg_percent=0.8)
     a, b = dataset[0]
     print(a.shape, b.shape)
-    a, b = dataset[4688]
+    a, b = dataset[300]
     print(a.shape, b.shape)

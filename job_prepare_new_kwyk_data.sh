@@ -22,4 +22,4 @@ echo "Submitted Job: $SLURM_JOB_ID"
 
 
 # VOLUME DATA
-srun python -u scripts/mit_kwyk_data_optimized.py
+srun python -u scripts/mit_kwyk_data_optimized.py "/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/" "/om2/user/sabeen/kwyk_data/" "new_kwyk_full.npy" --n_vols 11479
