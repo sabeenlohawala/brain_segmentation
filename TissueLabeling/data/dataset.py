@@ -18,6 +18,8 @@ from torch.utils.data import Dataset
 from scipy.ndimage import affine_transform
 from torchvision import transforms
 import albumentations as A
+from sklearn.model_selection import train_test_split
+import nibabel as nib
 
 from TissueLabeling.data.cutout import Cutout
 from TissueLabeling.data.mask import Mask
@@ -31,6 +33,72 @@ from TissueLabeling.brain_utils import (
     draw_random_grid_background,
 )
 
+class SampleDataset(torch.utils.data.Dataset):
+    def __init__(self, mode, volume_data_dir, slice_info_file, bg_percent=0.99):
+        self.matrix = np.load(slice_info_file, allow_pickle=True)
+        self.matrix = torch.Tensor(self.matrix)
+
+        self.feature_label_files = list(zip(
+            sorted(glob.glob(os.path.join(volume_data_dir, "*orig*.nii.gz")))[:self.matrix.shape[0]],
+            sorted(glob.glob(os.path.join(volume_data_dir, "*aseg*.nii.gz")))[:self.matrix.shape[0]]
+        ))
+
+        # perform train-val-test split and apply to self.matrix and self.feature_label_files
+        indices = np.arange(self.matrix.shape[0])
+        train_indices, remaining_indices = train_test_split(indices, test_size=0.2, random_state=42)
+        validation_indices, test_indices = train_test_split(remaining_indices, test_size=0.5, random_state=42)
+        if mode == 'train':
+            keep_indices = train_indices
+        elif mode == 'val' or mode == 'validation':
+            keep_indices = validation_indices
+        elif mode == 'test':
+            keep_indices = test_indices
+        else:
+            raise Exception(
+                f"{mode} is not a valid data mode. Choose from 'train', 'test', or 'validation'."
+            )
+        self.matrix = self.matrix[keep_indices]
+        self.feature_label_files = [feature_label_pair for i, feature_label_pair in enumerate(self.feature_label_files) if i in keep_indices]
+
+        self.filtered_matrix = self.matrix < bg_percent
+        self.nonzero_indices = torch.nonzero(
+            self.filtered_matrix
+        )  # [num_slices, 3] - (file_idx, direction_idx, slice_idx)
+
+        assert self.nonzero_indices.shape[0] <= torch.numel(
+            self.matrix
+        ), "select bg slice count cannot be more than total slice count"
+
+        self.class_mapping = None
+
+    def __getitem__(self, index):
+        file_idx, direction_idx, slice_idx = self.nonzero_indices[index]
+
+        feature_file, label_file = self.feature_label_files[file_idx]
+
+        feature_vol = torch.from_numpy(nib.load(feature_file).get_fdata().astype(np.float32))
+        label_vol = torch.from_numpy(nib.load(label_file).get_fdata().astype(np.int16))
+
+        # do you want a cropped slice (sure do it here, of course you still need that fixed number)
+
+        # all the above 3 if conditions can be written in a single line:
+        feature_slice = torch.index_select(
+            feature_vol, direction_idx, torch.Tensor(slice_idx)
+        ).squeeze().unsqueeze(0)
+        label_slice = torch.index_select(
+            label_vol, direction_idx, torch.Tensor(slice_idx)
+        ).squeeze().unsqueeze(0)
+
+        # TODO:
+        # i now wonder if rotating as well can be dont at get time...probably not advisable unless you have torch functions to do the same
+        # (if you care) see nitorch (written by yael) or neurite (written by adrian)
+
+        label_slice, class_mapping = mapping(np.array(label_slice), nr_of_classes=50, reference_col='original', class_mapping=self.class_mapping)
+
+        return (feature_slice, label_slice)
+
+    def __len__(self):
+        return self.nonzero_indices.shape[0]
 
 class NoBrainerDataset(Dataset):
     def __init__(self, mode: str, config) -> None:
@@ -388,9 +456,14 @@ def get_data_loader(
     # train_dataset = NoBrainerDataset(f"{config.data_dir}/train", config)
     # val_dataset = NoBrainerDataset(f"{config.data_dir}/validation", config)
     # test_dataset = NoBrainerDataset(f"{config.data_dir}/test", config)
-    train_dataset = NoBrainerDataset("train", config)
-    val_dataset = NoBrainerDataset("validation", config)
-    test_dataset = NoBrainerDataset("test", config)
+    if config.new_kwyk_data:
+        train_dataset = SampleDataset(mode="train", volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/output_10.npy',bg_percent=0.8)
+        val_dataset = SampleDataset(mode="validation", volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/output_10.npy',bg_percent=0.8)
+        test_dataset = SampleDataset(mode="test", volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/output_10.npy',bg_percent=0.8)
+    else:
+        train_dataset = NoBrainerDataset("train", config)
+        val_dataset = NoBrainerDataset("validation", config)
+        test_dataset = NoBrainerDataset("test", config)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=config.batch_size, shuffle=True
     )
