@@ -93,9 +93,8 @@ class SampleDataset(torch.utils.data.Dataset):
         self.matrix, self.feature_label_files = temp_dict.get(mode, [None, None])
         assert self.matrix is not None, "mode must be in 'train', 'val', or 'test'"
 
-        self.filtered_matrix = self.matrix < bg_percent
         self.nonzero_indices = torch.nonzero(
-            self.filtered_matrix
+            self.matrix < bg_percent
         )  # [num_slices, 3] - (file_idx, direction_idx, slice_idx)
 
         assert self.nonzero_indices.shape[0] <= torch.numel(
@@ -112,14 +111,13 @@ class SampleDataset(torch.utils.data.Dataset):
         )
         label_vol = torch.from_numpy(nib.load(label_file).get_fdata().astype(np.int16))
 
-        feature_slice = torch.index_select(
-            feature_vol, direction_idx, torch.Tensor(slice_idx)
-        )
-        label_slice = torch.index_select(
-            label_vol, direction_idx, torch.Tensor(slice_idx)
-        )
+        feature_slice = torch.index_select(feature_vol, direction_idx, slice_idx)
+        label_slice = torch.index_select(label_vol, direction_idx, slice_idx)
 
-        return (feature_slice, label_slice)
+        return (
+            feature_slice.squeeze().unsqueeze(0),
+            label_slice.squeeze().unsqueeze(0),
+        )
 
     def __len__(self):
         return self.nonzero_indices.shape[0]
@@ -127,6 +125,8 @@ class SampleDataset(torch.utils.data.Dataset):
 
 if __name__ == "__main__":
     main()
-    dataset = SampleDataset(mode="val", bg_percent=0.8)
+    dataset = SampleDataset(mode="train", bg_percent=0.8)
     a, b = dataset[0]
+    print(a.shape, b.shape)
+    a, b = dataset[4688]
     print(a.shape, b.shape)
