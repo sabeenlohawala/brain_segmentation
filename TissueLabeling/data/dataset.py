@@ -33,8 +33,9 @@ from TissueLabeling.brain_utils import (
     draw_random_grid_background,
 )
 
-class SampleDataset(torch.utils.data.Dataset):
-    def __init__(self, mode, volume_data_dir, slice_info_file, bg_percent=0.99):
+class KWYKVolumeDataset(torch.utils.data.Dataset):
+    def __init__(self, mode, config, volume_data_dir, slice_info_file, bg_percent=0.99):
+        self.mode = mode
         self.matrix = np.load(slice_info_file, allow_pickle=True)
         self.matrix = torch.Tensor(self.matrix)
 
@@ -69,7 +70,79 @@ class SampleDataset(torch.utils.data.Dataset):
             self.matrix
         ), "select bg slice count cannot be more than total slice count"
 
+        # Select dataset size
+        if config.data_size == "small":
+            num_files = int(self.nonzero_indices.shape[0] * 0.001)
+        elif config.data_size == "med" or config.data_size == "medium":
+            num_files = int(self.nonzero_indices.shape[0] * 0.1)
+        else:
+            num_files = self.nonzero_indices.shape[0]
+        
+        # Limit the number of images and masks to the first 100 during debugging
+        if config.debug:
+            print("debug mode")
+            num_files = min(num_files,40)
+        self.nonzero_indices = self.nonzero_indices[:num_files,:]
+
+        self.nr_of_classes = config.nr_of_classes
+        self.pretrained = config.pretrained
+        if self.mode == "train":
+            self.augment = config.augment
+            self.aug_percent = config.aug_percent
+            # self.aug_mask = config.aug_mask
+            # self.aug_cutout = config.aug_cutout
+            self.aug_null_half = config.aug_null_half
+            # self.cutout_obj = Cutout(config.cutout_n_holes, config.cutout_length)
+            # self.mask_obj = Mask(config.mask_n_holes, config.mask_length)
+            # self.intensity_scale = (
+            #     transforms.ColorJitter(brightness=0.2, contrast=0.2)
+            #     if config.intensity_scale
+            #     else None
+            # )
+            self.aug_background_manipulation = config.aug_background_manipulation
+            self.aug_shapes_background = config.aug_shapes_background
+            self.aug_grid_background = config.aug_grid_background
+        else:
+            self.augment = 0
+            self.aug_percent = 0
+            # self.aug_mask = 0
+            # self.aug_cutout = 0
+            self.aug_null_half = 0
+            # self.cutout_obj = None
+            # self.mask_obj = None
+            # self.intensity_scale = None
+            self.aug_background_manipulation = 0
+            self.aug_shapes_background = 0
+            self.aug_grid_background = 0
+
         self.class_mapping = None
+        transform_list = [
+            A.Affine(rotate=(-15,15),scale=(1-0.2,1+0.2),shear=(-0.69,0.69),interpolation=2,mask_interpolation=0,always_apply=True),
+            A.HorizontalFlip(p=0.5),
+            A.RandomBrightnessContrast(always_apply=True),
+            A.ElasticTransform(always_apply=True),
+        ]
+        if not config.aug_null_half and config.aug_mask:
+            print('adding mask!')
+            transform_list.append(A.CoarseDropout(max_holes=config.mask_n_holes,
+                                                  max_height=config.mask_length,
+                                                  max_width=config.mask_length,
+                                                  min_holes=config.mask_n_holes,
+                                                  min_height=config.mask_length,
+                                                  min_width=config.mask_length,
+                                                  mask_fill_value=0,
+                                                  always_apply=True))
+        elif not config.aug_null_half and config.aug_cutout:
+            print('adding cutout!')
+            transform_list.append(A.CoarseDropout(max_holes=config.cutout_n_holes,
+                                                  max_height=config.cutout_length,
+                                                  max_width=config.cutout_length,
+                                                  min_holes=config.cutout_n_holes,
+                                                  min_height=config.cutout_length,
+                                                  min_width=config.cutout_length,
+                                                  mask_fill_value=None, # mask will not be affected
+                                                  always_apply=True))
+        self.transform = A.Compose(transform_list)
 
     def __getitem__(self, index):
         file_idx, direction_idx, slice_idx = self.nonzero_indices[index]
@@ -84,18 +157,59 @@ class SampleDataset(torch.utils.data.Dataset):
         # all the above 3 if conditions can be written in a single line:
         feature_slice = torch.index_select(
             feature_vol, direction_idx, torch.Tensor(slice_idx)
-        ).squeeze().unsqueeze(0)
+        ).squeeze()
         label_slice = torch.index_select(
             label_vol, direction_idx, torch.Tensor(slice_idx)
-        ).squeeze().unsqueeze(0)
+        ).squeeze()
+
+        feature_slice = feature_slice / 255.0
 
         # TODO:
         # i now wonder if rotating as well can be dont at get time...probably not advisable unless you have torch functions to do the same
         # (if you care) see nitorch (written by yael) or neurite (written by adrian)
 
-        label_slice, class_mapping = mapping(np.array(label_slice), nr_of_classes=50, reference_col='original', class_mapping=self.class_mapping)
+        augment_coin_toss = 1 if random.random() < self.aug_percent else 0
+        if self.augment and augment_coin_toss == 1:
+            print('augmenting!')
+            feature_slice = np.array(feature_slice)
+            label_slice = np.array(label_slice)
 
-        return (feature_slice, label_slice)
+            transformed = self.transform(image = feature_slice, mask = label_slice)
+            feature_slice = transformed['image']
+            label_slice = transformed['mask']
+
+            # null half
+            null_coin_toss = 1 if random.random() < 0.5 else 0
+            if self.aug_null_half and null_coin_toss:
+                print('nulling half!')
+                feature_slice, label_slice = null_half(feature_slice, label_slice, random.randint(0, 1) == 1)
+            
+            if self.aug_background_manipulation:
+                apply_background_coin_toss = random.random() < 0.5
+                if apply_background_coin_toss:
+                    shapes_background_coin_toss = random.random() < 0.5 if self.aug_grid_background == self.aug_shapes_background else self.aug_shapes_background
+                    if shapes_background_coin_toss:
+                        print('shapes background')
+                        background = draw_random_shapes_background(feature_slice.shape)
+                    else:
+                        print('grid background')
+                        background = draw_random_grid_background(label_slice.shape)
+                        
+                    feature_slice = apply_background(feature_slice,label_slice,background)
+
+            feature_slice = torch.from_numpy(feature_slice)
+            label_slice = torch.from_numpy(label_slice)
+        
+        # resize image to [1,h,w] again
+        feature_slice = feature_slice.unsqueeze(dim=0)
+        label_slice = label_slice.unsqueeze(dim=0)
+
+        label_slice, class_mapping = mapping(np.array(label_slice), nr_of_classes=self.nr_of_classes, reference_col='original', class_mapping=self.class_mapping)
+        self.class_mapping = class_mapping
+        if self.pretrained:
+            feature_slice = feature_slice.repeat((3, 1, 1))
+
+        return (feature_slice, torch.from_numpy(label_slice))
 
     def __len__(self):
         return self.nonzero_indices.shape[0]
@@ -453,13 +567,10 @@ def get_data_loader(
     config,
     num_workers: int = 4 * torch.cuda.device_count(),
 ):
-    # train_dataset = NoBrainerDataset(f"{config.data_dir}/train", config)
-    # val_dataset = NoBrainerDataset(f"{config.data_dir}/validation", config)
-    # test_dataset = NoBrainerDataset(f"{config.data_dir}/test", config)
     if config.new_kwyk_data:
-        train_dataset = SampleDataset(mode="train", volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/output_10.npy',bg_percent=0.8)
-        val_dataset = SampleDataset(mode="validation", volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/output_10.npy',bg_percent=0.8)
-        test_dataset = SampleDataset(mode="test", volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/output_10.npy',bg_percent=0.8)
+        train_dataset = KWYKVolumeDataset(mode="train", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy',bg_percent=0.8)
+        val_dataset = KWYKVolumeDataset(mode="validation", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy',bg_percent=0.8)
+        test_dataset = KWYKVolumeDataset(mode="test", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy',bg_percent=0.8)
     else:
         train_dataset = NoBrainerDataset("train", config)
         val_dataset = NoBrainerDataset("validation", config)

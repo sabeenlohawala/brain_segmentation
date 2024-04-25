@@ -8,10 +8,10 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 
-DATA_DIR = "/nese/mit/group/sig/data/kwyk/rawdata"
-SAVE_DIR = "/om2/user/sabeen/kwyk_data"
-SAVE_NAME = "output_10.npy"
-N_VOLS = 10  # number of volumes to load (this is only for testing)
+DATA_DIR = "/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/"
+SAVE_DIR = "/om2/user/sabeen/kwyk_data/"
+SAVE_NAME = "new_kwyk_full.npy"
+N_VOLS = 11479  # number of volumes to load (this is only for testing)
 
 
 def main_timer(func):
@@ -63,7 +63,7 @@ def main():
     np.save(os.path.join(SAVE_DIR, SAVE_NAME), final_output)
 
 
-class SampleDataset(torch.utils.data.Dataset):
+# class SampleDataset(torch.utils.data.Dataset):
     def __init__(self, mode, volume_data_dir, slice_info_file, bg_percent=0.99):
         self.matrix = np.load(data_file, allow_pickle=True)
         self.matrix = torch.Tensor(self.matrix)
@@ -128,7 +128,7 @@ class SampleDataset(torch.utils.data.Dataset):
 
 
 if __name__ == "__main__":
-    # main()
-    dataset = SampleDataset(mode='validation',data_dir=os.path.join(SAVE_DIR,SAVE_NAME), bg_percent=0.8)
-    a, b = dataset[0]
-    print(a.shape, b.shape)
+    main()
+    # dataset = SampleDataset(mode='validation',data_dir=os.path.join(SAVE_DIR,SAVE_NAME), bg_percent=0.8)
+    # a, b = dataset[0]
+    # print(a.shape, b.shape)
