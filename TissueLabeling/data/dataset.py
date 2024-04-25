@@ -34,7 +34,7 @@ from TissueLabeling.brain_utils import (
 )
 
 class KWYKVolumeDataset(torch.utils.data.Dataset):
-    def __init__(self, mode, config, volume_data_dir, slice_info_file, bg_percent=0.99):
+    def __init__(self, mode, config, volume_data_dir, slice_info_file):
         self.mode = mode
         self.matrix = torch.from_numpy(np.load(slice_info_file, allow_pickle=True))
 
@@ -60,7 +60,7 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
         assert self.matrix is not None, "mode must be in 'train', 'val', or 'test'"
 
         self.nonzero_indices = torch.nonzero(
-            self.matrix < bg_percent
+            self.matrix < config.background_percent_cutoff
         )  # [num_slices, 3] - (file_idx, direction_idx, slice_idx)
 
         assert self.nonzero_indices.shape[0] <= torch.numel(
@@ -558,10 +558,10 @@ def get_data_loader(
     config,
     num_workers: int = 4 * torch.cuda.device_count(),
 ):
-    if config.new_kwyk_data:
-        train_dataset = KWYKVolumeDataset(mode="train", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy',bg_percent=0.8)
-        val_dataset = KWYKVolumeDataset(mode="validation", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy',bg_percent=0.8)
-        test_dataset = KWYKVolumeDataset(mode="test", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy',bg_percent=0.8)
+    if config.new_kwyk_data == 2:
+        train_dataset = KWYKVolumeDataset(mode="train", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
+        val_dataset = KWYKVolumeDataset(mode="validation", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
+        test_dataset = KWYKVolumeDataset(mode="test", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
     else:
         train_dataset = NoBrainerDataset("train", config)
         val_dataset = NoBrainerDataset("validation", config)
