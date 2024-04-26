@@ -1,17 +1,13 @@
 import glob
 import json
 import os
-import random
 import sys
 from argparse import Namespace
-from datetime import datetime
-from multiprocessing import Pool
-import h5py as h5
 
+import h5py as h5
 import nibabel as nib
 import numpy as np
 import torch
-from sklearn.model_selection import train_test_split
 from TissueLabeling.utils import main_timer
 from torch.utils.data import Dataset
 
@@ -20,14 +16,21 @@ DEBUG = True if gettrace() else False
 OUT_DIR = "/om2/user/sabeen/nifti_to_numpy/"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-SAVE_NAME = "/om2/user/sabeen/kwyk_data/satra.h5"
-def write_kwyk_hdf5():
+SAVE_SLICE_NAME = "/om2/scratch/Fri/hgazula/kwyk_slices.h5"
+SAVE_VOL_NAME = "/om2/scratch/Fri/hgazula/kwyk_vols.h5"
+
+
+def write_kwyk_vols_to_hdf5():
     N_VOLS = 10
-    feature_files = sorted(glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*orig*"))[:N_VOLS]
-    label_files = sorted(glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*aseg*"))[:N_VOLS]
+    feature_files = sorted(
+        glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*orig*")
+    )[:N_VOLS]
+    label_files = sorted(
+        glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*aseg*")
+    )[:N_VOLS]
     feature_label_files = zip(feature_files, label_files)
 
-    f = h5.File(SAVE_NAME, "w")
+    f = h5.File(SAVE_VOL_NAME, "w")
     features = f.create_dataset(
         "kwyk_features",
         (N_VOLS, 256, 256, 256),
@@ -55,19 +58,116 @@ def write_kwyk_hdf5():
 
     # check scale factors are all nan
     nib_files = [nib.load(file) for file in feature_files]
-    scl_slopes = np.array([file.header['scl_slope'] for file in nib_files])
-    scl_inters = np.array([file.header['scl_inter'] for file in nib_files])
+    scl_slopes = np.array([file.header["scl_slope"] for file in nib_files])
+    scl_inters = np.array([file.header["scl_inter"] for file in nib_files])
     assert np.isnan(scl_slopes).all() and np.isnan(scl_inters).all()
-    print('Assertion passed!')
+    print("Assertion passed!")
 
     for idx, (feature_file, label_file) in enumerate(feature_label_files):
         features[idx, :, :, :] = nib.load(feature_file).dataobj
         labels[idx, :, :, :] = nib.load(label_file).dataobj
 
+    f.close()
+
+
+def write_kwyk_slices_to_hdf5():
+    N_VOLS = 10
+    feature_files = sorted(
+        glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*orig*")
+    )[:N_VOLS]
+    label_files = sorted(
+        glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*aseg*")
+    )[:N_VOLS]
+    feature_label_files = zip(feature_files, label_files)
+
+    f = h5.File(SAVE_SLICE_NAME, "w")
+    features_dir1 = f.create_dataset(
+        "kwyk_features_dir1",
+        (N_VOLS * 256, 256, 256),
+        dtype=np.uint8,
+        chunks=True,
+        compression="gzip",
+        compression_opts=9,
+    )
+    features_dir2 = f.create_dataset(
+        "kwyk_features_dir2",
+        (N_VOLS * 256, 256, 256),
+        dtype=np.uint8,
+        chunks=True,
+        compression="gzip",
+        compression_opts=9,
+    )
+    features_dir3 = f.create_dataset(
+        "kwyk_features_dir3",
+        (N_VOLS * 256, 256, 256),
+        dtype=np.uint8,
+        chunks=True,
+        compression="gzip",
+        compression_opts=9,
+    )
+
+    labels_dir1 = f.create_dataset(
+        "kwyk_labels_dir1",
+        (N_VOLS * 256, 256, 256),
+        dtype=np.uint16,
+        chunks=True,
+        compression="gzip",
+        compression_opts=9,
+    )
+
+    labels_dir2 = f.create_dataset(
+        "kwyk_labels_dir2",
+        (N_VOLS * 256, 256, 256),
+        dtype=np.uint16,
+        chunks=True,
+        compression="gzip",
+        compression_opts=9,
+    )
+
+    labels_dir3 = f.create_dataset(
+        "kwyk_labels_dir3",
+        (N_VOLS * 256, 256, 256),
+        dtype=np.uint16,
+        chunks=True,
+        compression="gzip",
+        compression_opts=9,
+    )
+
+    # # check scale factors are all nan
+    # nib_files = [nib.load(file) for file in feature_files]
+    # scl_slopes = np.array([file.header["scl_slope"] for file in nib_files])
+    # scl_inters = np.array([file.header["scl_inter"] for file in nib_files])
+    # assert np.isnan(scl_slopes).all() and np.isnan(scl_inters).all()
+    # print("Assertion passed!")
+
+    for idx, (feature_file, label_file) in enumerate(feature_label_files):
+        print(f"writing file {idx}")
+        features_dir1[idx * 256 : (idx + 1) * 256, :, :] = nib.load(
+            feature_file
+        ).dataobj[0:256, :, :]
+        features_dir2[idx * 256 : (idx + 1) * 256, :, :] = nib.load(
+            feature_file
+        ).dataobj[:, 0:256, :]
+        features_dir3[idx * 256 : (idx + 1) * 256, :, :] = nib.load(
+            feature_file
+        ).dataobj[:, :, 0:256]
+
+        labels_dir1[idx * 256 : (idx + 1) * 256, :, :] = nib.load(label_file).dataobj[
+            0:256, :, :
+        ]
+        labels_dir2[idx * 256 : (idx + 1) * 256, :, :] = nib.load(label_file).dataobj[
+            :, 0:256, :
+        ]
+        labels_dir3[idx * 256 : (idx + 1) * 256, :, :] = nib.load(label_file).dataobj[
+            :, :, 0:256
+        ]
+
+    f.close()
+
 
 @main_timer
 def read_kwyk_hdf5():
-    kwyk = h5.File(SAVE_NAME, "r")
+    kwyk = h5.File(SAVE_SLICE_NAME, "r")
     features = kwyk["kwyk_features"]
     labels = kwyk["kwyk_labels"]
 
@@ -75,6 +175,7 @@ def read_kwyk_hdf5():
         _, _ = feature.shape, label.shape
 
     print("success")
+
 
 class KWYKVolumeDataset(torch.utils.data.Dataset):
     def __init__(self, mode, config, volume_data_dir, slice_info_file):
@@ -120,7 +221,59 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
     def __len__(self):
         return self.nonzero_indices.shape[0]
 
-class H5Dataset(torch.utils.data.Dataset):
+
+class H5SliceDataset(torch.utils.data.Dataset):
+    def __init__(self, mode, config, volume_data_dir, slice_info_file):
+        self.mode = mode
+        self.matrix = torch.from_numpy(np.load(slice_info_file, allow_pickle=True))
+
+        kwyk = h5.File("/om2/scratch/Fri/hgazula/kwyk_slices.h5", "r")
+        self.kwyk_features_dir1 = kwyk["kwyk_features_dir1"]
+        self.kwyk_features_dir2 = kwyk["kwyk_features_dir2"]
+        self.kwyk_features_dir3 = kwyk["kwyk_features_dir3"]
+
+        self.kwyk_labels_dir1 = kwyk["kwyk_labels_dir1"]
+        self.kwyk_labels_dir2 = kwyk["kwyk_labels_dir2"]
+        self.kwyk_labels_dir3 = kwyk["kwyk_labels_dir3"]
+
+        self.nonzero_indices = torch.nonzero(
+            self.matrix < config.background_percent_cutoff
+        )  # [num_slices, 3] - (file_idx, direction_idx, slice_idx)
+
+    def __getitem__(self, index):
+        file_idx, direction_idx, slice_idx = self.nonzero_indices[index]
+
+        new_idx = file_idx * 256 + slice_idx
+
+        if direction_idx == 0:
+            feature_slice = torch.from_numpy(
+                self.kwyk_features_dir1[new_idx, :, :].astype(np.float32)
+            ).squeeze()
+            label_slice = torch.from_numpy(
+                self.kwyk_labels_dir1[new_idx, :, :].astype(np.int16)
+            ).squeeze()
+        elif direction_idx == 1:
+            feature_slice = torch.from_numpy(
+                self.kwyk_features_dir2[new_idx, :, :].astype(np.float32)
+            ).squeeze()
+            label_slice = torch.from_numpy(
+                self.kwyk_labels_dir2[new_idx, :, :].astype(np.int16)
+            ).squeeze()
+        else:
+            feature_slice = torch.from_numpy(
+                self.kwyk_features_dir3[new_idx, :, :].astype(np.float32)
+            ).squeeze()
+            label_slice = torch.from_numpy(
+                self.kwyk_labels_dir3[new_idx, :, :].astype(np.int16)
+            ).squeeze()
+
+        return (feature_slice, label_slice)
+
+    def __len__(self):
+        return self.nonzero_indices.shape[0]
+
+
+class H5VolDataset(torch.utils.data.Dataset):
     def __init__(self, mode, config, volume_data_dir, slice_info_file):
         self.mode = mode
         self.matrix = torch.from_numpy(np.load(slice_info_file, allow_pickle=True))
@@ -135,21 +288,34 @@ class H5Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         file_idx, direction_idx, slice_idx = self.nonzero_indices[index]
-        
+
         if direction_idx == 0:
-            feature_slice = torch.from_numpy(self.kwyk_features[file_idx,slice_idx,:,:].astype(np.float32)).squeeze()
-            label_slice = torch.from_numpy(self.kwyk_labels[file_idx,slice_idx,:,:].astype(np.int16)).squeeze()
+            feature_slice = torch.from_numpy(
+                self.kwyk_features[file_idx, slice_idx, :, :].astype(np.float32)
+            ).squeeze()
+            label_slice = torch.from_numpy(
+                self.kwyk_labels[file_idx, slice_idx, :, :].astype(np.int16)
+            ).squeeze()
         elif direction_idx == 1:
-            feature_slice = torch.from_numpy(self.kwyk_features[file_idx,:,slice_idx,:].astype(np.float32)).squeeze()
-            label_slice = torch.from_numpy(self.kwyk_labels[file_idx,:,slice_idx,:].astype(np.int16)).squeeze()
+            feature_slice = torch.from_numpy(
+                self.kwyk_features[file_idx, :, slice_idx, :].astype(np.float32)
+            ).squeeze()
+            label_slice = torch.from_numpy(
+                self.kwyk_labels[file_idx, :, slice_idx, :].astype(np.int16)
+            ).squeeze()
         else:
-            feature_slice = torch.from_numpy(self.kwyk_features[file_idx,:,:,slice_idx].astype(np.float32)).squeeze()
-            label_slice = torch.from_numpy(self.kwyk_labels[file_idx,:,:,slice_idx].astype(np.int16)).squeeze()
+            feature_slice = torch.from_numpy(
+                self.kwyk_features[file_idx, :, :, slice_idx].astype(np.float32)
+            ).squeeze()
+            label_slice = torch.from_numpy(
+                self.kwyk_labels[file_idx, :, :, slice_idx].astype(np.int16)
+            ).squeeze()
 
         return (feature_slice, label_slice)
 
     def __len__(self):
         return self.nonzero_indices.shape[0]
+
 
 class NoBrainerDataset(Dataset):
     def __init__(self, mode: str, config) -> None:
@@ -189,46 +355,74 @@ class NoBrainerDataset(Dataset):
     def __len__(self):
         return len(self.images)
 
+
 @main_timer
 def loop_over_dataloder(item):
     for batch_idx, (image, mask) in enumerate(item):
         if batch_idx == 0:
             break
 
-def main():
+
+def time_dataloaders():
     config = {
-        "batch_size": 288,  # CHANGE
+        "batch_size": 256,  # CHANGE
         "background_percent_cutoff": 0.8,
         "data_dir": "/om2/scratch/Mon/sabeen/kwyk_slice_split_250/",
     }
     config = Namespace(**config)
 
-    # train_dataset = KWYKVolumeDataset(
-    #     mode="test",
-    #     config=config,
-    #     volume_data_dir="/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/",
-    #     slice_info_file="/om2/user/sabeen/kwyk_data/new_kwyk_full.npy",
-    # )
+    print("time for nifti volumes")
+    kwyk_dataset = KWYKVolumeDataset(
+        mode="test",
+        config=config,
+        volume_data_dir="/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/",
+        slice_info_file="/om2/user/sabeen/kwyk_data/new_kwyk_full.npy",
+    )
+    kwyk_loader = torch.utils.data.DataLoader(
+        kwyk_dataset,
+        batch_size=config.batch_size,
+        shuffle=False,
+    )
+    loop_over_dataloder(kwyk_loader)
 
-    # train_dataset = H5Dataset(
-    #     mode="test",
-    #     config=config,
-    #     volume_data_dir="/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/",
-    #     slice_info_file="/om2/user/sabeen/kwyk_data/new_kwyk_full.npy",
-    # )
+    print("time for h5 vols")
+    h5vol_dataset = H5VolDataset(
+        mode="test",
+        config=config,
+        volume_data_dir="/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/",
+        slice_info_file="/om2/user/sabeen/kwyk_data/new_kwyk_full.npy",
+    )
+    h5vol_loader = torch.utils.data.DataLoader(
+        h5vol_dataset,
+        batch_size=config.batch_size,
+        shuffle=False,
+    )
+    loop_over_dataloder(h5vol_loader)
 
-    # slice dataset
+    print("time for h5 slices")
+    h5slice_dataset = H5VolDataset(
+        mode="test",
+        config=config,
+        volume_data_dir="/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/",
+        slice_info_file="/om2/user/sabeen/kwyk_data/new_kwyk_full.npy",
+    )
+    h5slice_loader = torch.utils.data.DataLoader(
+        h5slice_dataset,
+        batch_size=config.batch_size,
+        shuffle=False,
+    )
+    loop_over_dataloder(h5slice_loader)
+
+    print("time for slices")
     train_dataset = NoBrainerDataset("train", config)
-
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=config.batch_size,
         shuffle=False,
-        # num_workers=1,
     )
-
     loop_over_dataloder(train_loader)
 
 
 if __name__ == "__main__":
-    main()
+    time_dataloaders()
+    # write_kwyk_slices_to_hdf5()
