@@ -4,6 +4,7 @@ import h5py as h5
 import nibabel as nib
 import numpy as np
 from TissueLabeling.utils import main_timer
+from multiprocessing import Pool
 
 @main_timer
 def write_kwyk_hdf5():
@@ -33,9 +34,18 @@ def write_kwyk_hdf5():
         compression_opts=9,
     )
 
-    for idx, feature_file, label_file in enumerate(zip(feature_files, label_files)):
+    # TODO: parallelize
+    # def write_volume(feature_file, label_file):
+    #     features[idx, :, :, :] = nib.load(feature_file).dataobj
+    #     labels[idx, :, :, :] = nib.load(label_file).dataobj
+
+    # with Pool(processes=len(os.sched_getaffinity(0))) as pool:
+    #     pool.map(write_volume, zip(feature_files, label_files))
+
+    for idx, (feature_file, label_file) in enumerate(zip(feature_files, label_files)):
         features[idx, :, :, :] = nib.load(feature_file).dataobj
         labels[idx, :, :, :] = nib.load(label_file).dataobj
+
 
 @main_timer
 def read_kwyk_hdf5():
@@ -44,9 +54,10 @@ def read_kwyk_hdf5():
     labels = kwyk["kwyk_labels"]
 
     for feature, label in zip(features, labels):
-        _, _ = feature.shape, label_shape
+        _, _ = feature.shape, label.shape
 
     print("success")
+
 
 if __name__ == "__main__":
     write_kwyk_hdf5()
