@@ -231,7 +231,8 @@ def create_plot(
 # logdir = '/om2/user/sabeen/tissue_labeling/results/20240218-grid-Msegformer\Smed\C51\B128\LR0.001\PT0\A0'
 # logdir = '/om2/user/sabeen/tissue_labeling/results/20240120-multi-4gpu-Msegformer\\Ldice\\C2\\B670\\A0'
 # logdir = '/om2/user/sabeen/tissue_labeling/results/20240131-multi-4gpu-Msegformer\Ldice\C7\B670\A0'
-logdir = "/om2/scratch/tmp/sabeen/20240314-intensity-0.2-0.2-Msegformer\Ldice\Smed\C51\B512\LR0.001\PT0\A0"
+# logdir = "/om2/scratch/tmp/sabeen/20240314-intensity-0.2-0.2-Msegformer\Ldice\Smed\C51\B512\LR0.001\PT0\A0"
+logdir = "/om2/user/sabeen/tissue_labeling/results/20240227-cut-64-1-Msegformer\Smed\C51\B128\LR0.001\PT0\A1"
 config, checkpoint_paths = get_config(logdir)
 
 # writer = SummaryWriter(logdir)
@@ -251,67 +252,127 @@ else:
 color_range = np.zeros((256, 3))
 color_range[: colors.shape[0], :] = colors
 
-remove_bg = False
-mirror = True
-for remove_bg, mirror in [(False, False), (False, True), (True, False), (True, True)]:
-    print(f"Remove background: {remove_bg}, Mirror: {mirror}")
-    img_dir = "/om2/user/sabeen/dandi/dandi_000108"
-    pred_dir = f"{logdir}/dandi_000108"
-    if remove_bg and not mirror:
-        img_dir = "/om2/user/sabeen/dandi/dandi_000108_photoshop"
-        pred_dir = f"{logdir}/dandi_000108_photoshop"
-    elif not remove_bg and mirror:
-        img_dir = "/om2/user/sabeen/dandi/dandi_000108_mirror"
-        pred_dir = f"{logdir}/dandi_000108_mirror"
-    elif remove_bg and mirror:
-        img_dir = "/om2/user/sabeen/dandi/dandi_000108_photoshop_mirror"
-        pred_dir = f"{logdir}/dandi_000108_photoshop_mirror"
+photo = False
+mri = True
 
-    os.makedirs(pred_dir, exist_ok=True)
+if photo:
+    for remove_bg, mirror in [(False, False), (False, True), (True, False), (True, True)]:
+        print(f"Remove background: {remove_bg}, Mirror: {mirror}")
+        img_dir = "/om2/user/sabeen/dandi/dandi_000108"
+        pred_dir = f"{logdir}/dandi_000108"
+        if remove_bg and not mirror:
+            img_dir = "/om2/user/sabeen/dandi/dandi_000108_photoshop"
+            pred_dir = f"{logdir}/dandi_000108_photoshop"
+        elif not remove_bg and mirror:
+            img_dir = "/om2/user/sabeen/dandi/dandi_000108_mirror"
+            pred_dir = f"{logdir}/dandi_000108_mirror"
+        elif remove_bg and mirror:
+            img_dir = "/om2/user/sabeen/dandi/dandi_000108_photoshop_mirror"
+            pred_dir = f"{logdir}/dandi_000108_photoshop_mirror"
 
-    img_files = os.listdir(img_dir)
+        os.makedirs(pred_dir, exist_ok=True)
 
-    img_shape = (162, 194)
-    img_list = []
+        img_files = os.listdir(img_dir)
 
-    for i, file in enumerate(img_files):
-        file_path = os.path.join(img_dir, file)
+        img_shape = (162, 194)
+        img_list = []
 
-        # Load the RGB image
-        rgb_image = Image.open(file_path)
+        for i, file in enumerate(img_files):
+            file_path = os.path.join(img_dir, file)
 
-        # Resize the image to match the input size expected by your model
-        resize = transforms.Resize((162, 194))
-        rgb_resized = resize(rgb_image)
+            # Load the RGB image
+            rgb_image = Image.open(file_path)
 
-        # Convert the RGB image to grayscale
-        if not config.pretrained:
-            grayscale_image = rgb_resized.convert("L")
+            # Resize the image to match the input size expected by your model
+            resize = transforms.Resize((162, 194))
+            rgb_resized = resize(rgb_image)
+
+            # Convert the RGB image to grayscale
+            if not config.pretrained:
+                grayscale_image = rgb_resized.convert("L")
+            else:
+                grayscale_image = rgb_resized
+
+            # Convert the grayscale image to a PyTorch tensor
+            img_tensor = transforms.ToTensor()(grayscale_image)
+            img_list.append(img_tensor)
+
+        img_batch = torch.stack(img_list)
+        probs = model(img_batch)
+        preds = probs.argmax(1)
+
+        for i, file in enumerate(img_files):
+            pred = preds[i, :, :].numpy().astype("uint8")
+            p = create_plot(
+                pred,
+                "",
+                color_range,
+                fig_path=str(os.path.join(pred_dir, f"{file.split('.')[0]}_pred.png")),
+            )
+            real_img = img_batch[i, :, :, :].squeeze()
+            if len(real_img.shape) > 2:
+                real_img = real_img.permute(1, 2, 0)
+            cv2.imwrite(
+                str(os.path.join(pred_dir, f"{file.split('.')[0]}_gray.png")),
+                (real_img.numpy() * 255).astype(np.uint8),
+            )
+
+        print("done!")
+
+if mri:
+    for mri_type in ['T2']:
+        if mri_type == 'T1':
+            img_dir = "/om2/user/sabeen/dandi/sub-KC001_T1map"
+            pred_dir = f"{logdir}/sub-KC001_T1map"
         else:
-            grayscale_image = rgb_resized
+            img_dir = "/om2/user/sabeen/dandi/sub-KC001_T2starmap"
+            pred_dir = f"{logdir}/sub-KC001_T2starmap"
 
-        # Convert the grayscale image to a PyTorch tensor
-        img_tensor = transforms.ToTensor()(grayscale_image)
-        img_list.append(img_tensor)
+        os.makedirs(pred_dir, exist_ok=True)
 
-    img_batch = torch.stack(img_list)
-    probs = model(img_batch)
-    preds = probs.argmax(1)
+        img_files = os.listdir(img_dir)[:3]
 
-    for i, file in enumerate(img_files):
-        pred = preds[i, :, :].numpy().astype("uint8")
-        p = create_plot(
-            pred,
-            "",
-            color_range,
-            fig_path=str(os.path.join(pred_dir, f"{file.split('.')[0]}_pred.png")),
-        )
-        real_img = img_batch[i, :, :, :].squeeze()
-        if len(real_img.shape) > 2:
-            real_img = real_img.permute(1, 2, 0)
-        cv2.imwrite(
-            str(os.path.join(pred_dir, f"{file.split('.')[0]}_gray.png")),
-            (real_img.numpy() * 255).astype(np.uint8),
-        )
+        img_shape = (162, 194)
+        img_list = []
 
-    print("done!")
+        for i, file in enumerate(img_files):
+            file_path = os.path.join(img_dir, file)
+
+            # Load the RGB image
+            rgb_image = Image.open(file_path)
+
+            # Resize the image to match the input size expected by your model
+            resize = transforms.Resize((162, 194))
+            rgb_resized = resize(rgb_image)
+
+            # Convert the RGB image to grayscale
+            # if not config.pretrained:
+            #     grayscale_image = rgb_resized.convert("L")
+            # else:
+            grayscale_image = rgb_image
+
+            # Convert the grayscale image to a PyTorch tensor
+            img_tensor = transforms.ToTensor()(grayscale_image)
+            img_list.append(img_tensor)
+
+        img_batch = torch.stack(img_list)
+        probs = model(img_batch)
+        preds = probs.argmax(1)
+
+        for i, file in enumerate(img_files):
+            pred = preds[i, :, :].numpy().astype("uint8")
+            p = create_plot(
+                pred,
+                "",
+                color_range,
+                fig_path=str(os.path.join(pred_dir, f"{file.split('.')[0]}_pred.png")),
+            )
+            real_img = img_batch[i, :, :, :].squeeze()
+            if len(real_img.shape) > 2:
+                real_img = real_img.permute(1, 2, 0)
+            cv2.imwrite(
+                str(os.path.join(pred_dir, f"{file.split('.')[0]}_gray.png")),
+                (real_img.numpy() * 255).astype(np.uint8),
+            )
+
+        print("done!")
