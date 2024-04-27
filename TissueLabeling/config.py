@@ -134,7 +134,8 @@ class Configuration:
     def _update_data_dir(self):
         """Update the data directory based on the number of classes"""
         if self.new_kwyk_data:
-            self.data_dir = "/om2/scratch/Mon/sabeen/kwyk_slice_split_250/"
+            # self.data_dir = "/om2/scratch/Mon/sabeen/kwyk_slice_split_250/"
+            self.data_dir = "/om/scratch/Fri/sabeen/kwyk_slice_split_250"
             self.aug_dir = ""
         else: # these prob don't work anymore
             if self.data_size == "small":

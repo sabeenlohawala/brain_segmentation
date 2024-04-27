@@ -242,62 +242,76 @@ class NoBrainerDataset(Dataset):
 
         self.new_kwyk_data = config.new_kwyk_data
         if self.new_kwyk_data:
-            background_percent_cutoff = config.background_percent_cutoff # 0.99
-            valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
-            valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
-            if os.path.exists(valid_feature_filename) and os.path.exists(
-                valid_label_filename
-            ):
-                with open(valid_feature_filename) as f:
-                    images = json.load(f)
-                with open(valid_label_filename) as f:
-                    masks = json.load(f)
-            else:
-                with open(
-                    os.path.join(config.data_dir, "percent_backgrounds.json")
-                ) as f:
-                    percent_backgrounds = json.load(f)
-                # keep only files from current mode with percent_background < cutoff
-                images = sorted(
-                    [
-                        file
-                        for file, percent_background in percent_backgrounds.items()
-                        if percent_background < background_percent_cutoff
-                        and mode in file
-                        and "features" in file
-                    ]
-                )
-                masks = sorted(
-                    [
-                        file
-                        for file, percent_background in percent_backgrounds.items()
-                        if percent_background < background_percent_cutoff
-                        and mode in file
-                        and "labels" in file
-                    ]
-                )
-                with open(valid_feature_filename, "w") as f:
-                    json.dump(images, f)
-                with open(valid_label_filename, "w") as f:
-                    json.dump(masks, f)
+        #     background_percent_cutoff = config.background_percent_cutoff # 0.99
+        #     valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
+        #     valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
+        #     if os.path.exists(valid_feature_filename) and os.path.exists(
+        #         valid_label_filename
+        #     ):
+        #         with open(valid_feature_filename) as f:
+        #             images = json.load(f)
+        #         with open(valid_label_filename) as f:
+        #             masks = json.load(f)
+        #     else:
+        #         with open(
+        #             os.path.join(config.data_dir, "percent_backgrounds.json")
+        #         ) as f:
+        #             percent_backgrounds = json.load(f)
+        #         # keep only files from current mode with percent_background < cutoff
+        #         images = sorted(
+        #             [
+        #                 file
+        #                 for file, percent_background in percent_backgrounds.items()
+        #                 if percent_background < background_percent_cutoff
+        #                 and mode in file
+        #                 and "features" in file
+        #             ]
+        #         )
+        #         masks = sorted(
+        #             [
+        #                 file
+        #                 for file, percent_background in percent_backgrounds.items()
+        #                 if percent_background < background_percent_cutoff
+        #                 and mode in file
+        #                 and "labels" in file
+        #             ]
+        #         )
+        #         with open(valid_feature_filename, "w") as f:
+        #             json.dump(images, f)
+        #         with open(valid_label_filename, "w") as f:
+        #             json.dump(masks, f)
 
-            combined_data = list(zip(images, masks))
+        #     combined_data = list(zip(images, masks))
 
-            # Shuffle the combined list using a specific seed
-            random.seed(42)
-            random.shuffle(combined_data)
-            shuffled_images, shuffled_masks = zip(*combined_data)
+        #     # Shuffle the combined list using a specific seed
+        #     random.seed(42)
+        #     random.shuffle(combined_data)
+        #     shuffled_images, shuffled_masks = zip(*combined_data)
 
-            if config.data_size == "small":
-                num_files = int(len(shuffled_images) * 0.001)
-            elif config.data_size == "med" or config.data_size == "medium":
-                num_files = int(len(shuffled_images) * 0.1)
-            else:
-                num_files = len(shuffled_images)
+        #     if config.data_size == "small":
+        #         num_files = int(len(shuffled_images) * 0.001)
+        #     elif config.data_size == "med" or config.data_size == "medium":
+        #         num_files = int(len(shuffled_images) * 0.1)
+        #     else:
+        #         num_files = len(shuffled_images)
 
-            self.images = shuffled_images[:num_files]
-            self.masks = shuffled_masks[:num_files]
+        #     self.images = shuffled_images[:num_files]
+        #     self.masks = shuffled_masks[:num_files]
+        #     self.affines = []
+
+            self.images = sorted(glob.glob(f"{config.data_dir}/{mode}/features/*orig*"))
+            self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/labels/*aseg*"))
             self.affines = []
+
+            # correspond to exact same dataset size as Matthias's
+            if config.data_size == "small":
+                num_files = 3238 if mode == 'train' else 417 if mode == 'validation' else 388
+            elif config.data_size == "med" or config.data_size == 'medium':
+                num_files = 314160 if mode == 'train' else 39020 if mode == 'validation' else 38965
+            else:
+                num_files = len(self.images)
+            self.images = self.images[:num_files]
+            self.masks = self.masks[:num_files]
         else:
             # Get a list of all the brain image files in the specified directory
             self.images = sorted(glob.glob(f"{config.data_dir}/{mode}/brain*.npy"))
@@ -561,14 +575,14 @@ def get_data_loader(
     config,
     num_workers: int = 4 * torch.cuda.device_count(),
 ):
-    if config.new_kwyk_data == 2:
-        train_dataset = KWYKVolumeDataset(mode="train", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
-        val_dataset = KWYKVolumeDataset(mode="validation", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
-        test_dataset = KWYKVolumeDataset(mode="test", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
-    else:
-        train_dataset = NoBrainerDataset("train", config)
-        val_dataset = NoBrainerDataset("validation", config)
-        test_dataset = NoBrainerDataset("test", config)
+    # if config.new_kwyk_data == 2:
+    #     train_dataset = KWYKVolumeDataset(mode="train", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
+    #     val_dataset = KWYKVolumeDataset(mode="validation", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
+    #     test_dataset = KWYKVolumeDataset(mode="test", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
+    # else:
+    train_dataset = NoBrainerDataset("train", config)
+    val_dataset = NoBrainerDataset("validation", config)
+    test_dataset = NoBrainerDataset("test", config)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=config.batch_size, shuffle=True
     )

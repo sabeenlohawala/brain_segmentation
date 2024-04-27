@@ -40,65 +40,10 @@ class Dice(Metric):
             "dice", default=torch.Tensor((1,)), dist_reduce_fx="mean"
         )  # want to average across all gpus
 
-        # weights for weighted dice score
-        # if config.new_kwyk_data:
-        #     with open(
-        #         os.path.join(config.data_dir, "train_pixel_counts.pkl"), "rb"
-        #     ) as f:
-        #         train_pixel_counts = pickle.load(f)
-
-        #     # map counts from original freesurfer labels to nr_of_classes labels
-        #     key_arr = np.array(list(train_pixel_counts.keys()))
-        #     # mapped_keys = mapping(
-        #     #     key_arr.copy(), nr_of_classes=config.nr_of_classes, original=True
-        #     # ) # mapping mod
-        #     mapped_keys = mapping(key_arr.copy(), config.nr_of_classes)
-        #     mapped_pixel_counts = {
-        #         class_num: sum(
-        #             [
-        #                 train_pixel_counts[i]
-        #                 for i in key_arr[np.where(mapped_keys == class_num)]
-        #             ]
-        #         )
-        #         if class_num in mapped_keys
-        #         else 0
-        #         for class_num in range(config.nr_of_classes)
-        #     }
-
-        #     # sort pixel count dict by key so numpy array indexing corresponds to correct label and counts
-        #     sorted_counts = sorted(
-        #         list((label, count) for label, count in mapped_pixel_counts.items()),
-        #         key=lambda x: x[0],
-        #     )
-        #     pixel_counts = torch.tensor(list(count for _, count in sorted_counts))
-        # else: # these prob don't work anymore
-        #     pixel_counts = torch.from_numpy(
-        #         np.load(f"{config.data_dir}/pixel_counts.npy")
-        #     )
-
-        #     if config.nr_of_classes == 2:
-        #         pixel_counts = torch.from_numpy(
-        #             np.array([pixel_counts[0], sum(pixel_counts[1:])])
-        #         )  # uncomment for binary classification
-        #     elif config.nr_of_classes == 7 or config.nr_of_classes == 17:
-        #         new_indices = mapping(
-        #             torch.tensor(list(range(51))),
-        #             nr_of_classes=config.nr_of_classes,
-        #             reference_col="50-class",
-        #         )
-        #         unique_indices = np.unique(new_indices)
-        #         new_counts = torch.zeros(config.nr_of_classes)
-        #         for ind in unique_indices:
-        #             mask = new_indices == ind
-        #             new_counts[ind] = torch.sum(pixel_counts[mask])
-        #         pixel_counts = new_counts
-
         self.smooth = 1e-7
-        # self.weights = 1 / (pixel_counts + self.smooth)
-        # self.weights = self.weights / self.weights.sum()
-        self.weights = torch.zeros((config.nr_of_classes,))
-        if fabric is not None:
-            self.weights = fabric.to_device(self.weights)
+        # self.weights = torch.zeros((config.nr_of_classes,))
+        # if fabric is not None:
+        #     self.weights = fabric.to_device(self.weights)
         self.nr_of_classes = config.nr_of_classes
 
         self.is_loss = is_loss
