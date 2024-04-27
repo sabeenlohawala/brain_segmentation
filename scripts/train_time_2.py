@@ -44,11 +44,13 @@ def main_timer(func):
 
     return function_wrapper
 
+def sort_function(item):
+    return int(os.path.basename(item).split("_")[1])
 
 @main_timer
 def write_kwyk_chunks_to_hdf5_satra(save_path=None):
-    feature_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*orig*")))[:N_VOLS]
-    label_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*aseg*")))[:N_VOLS]
+    feature_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*orig*")), key=sort_function)[:N_VOLS]
+    label_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*aseg*")), key=sort_function)[:N_VOLS]
     feature_label_files = zip(feature_files, label_files)
 
     f = h5.File(save_path, "w")
