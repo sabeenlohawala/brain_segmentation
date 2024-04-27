@@ -2,6 +2,7 @@ import glob
 import os
 import sys
 from argparse import Namespace
+from datetime import datetime
 
 import h5py as h5
 import nibabel as nib
@@ -9,21 +10,39 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from TissueLabeling.utils import main_timer
-
 gettrace = getattr(sys, "gettrace", None)
 DEBUG = True if gettrace() else False
-OUT_DIR = "/om2/user/sabeen/nifti_to_numpy/"
+
+OUT_DIR = f"/om2/scratch/Fri/{os.environ['USER']}"  # CHECK THIS
 os.makedirs(OUT_DIR, exist_ok=True)
 
-SLICE_HDF5 = "/om2/scratch/Fri/hgazula/kwyk_slices.h5"
-VOL_HDF5 = "/om2/scratch/Fri/hgazula/kwyk_vols.h5"
-SLICEGROUP_HDF5 = "/om2/scratch/Fri/hgazula/kwyk_slices_groups.h5"
-CHUNK_HDF5 = "/om2/scratch/Fri/hgazula/kwyk_chunk.h5"
+# all files are available in /om2/scratch/Fri/hgazula
+SLICE_HDF5 = os.path.join(OUT_DIR, "kwyk_slices.h5")
+VOL_HDF5 = os.path.join(OUT_DIR, "kwyk_vols.h5")
+GROUP_HDF5 = os.path.join(OUT_DIR, "kwyk_groups.h5")
+CHUNK_HDF5 = os.path.join(OUT_DIR, "kwyk_chunk.h5")
 
-NIFTI_DIR = "/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/"
-SLICE_INFO_FILE = "/om2/user/sabeen/kwyk_data/new_kwyk_full.npy"
+NIFTI_DIR = "/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/"  # DO NOT CHANGE
+SLICE_INFO_FILE = "/om2/user/sabeen/kwyk_data/new_kwyk_full.npy"  # DO NOT CHANGE
+
 N_VOLS = 10
+
+
+def main_timer(func):
+    """Decorator to time any function"""
+
+    def function_wrapper(*args, **kwargs):
+        start_time = datetime.now()
+        # print(f'Start Time: {start_time.strftime("%A %m/%d/%Y %H:%M:%S")}')
+        result = func(*args, **kwargs)
+        end_time = datetime.now()
+        # print(f'End Time: {end_time.strftime("%A %m/%d/%Y %H:%M:%S")}')
+        print(
+            f"Function: {func.__name__} Total runtime: {end_time - start_time} (HH:MM:SS)"
+        )
+        return result
+
+    return function_wrapper
 
 
 def write_kwyk_chunks_to_hdf5_satra(save_path=None):
@@ -405,7 +424,7 @@ class H5SliceGroupsDataset(torch.utils.data.Dataset):
         self.mode = mode
         self.matrix = torch.from_numpy(np.load(slice_info_file, allow_pickle=True))
 
-        self.kwyk = h5.File(SLICEGROUP_HDF5, "r")
+        self.kwyk = h5.File(GROUP_HDF5, "r")
 
         self.nonzero_indices = torch.nonzero(
             self.matrix < config.background_percent_cutoff
@@ -523,52 +542,25 @@ class H5VolChunkDataset(torch.utils.data.Dataset):
 
 class NoBrainerDataset(Dataset):
     def __init__(self, mode: str, config) -> None:
-        """
-        Initializes the object with the given `file_dir` and `pretrained` parameters.
-
-        Args:
-            mode: The subdirectory where the files are located.
-            pretrained: Whether or not to use pretrained models.
-
-        Returns:
-            None
-        """
-        # if mode not in ["train", "test", "validation"]:
-        #     raise Exception(
-        #         f"{mode} is not a valid data mode. Choose from 'train', 'test', or 'validation'."
-        #     )
-        # self.mode = mode
-
-        # background_percent_cutoff = config.background_percent_cutoff  # 0.99
-        # valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
-        # valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
-
-        # with open(valid_feature_filename) as f:
-        #     self.images = json.load(f)
-
-        # with open(valid_label_filename) as f:
-        #     self.masks = json.load(f)
         self.images = sorted(
             glob.glob(
                 os.path.join(
-                    "/om/scratch/Fri/sabeen/kwyk_slice_split_250/features/*orig*"
+                    "/om/scratch/Fri/sabeen/kwyk_slice_split_250/train/features/*orig*"
                 )
             )
         )
         self.masks = sorted(
             glob.glob(
                 os.path.join(
-                    "/om/scratch/Fri/sabeen/kwyk_slice_split_250/labels/*aseg*"
+                    "/om/scratch/Fri/sabeen/kwyk_slice_split_250/train/labels/*aseg*"
                 )
             )
         )
 
     def __getitem__(self, idx):
-        # returns (image, mask)
-        image = np.load(self.images[idx])
-        mask = np.load(self.masks[idx])
+        image = torch.from_numpy(np.load(self.images[idx]).astype(np.float32))
+        mask = torch.from_numpy(np.load(self.masks[idx]).astype(np.int16))
 
-        print(image.dtype, mask.dtype)  # why doesn;t this print?
         return image, mask
 
     def __len__(self):
@@ -596,7 +588,7 @@ def time_dataloaders():
     }
     config = Namespace(**config)
 
-    # DISCARDING this option for now
+    # # DISCARDING this option for now
     # print("time for nifti volumes")
     # kwyk_dataset = KWYKVolumeDataset(
     #     mode="test",
@@ -606,57 +598,64 @@ def time_dataloaders():
     # )
     # loop_over_dataloader(config, kwyk_dataset)
 
-    # print("time for slices")
-    # train_dataset = NoBrainerDataset("train", config)
-    # loop_over_dataloader(config, train_dataset)
+    print("time for slices")
+    train_dataset = NoBrainerDataset("train", config)
+    loop_over_dataloader(config, train_dataset)
 
-    # print("time for h5 vols")
-    # h5vol_dataset = H5VolDataset(
-    #     mode="test",
-    #     config=config,
-    #     volume_data_dir=NIFTI_DIR,
-    #     slice_info_file=SLICE_INFO_FILE,
-    # )
-    # loop_over_dataloader(config, h5vol_dataset)
-
-    # print("time for h5 slices")
-    # h5slice_dataset = H5SliceDataset(
-    #     mode="test",
-    #     config=config,
-    #     volume_data_dir=NIFTI_DIR,
-    #     slice_info_file=SLICE_INFO_FILE,
-    # )
-    # loop_over_dataloader(config, h5slice_dataset)
-
-    # print("time for h5 group slices")
-    # h5slicegroups_dataset = H5SliceGroupsDataset(
-    #     mode="test",
-    #     config=config,
-    #     volume_data_dir=NIFTI_DIR,
-    #     slice_info_file=SLICE_INFO_FILE,
-    # )
-    # loop_over_dataloader(config, h5slicegroups_dataset)
-
-    print("time for h5 chunking from satra")
-    h5volchunk_dataset = H5VolChunkDataset(
+    print("time for h5 vols")
+    h5vol_dataset = H5VolDataset(
         mode="test",
         config=config,
         volume_data_dir=NIFTI_DIR,
         slice_info_file=SLICE_INFO_FILE,
     )
-    loop_over_dataloader(config, h5volchunk_dataset)
+    loop_over_dataloader(config, h5vol_dataset)
+
+    print("time for h5 slices")
+    h5slice_dataset = H5SliceDataset(
+        mode="test",
+        config=config,
+        volume_data_dir=NIFTI_DIR,
+        slice_info_file=SLICE_INFO_FILE,
+    )
+    loop_over_dataloader(config, h5slice_dataset)
+
+    print("time for h5 group slices")
+    h5slicegroups_dataset = H5SliceGroupsDataset(
+        mode="test",
+        config=config,
+        volume_data_dir=NIFTI_DIR,
+        slice_info_file=SLICE_INFO_FILE,
+    )
+    loop_over_dataloader(config, h5slicegroups_dataset)
+
+    # # painfully slow
+    # print("time for h5 chunking from satra")
+    # h5volchunk_dataset = H5VolChunkDataset(
+    #     mode="test",
+    #     config=config,
+    #     volume_data_dir=NIFTI_DIR,
+    #     slice_info_file=SLICE_INFO_FILE,
+    # )
+    # loop_over_dataloader(config, h5volchunk_dataset)
 
 
 if __name__ == "__main__":
+    # TURN THESE ON OR OFF BASED ON WHAT YOU WANT TO TRY
+
+    # # slices to hdf5
     # write_kwyk_slices_to_hdf5(save_path=SLICE_HDF5)
-    # read_kwyk_slice_hdf5(read_path=SLICE_HDF5)
+    # read_kwyk_slice_hdf5(read_path=SLICE_HDF5)  # optional
 
-    # write_kwyk_slices_to_hdf5_groups(save_path=SLICEGROUP_HDF5)
-    # read_kwyk_slice_hdf5_groups(read_path=SLICE_HDF5)
+    # # slice groups to hdf5
+    # write_kwyk_slices_to_hdf5_groups(save_path=GROUP_HDF5)
+    # read_kwyk_slice_hdf5_groups(read_path=SLICE_HDF5)  # optional
 
+    # # volumes to hdf5
     # write_kwyk_vols_to_hdf5(save_path=VOL_HDF5)
-    # read_kwyk_vol_hdf5(read_path=VOL_HDF5)
+    # read_kwyk_vol_hdf5(read_path=VOL_HDF5)  # optional
 
+    # # chunks to hdf5
     # write_kwyk_chunks_to_hdf5_satra(save_path=CHUNK_HDF5)
 
     time_dataloaders()
