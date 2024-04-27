@@ -149,13 +149,16 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
 
         # do you want a cropped slice (sure do it here, of course you still need that fixed number)
 
-        # all the above 3 if conditions can be written in a single line:
-        feature_slice = torch.index_select(
-            feature_vol, direction_idx, torch.Tensor(slice_idx)
-        ).squeeze()
-        label_slice = torch.index_select(
-            label_vol, direction_idx, torch.Tensor(slice_idx)
-        ).squeeze()
+        # torch.index select is slower than if conditions
+        if direction_idx == 0:
+            feature_slice = torch.from_numpy(self.kwyk_features[file_idx,slice_idx,:,:].astype(np.float32)).squeeze()
+            label_slice = torch.from_numpy(self.kwyk_labels[file_idx,slice_idx,:,:].astype(np.int16)).squeeze()
+        elif direction_idx == 1:
+            feature_slice = torch.from_numpy(self.kwyk_features[file_idx,:,slice_idx,:].astype(np.float32)).squeeze()
+            label_slice = torch.from_numpy(self.kwyk_labels[file_idx,:,slice_idx,:].astype(np.int16)).squeeze()
+        else:
+            feature_slice = torch.from_numpy(self.kwyk_features[file_idx,:,:,slice_idx].astype(np.float32)).squeeze()
+            label_slice = torch.from_numpy(self.kwyk_labels[file_idx,:,:,slice_idx].astype(np.int16)).squeeze()
 
         feature_slice = feature_slice / 255.0
 
