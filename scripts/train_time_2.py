@@ -332,21 +332,23 @@ class NoBrainerDataset(Dataset):
         Returns:
             None
         """
-        if mode not in ["train", "test", "validation"]:
-            raise Exception(
-                f"{mode} is not a valid data mode. Choose from 'train', 'test', or 'validation'."
-            )
-        self.mode = mode
+        # if mode not in ["train", "test", "validation"]:
+        #     raise Exception(
+        #         f"{mode} is not a valid data mode. Choose from 'train', 'test', or 'validation'."
+        #     )
+        # self.mode = mode
 
-        background_percent_cutoff = config.background_percent_cutoff  # 0.99
-        valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
-        valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
+        # background_percent_cutoff = config.background_percent_cutoff  # 0.99
+        # valid_feature_filename = f"{config.data_dir}/{mode}/valid_feature_files_{int(background_percent_cutoff*100)}.json"
+        # valid_label_filename = f"{config.data_dir}/{mode}/valid_label_files_{int(background_percent_cutoff*100)}.json"
 
-        with open(valid_feature_filename) as f:
-            self.images = json.load(f)
+        # with open(valid_feature_filename) as f:
+        #     self.images = json.load(f)
 
-        with open(valid_label_filename) as f:
-            self.masks = json.load(f)
+        # with open(valid_label_filename) as f:
+        #     self.masks = json.load(f)
+        self.images = sorted(glob.glob(os.path.join('/om/scratch/Fri/sabeen/kwyk_slice_split_250/features/*orig*')))
+        self.masks = sorted(glob.glob(os.path.join('/om/scratch/Fri/sabeen/kwyk_slice_split_250/labels/*aseg*')))
 
     def __getitem__(self, idx):
         # returns (image, mask)
