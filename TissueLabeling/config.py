@@ -120,7 +120,7 @@ class Configuration:
         if self.data_size == 'small':
             folder_map = {107: "new_small_aug_107", 51: "new_small_no_aug_51", 2:"new_small_no_aug_51", 7: "new_small_aug_107"}
         elif self.data_size == 'med' or self.data_size == 'medium':
-            folder_map = {51: "new_med_no_aug_51", 2:"new_med_no_aug_51"}
+            folder_map = {51: "new_med_no_aug_51", 2:"new_med_no_aug_51", 50: "new_med_no_aug_51"}
         else:
             sys.exit(f"{self.data_size} is not a valid dataset size. Choose from 'small' or 'med'.")
 

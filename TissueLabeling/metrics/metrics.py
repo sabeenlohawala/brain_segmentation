@@ -8,6 +8,88 @@ import wandb
 
 from TissueLabeling.brain_utils import mapping
 
+class Dice_v2(Metric):
+    """
+    Compute the multi-class generlized dice loss as suggested here:
+    https://arxiv.org/abs/2004.10664
+    """
+
+    def __init__(
+        self, fabric, config, is_loss=False, class_specific_scores=False, **kwargs
+    ):
+        """
+        Constructor.
+
+        Args:
+            fabric (L.Fabric | None): fabric to get right device
+            config (TissueLabeling.config.Configuration): contains the experiment parameters
+            is_loss (bool): whether to return the dice loss = 1 - dice
+            class_specific_scores (bool): whether to return class_dice
+        """
+        super().__init__(**kwargs)
+        self.add_state(
+            "class_dice",
+            default=torch.zeros((1, config.nr_of_classes)),
+            dist_reduce_fx="mean",
+        )  # want to average across all gpus
+        self.add_state(
+            "dice", default=torch.Tensor((1,)), dist_reduce_fx="mean"
+        )  # want to average across all gpus
+
+        self.smooth = 1e-7
+        self.weights = torch.zeros((config.nr_of_classes,))
+        if fabric is not None:
+            self.weights = fabric.to_device(self.weights)
+        self.nr_of_classes = config.nr_of_classes
+
+        self.is_loss = is_loss
+        self.class_specific_scores = class_specific_scores
+
+    def update(self, target: Tensor, preds: Tensor) -> None:
+        """
+        This function updates the state variables specified in __init__ based on the target and the predictions
+        as suggested here: https://arxiv.org/abs/2004.10664
+
+        Args:
+            target (torch.tensor): Ground-truth mask. Tensor with shape [B, 1, H, W]
+            preds (torch.tensor): Predicted class probabilities. Tensor with shape [B, C, H, W]
+        """
+        if self.nr_of_classes == 50:
+            target[target >= 50] = 0
+
+        # convert mask to one-hot
+        y_true_oh = torch.nn.functional.one_hot(
+            target.long().squeeze(1), num_classes=self.nr_of_classes
+        ).permute(0, 3, 1, 2)
+
+        weights = y_true_oh.sum(axis=(0,2,3))
+        weights = 1 / (weights)
+        # set inf weights (when count = 0) to max(weights)
+        weights[weights == float('inf')] = -float('inf')
+        weights[weights == -float('inf')] = torch.max(weights)
+        weights = weights / weights.sum()
+
+        class_intersect = torch.sum(y_true_oh * preds, axis=(2,3)) # [batch_size, nr_of_classes]
+        class_union = torch.sum(y_true_oh + preds, axis=(2,3)) # [batch_size, nr_of_classes]
+
+        # sum over classes
+        overall_intersect = (class_intersect * weights.view(1,-1)).sum(axis=1)
+        overall_union = (class_union * weights.view(1,-1)).sum(axis=1)
+
+        # average over batch
+        self.class_dice = 2.0 * (torch.mean(class_intersect, axis=0) + self.smooth) / (torch.mean(class_union, axis=0) + self.smooth)
+        self.class_dice[self.class_dice > 1] = 0
+        self.dice = torch.mean(2.0 * (overall_intersect + self.smooth) / (overall_union + self.smooth), axis=0)
+
+    def compute(self) -> Tensor:
+        """
+        This function computes the loss value based on the stored state.
+        """
+        score = 1 - self.dice if self.is_loss else self.dice
+        if self.class_specific_scores:
+            return score, self.class_dice
+        return score
+
 class Dice(Metric):
     """
     Compute the multi-class generlized dice loss as suggested here:
@@ -40,6 +122,9 @@ class Dice(Metric):
                 mask = (new_indices == ind)
                 new_counts[ind] = torch.sum(pixel_counts[mask])
             pixel_counts = new_counts
+        elif config.nr_of_classes == 50:
+            pixel_counts[0] += pixel_counts[50]
+            pixel_counts = pixel_counts[:-1]
         
         self.smooth = 1e-7
         self.weights = 1 / (pixel_counts + self.smooth)
@@ -60,6 +145,8 @@ class Dice(Metric):
             target (torch.tensor): Ground-truth mask. Tensor with shape [B, 1, H, W]
             preds (torch.tensor): Predicted class probabilities. Tensor with shape [B, C, H, W]
         '''
+        if self.nr_of_classes == 50:
+            target[target >= 50] = 0
 
         # convert mask to one-hot
         y_true_oh = torch.nn.functional.one_hot(

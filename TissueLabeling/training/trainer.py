@@ -7,7 +7,7 @@ import wandb
 import math
 from torch.utils.tensorboard import SummaryWriter
 
-from TissueLabeling.metrics.metrics import Classification_Metrics
+from TissueLabeling.metrics.metrics import Classification_Metrics, Dice_v2
 from TissueLabeling.training.logging import Log_Images
 from TissueLabeling.utils import finish_wandb
 
@@ -51,6 +51,12 @@ class Trainer:
                 config=config,
                 writer=self.writer,
             )
+        self.dice_v2 = metric = Dice_v2(
+            fabric,
+            config,
+            is_loss=False,
+            class_specific_scores=config.class_specific_scores,
+        )
 
     def train_and_validate(self) -> None:
         self.train_metrics = Classification_Metrics(
@@ -67,6 +73,22 @@ class Trainer:
             loss_name=self.config.loss_fn, 
             metric_name=self.config.metric
         )
+        self.train_metrics_2 = Classification_Metrics(
+            self.config.nr_of_classes,
+            prefix="Train",
+            wandb_on=self.config.wandb_on,
+            loss_name=self.config.loss_fn,
+            # metric_name=self.config.metric,
+            metric_name="Dice v2",
+        )
+        self.validation_metrics_2 = Classification_Metrics(
+            self.config.nr_of_classes,
+            prefix=f"Validation",
+            wandb_on=self.config.wandb_on,
+            loss_name=self.config.loss_fn,
+            # metric_name=self.config.metric,
+            metric_name="Dice v2",
+        )
 
         print(
             f"Process {self.fabric.global_rank} starts training on {len(self.train_loader)} batches per epoch over {self.config.num_epochs} epochs"
@@ -79,6 +101,7 @@ class Trainer:
 
             self.fabric.barrier()
             self.train_metrics.sync(self.fabric)
+            self.train_metrics_2.sync(self.fabric)
 
             self._log_metrics(epoch)
             self._log_image(epoch)
@@ -109,10 +132,14 @@ class Trainer:
 
             if self.config.class_specific_scores:
                 overall_dice, class_dice = self.metric(mask.long(), probs)
+                overall_dice_v2, class_dice_v2 = self.dice_v2(mask.long(), probs)
             else:
                 class_dice = None
                 overall_dice = self.metric(mask.long(), probs)
+                class_dice_v2 = None
+                overall_dice_v2 = self.dice_v2(mask.long(), probs)
             self.train_metrics.compute(loss = loss.item(), metric = overall_dice.item(), class_dice=class_dice)
+            self.train_metrics_2.compute(loss = loss.item(), metric = overall_dice_v2.item(), class_dice=class_dice_v2)
 
             batch_idx += 1
         
@@ -131,16 +158,22 @@ class Trainer:
             loss = self.loss_fn(mask.long(), probs)
             if self.config.class_specific_scores:
                 overall_dice, class_dice = self.metric(mask.long(), probs)
+                overall_dice_v2, class_dice_v2 = self.metric(mask.long(), probs)
             else:
                 class_dice = None
                 overall_dice = self.metric(mask.long(), probs)
+                class_dice_v2 = None
+                overall_dice_v2 = self.metric(mask.long(), probs)
             self.validation_metrics.compute(loss = loss.item(), metric = overall_dice.item(), class_dice=class_dice)
+            self.validation_metrics_2.compute(loss = loss.item(), metric = overall_dice_v2.item(), class_dice=class_dice_v2)
     
     def _log_metrics(self, epoch) -> None:
         if self.fabric.global_rank == 0:
             print(f'Process {self.fabric.global_rank} logging metrics...')
             self.train_metrics.log(epoch, commit=False, writer=self.writer)
+            self.train_metrics_2.log(epoch, commit=False, writer=self.writer)
             self.validation_metrics.log(epoch, commit=False, writer=self.writer)
+            self.validation_metrics_2.log(epoch, commit=False, writer=self.writer)
     
     def _log_image(self, epoch) -> None:
         if self.config.log_images and self.fabric.global_rank == 0 and (epoch == 1 or epoch % self.config.image_log_freq == 0):
@@ -150,7 +183,9 @@ class Trainer:
     def _reset_metrics(self) -> None:
         print("Resetting metrics...")
         self.train_metrics.reset()
+        self.train_metrics_2.reset()
         self.validation_metrics.reset()
+        self.validation_metrics_2.reset()
     
     def _save_checkpoint(self, epoch) -> None:
         if self.config.save_checkpoint and (epoch == 1 or epoch % self.config.checkpoint_freq == 0):
