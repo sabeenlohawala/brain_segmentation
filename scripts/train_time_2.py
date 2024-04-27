@@ -16,21 +16,20 @@ DEBUG = True if gettrace() else False
 OUT_DIR = "/om2/user/sabeen/nifti_to_numpy/"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-SAVE_SLICE_NAME = "/om2/scratch/Fri/hgazula/kwyk_slices.h5"
-SAVE_VOL_NAME = "/om2/scratch/Fri/hgazula/kwyk_vols.h5"
+SLICE_HDF5 = "/om2/scratch/Fri/hgazula/kwyk_slices.h5"
+VOL_HDF5 = "/om2/scratch/Fri/hgazula/kwyk_vols.h5"
+
+NIFTI_DIR = "/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/"
+SLICE_INFO_FILE = "/om2/user/sabeen/kwyk_data/new_kwyk_full.npy"
 
 
-def write_kwyk_vols_to_hdf5():
+def write_kwyk_vols_to_hdf5(save_path=None):
     N_VOLS = 10
-    feature_files = sorted(
-        glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*orig*")
-    )[:N_VOLS]
-    label_files = sorted(
-        glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*aseg*")
-    )[:N_VOLS]
+    feature_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*orig*")))[:N_VOLS]
+    label_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*aseg*")))[:N_VOLS]
     feature_label_files = zip(feature_files, label_files)
 
-    f = h5.File(SAVE_VOL_NAME, "w")
+    f = h5.File(save_path, "w")
     features = f.create_dataset(
         "kwyk_features",
         (N_VOLS, 256, 256, 256),
@@ -70,17 +69,13 @@ def write_kwyk_vols_to_hdf5():
     f.close()
 
 
-def write_kwyk_slices_to_hdf5():
+def write_kwyk_slices_to_hdf5(save_path=None):
     N_VOLS = 10
-    feature_files = sorted(
-        glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*orig*")
-    )[:N_VOLS]
-    label_files = sorted(
-        glob.glob("/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/*aseg*")
-    )[:N_VOLS]
+    feature_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*orig*")))[:N_VOLS]
+    label_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*aseg*")))[:N_VOLS]
     feature_label_files = zip(feature_files, label_files)
 
-    f = h5.File(SAVE_SLICE_NAME, "w")
+    f = h5.File(save_path, "w")
     features_dir1 = f.create_dataset(
         "kwyk_features_dir1",
         (N_VOLS * 256, 256, 256),
@@ -166,14 +161,22 @@ def write_kwyk_slices_to_hdf5():
 
 
 @main_timer
-def read_kwyk_hdf5():
-    kwyk = h5.File(SAVE_SLICE_NAME, "r")
+def read_kwyk_vol_hdf5(read_path):
+    kwyk = h5.File(read_path, "r")
     features = kwyk["kwyk_features"]
     labels = kwyk["kwyk_labels"]
-
     for feature, label in zip(features, labels):
         _, _ = feature.shape, label.shape
+    print("success")
 
+
+def read_kwyk_slice_hdf5(read_path):
+    kwyk = h5.File(read_path, "r")
+    features_dir1 = kwyk["kwyk_features_dir1"]
+    labels_dir1 = kwyk["kwyk_labels_dir1"]
+
+    for feature, label in zip(features_dir1, labels_dir1):
+        _, _ = feature.shape, label.shape
     print("success")
 
 
@@ -357,15 +360,21 @@ class NoBrainerDataset(Dataset):
 
 
 @main_timer
-def loop_over_dataloder(item):
-    for batch_idx, (image, mask) in enumerate(item):
+def loop_over_dataloader(config, item):
+    train_loader = torch.utils.data.DataLoader(
+        item,
+        batch_size=config.batch_size,
+        shuffle=False,
+    )
+
+    for batch_idx, (image, mask) in enumerate(train_loader):
         if batch_idx == 0:
             break
 
 
 def time_dataloaders():
     config = {
-        "batch_size": 256,  # CHANGE
+        "batch_size": 64,  # CHANGE
         "background_percent_cutoff": 0.8,
         "data_dir": "/om2/scratch/Mon/sabeen/kwyk_slice_split_250/",
     }
@@ -375,54 +384,39 @@ def time_dataloaders():
     kwyk_dataset = KWYKVolumeDataset(
         mode="test",
         config=config,
-        volume_data_dir="/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/",
-        slice_info_file="/om2/user/sabeen/kwyk_data/new_kwyk_full.npy",
+        volume_data_dir=NIFTI_DIR,
+        slice_info_file=SLICE_INFO_FILE,
     )
-    kwyk_loader = torch.utils.data.DataLoader(
-        kwyk_dataset,
-        batch_size=config.batch_size,
-        shuffle=False,
-    )
-    loop_over_dataloder(kwyk_loader)
+    loop_over_dataloader(config, kwyk_dataset)
 
     print("time for h5 vols")
     h5vol_dataset = H5VolDataset(
         mode="test",
         config=config,
-        volume_data_dir="/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/",
-        slice_info_file="/om2/user/sabeen/kwyk_data/new_kwyk_full.npy",
+        volume_data_dir=NIFTI_DIR,
+        slice_info_file=SLICE_INFO_FILE,
     )
-    h5vol_loader = torch.utils.data.DataLoader(
-        h5vol_dataset,
-        batch_size=config.batch_size,
-        shuffle=False,
-    )
-    loop_over_dataloder(h5vol_loader)
+    loop_over_dataloader(config, h5vol_dataset)
 
     print("time for h5 slices")
     h5slice_dataset = H5VolDataset(
         mode="test",
         config=config,
-        volume_data_dir="/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/",
-        slice_info_file="/om2/user/sabeen/kwyk_data/new_kwyk_full.npy",
+        volume_data_dir=NIFTI_DIR,
+        slice_info_file=SLICE_INFO_FILE,
     )
-    h5slice_loader = torch.utils.data.DataLoader(
-        h5slice_dataset,
-        batch_size=config.batch_size,
-        shuffle=False,
-    )
-    loop_over_dataloder(h5slice_loader)
+    loop_over_dataloader(config, h5slice_dataset)
 
     print("time for slices")
     train_dataset = NoBrainerDataset("train", config)
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=config.batch_size,
-        shuffle=False,
-    )
-    loop_over_dataloder(train_loader)
+    loop_over_dataloader(config, train_dataset)
 
 
 if __name__ == "__main__":
+    # write_kwyk_slices_to_hdf5(save_path=SLICE_HDF5)
+    # read_kwyk_slice_hdf5(read_path=SLICE_HDF5)
+
+    # write_kwyk_vols_to_hdf5(save_path=VOL_HDF5)
+    # read_kwyk_vol_hdf5(read_path=VOL_HDF5)
+
     time_dataloaders()
-    # write_kwyk_slices_to_hdf5()
