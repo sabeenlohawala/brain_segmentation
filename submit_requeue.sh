@@ -6,21 +6,23 @@
 #SBATCH --ntasks-per-node=4
 #SBATCH --gres=gpu:a100:4
 #SBATCH --mem=40G # per node memory
-#SBATCH -p normal
-#SBATCH -o ./logs/old_50.out
-#SBATCH -e ./logs/old_50.err
+#SBATCH -p use-everything
+#SBATCH -o ./logs/new_pretrained_50_65.out
+#SBATCH -e ./logs/new_pretrained_50_65.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
+
+echo "Submitted Job: $SLURM_JOB_ID"
 
 export PATH="/om2/user/sabeen/miniconda/bin:$PATH"
 conda init bash
 
 # General hyperparams
-BATCH_SIZE=512
-LR=0.001
+BATCH_SIZE=288
+LR=0.00006
 NUM_EPOCHS=100
 MODEL_NAME="segformer"
-PRETRAINED=0
+PRETRAINED=1
 LOSS_FN="dice"
 DEBUG=0
 NR_OF_CLASSES=50
@@ -29,7 +31,7 @@ CLASS_SPECIFIC_SCORES=0
 CHECKPOINT_FREQ=5
 
 # Dataset params
-NEW_KWYK_DATA=0
+NEW_KWYK_DATA=1
 BACKGROUND_PERCENT_CUTOFF=0.8
 ROTATE_VOL=0
 DATA_SIZE="med"
@@ -72,7 +74,10 @@ AUG_GRID_BACKGROUND=1
 # LOGDIR="/om2/scratch/tmp/sabeen/results/20240424-old-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 # LOGIDR="test-new-kwyk-volume-dataset"
 
-LOGDIR="/om2/scratch/tmp/sabeen/results/20240426-old-dice2loss-2metrics-segformer-50class-512-1e-3"
+# LOGDIR="/om2/scratch/tmp/sabeen/results/20240426-old-dice2loss-2metrics-segformer-50class-512-1e-3"
+
+
+LOGDIR="/om2/scratch/tmp/sabeen/results/20240427-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\BC$BACKGROUND_PERCENT_CUTOFF\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 
 # Check if checkpoint file exists
 if ls "$LOGDIR"/*.ckpt 1> /dev/null 2>&1; then
