@@ -258,6 +258,20 @@ def get_args():
         required=False,
         default=0
     )
+    train.add_argument(
+        "--pad_old_data",
+        help="Whether to pad cropped dataset to 256x256",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
+        "--use_norm_consts",
+        help="Whether to use Matthias's normalization constants or to divide image intensities by 255.0",
+        type=int,
+        required=False,
+        default=0
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()

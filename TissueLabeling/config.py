@@ -52,6 +52,8 @@ class Configuration:
             getattr(args, "class_specific_scores", 0) if self.metric == "dice" else 0
         )
 
+        self.pad_old_data = getattr(args,"pad_old_data",0)
+        self.use_norm_consts = getattr(args, "use_norm_consts",0)
         self.new_kwyk_data = getattr(args, "new_kwyk_data", 0)
         self.background_percent_cutoff = getattr(args, "background_percent_cutoff", 0.99)
         self.data_dir = getattr(args, "data_dir", "")

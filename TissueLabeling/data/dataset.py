@@ -23,6 +23,7 @@ import nibabel as nib
 
 from TissueLabeling.data.cutout import Cutout
 from TissueLabeling.data.mask import Mask
+from TissueLabeling.utils import center_pad_tensor
 from TissueLabeling.brain_utils import (
     mapping,
     create_affine_transformation_matrix,
@@ -239,6 +240,8 @@ class NoBrainerDataset(Dataset):
 
         # Set the pretrained attribute
         self.pretrained = config.pretrained
+        self.pad_old_data = config.pad_old_data
+        self.use_norm_consts = config.use_norm_consts
 
         self.new_kwyk_data = config.new_kwyk_data
         if self.new_kwyk_data:
@@ -405,6 +408,15 @@ class NoBrainerDataset(Dataset):
         image = torch.from_numpy(np.load(self.images[idx]).astype(np.float32))
         mask = torch.from_numpy(np.load(self.masks[idx]).astype(np.int16))
 
+        if not self.new_kwyk_data:
+            if not self.use_norm_consts:
+                image = image / 255.0
+            else:
+                # normalize image
+                image = (
+                    image - self.normalization_constants[0]
+                ) / self.normalization_constants[1]
+
         # randomly augment
         augment_coin_toss = 1 if random.random() < self.aug_percent else 0
         if self.augment and augment_coin_toss == 1:
@@ -444,14 +456,10 @@ class NoBrainerDataset(Dataset):
             # Albumentations
             image = np.array(image.squeeze(0))
             mask = np.array(mask.squeeze(0))
-            if not self.new_kwyk_data:
-                image = image / 255.0
 
             transformed = self.transform(image = image.astype(np.float32), mask = mask)
             image = transformed['image']
             mask = transformed['mask']
-            if not self.new_kwyk_data:
-                image = image * 255.0
             
             if self.aug_background_manipulation:
                 apply_background_coin_toss = random.random() < 0.5
@@ -490,10 +498,9 @@ class NoBrainerDataset(Dataset):
             elif self.nr_of_classes == 50:
                 mask[mask > 49] = 0
 
-            # normalize image
-            image = (
-                image - self.normalization_constants[0]
-            ) / self.normalization_constants[1]
+            if self.pad_old_data:
+                image = center_pad_tensor(image, 256, 256)
+                mask = center_pad_tensor(mask, 256, 256)
 
         if self.new_kwyk_data:
             image = image.to(torch.float32)

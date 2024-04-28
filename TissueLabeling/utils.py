@@ -3,12 +3,31 @@ from datetime import datetime
 import os
 import random
 import shutil
+import numpy as np
 
 import lightning as L
 import torch
 import wandb
 from lightning.fabric import Fabric, seed_everything
 
+def center_pad_tensor(input_tensor, new_height, new_width):
+    # Get the dimensions of the input tensor
+    _, height, width = input_tensor.size()
+
+    # Calculate the amount of padding needed on each side
+    pad_height = max(0, (new_height - height) // 2)
+    pad_width = max(0, (new_width - width) // 2)
+
+    # Calculate the total amount of padding needed
+    pad_top = pad_height
+    pad_bottom = new_height - height - pad_top
+    pad_left = pad_width
+    pad_right = new_width - width - pad_left
+
+    # Apply padding
+    padded_tensor = torch.nn.functional.pad(input_tensor, (pad_left, pad_right, pad_top, pad_bottom))
+
+    return padded_tensor
 
 def main_timer(func):
     """Decorator to time any function"""
