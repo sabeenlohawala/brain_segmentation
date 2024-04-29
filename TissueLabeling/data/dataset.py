@@ -10,6 +10,7 @@ import glob
 import os
 import sys
 
+import h5py as h5
 import random
 import json
 import numpy as np
@@ -33,6 +34,27 @@ from TissueLabeling.brain_utils import (
     draw_random_shapes_background,
     draw_random_grid_background,
 )
+
+class HDF5Dataset(Dataset):
+    def __init__(self, mode:str, config):
+        random.seed(42)
+
+        h5_dir = '/om2/scratch/Sat/satra/'
+        h5_file_paths = sorted(glob.glob(os.path.join(h5_dir, '*.h5')))
+        self.h5_pointers = [h5.File(h5_path,'r') for h5_path in h5_file_paths]
+
+        slice_nonbrain_dir = '/om2/user/sabeen/kwyk_h5_nonbrains'
+        slice_nonbrain_file_paths = sorted(glob.glob(os.path.join(slice_nonbrain_dir, '*.npy')))
+        all_slice_nonbrain = [np.load(slice_nonbrain_path) for slice_nonbrain_path in slice_nonbrain_file_paths]
+        all_slice_nonbrain[-1] = np.pad(all_slice_nonbrain[-1], ((0,0),(0,all_slice_nonbrain[0].shape[1] - all_slice_nonbrain[-1].shape[1]),(0,0),(0,0)),mode='constant', constant_values=65535)
+        self.slice_nonbrain = np.vstack(all_slice_nonbrain) # shape = [10,1150,3,256]
+
+        # TODO: train-val-test-split
+
+    def __getitem__(self, index):
+        return
+    def __len__(self):
+        return
 
 class KWYKVolumeDataset(torch.utils.data.Dataset):
     def __init__(self, mode, config, volume_data_dir, slice_info_file):

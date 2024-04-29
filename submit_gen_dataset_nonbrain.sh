@@ -11,4 +11,4 @@ conda init bash
 # source activate tissue_labeling
 echo "Submitted Job: $SLURM_JOB_ID"
 
-srun python -u scripts/gen_dataset_nonbrain.py /om2/scratch/Sat/satra/ 10 /om2/user/sabeen/kwyk_hdf_nonbrains/
+srun python -u scripts/gen_dataset_nonbrain.py /om2/scratch/Sat/satra/ 0 /om2/user/sabeen/kwyk_hdf_nonbrains/

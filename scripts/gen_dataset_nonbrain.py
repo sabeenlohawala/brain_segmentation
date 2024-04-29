@@ -36,9 +36,7 @@ gettrace = getattr(sys, "gettrace", None)
 DEBUG = True if gettrace() else False
 
 h5_file_paths = glob.glob(os.path.join(H5_DIR, '*.h5'))
-h5_pointers = []
-for h5_path in h5_file_paths:
-    h5_pointers.append(h5.File(h5_path,'r'))
+h5_pointers = [h5.File(h5_path,'r') for h5_path in h5_file_paths]
 
 def get_vol_nonzero(shard_idx,vol_shape,shard_vol_idx):
     print(f'Processing shard {shard_idx} volume {shard_vol_idx}')
