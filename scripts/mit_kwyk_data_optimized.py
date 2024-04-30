@@ -1,3 +1,4 @@
+"""Example code to read slices from kwyk volumes directly."""
 import glob
 import os
 from datetime import datetime
