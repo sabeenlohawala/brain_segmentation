@@ -224,13 +224,13 @@ def path_map_to_kwyk_slices(path_map):
 
 
 def main():
-    if os.path.exists(f'{save_path_basic}/matthias_path_map.json'):
-        print('path map exists')
-        with open(f'{save_path_basic}/matthias_path_map.json') as f:
-            path_map = json.load(f)
-    else:
-        print('creating path map')
-        path_map = matthias_files_to_volume_dir_slice()
+    # if os.path.exists(f'{save_path_basic}/matthias_path_map.json'):
+    #     print('path map exists')
+    #     with open(f'{save_path_basic}/matthias_path_map.json') as f:
+    #         path_map = json.load(f)
+    # else:
+    print('creating path map')
+    path_map = matthias_files_to_volume_dir_slice()
 
     path_map_to_kwyk_slices(path_map)
 

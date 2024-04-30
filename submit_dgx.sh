@@ -7,9 +7,9 @@
 #SBATCH --gres=gpu:4
 #SBATCH --constraint=volta
 #SBATCH --mem=40G # per node memory
-#SBATCH -p gablab
-#SBATCH -o ./logs/new_pretrained_6_4.out
-#SBATCH -e ./logs/new_pretrained_6_4.err
+#SBATCH -p use-everything
+#SBATCH -o ./logs/old_pad_255_3.out
+#SBATCH -e ./logs/old_pad_255_3.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 
@@ -18,21 +18,24 @@ conda init bash
 
 # General hyperparams
 BATCH_SIZE=116
-LR=0.0001
+LR=0.001
 NUM_EPOCHS=100
 MODEL_NAME="segformer"
-PRETRAINED=1
+PRETRAINED=0
 LOSS_FN="dice"
 DEBUG=0
-NR_OF_CLASSES=6
+NR_OF_CLASSES=2
 LOG_IMAGES=0
 CLASS_SPECIFIC_SCORES=0
 CHECKPOINT_FREQ=2
 
 # Dataset params
-NEW_KWYK_DATA=1
+NEW_KWYK_DATA=0
 BACKGROUND_PERCENT_CUTOFF=0.8
 ROTATE_VOL=0
+
+PAD_OLD_DATA=1
+USE_NORM_CONSTS=0
 DATA_SIZE="med"
 
 # Data augmentation params
@@ -72,7 +75,11 @@ AUG_GRID_BACKGROUND=0
 
 # LOGDIR="/om2/scratch/tmp/sabeen/results/20240424-old-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 
-LOGDIR="/om2/scratch/tmp/sabeen/results/20240427-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\BC$BACKGROUND_PERCENT_CUTOFF\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+# LOGDIR="/om2/scratch/tmp/sabeen/results/20240427-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\BC$BACKGROUND_PERCENT_CUTOFF\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+
+LOGDIR="/om2/scratch/tmp/sabeen/results/20240428-oldPadded-noNorm-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\BC$BACKGROUND_PERCENT_CUTOFF\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+# LOGDIR="/om2/scratch/tmp/sabeen/results/20240428-oldPadded-yesNorm-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\BC$BACKGROUND_PERCENT_CUTOFF\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
+
 
 # Check if checkpoint file exists
 if ls "$LOGDIR"/*.ckpt 1> /dev/null 2>&1; then
@@ -110,5 +117,7 @@ else
 						--checkpoint_freq $CHECKPOINT_FREQ \
 						--aug_background_manipulation $AUG_BACKGROUND_MANIPULATION \
 						--aug_shapes_background $AUG_SHAPES_BACKGROUND \
-						--aug_grid_background $AUG_GRID_BACKGROUND
+						--aug_grid_background $AUG_GRID_BACKGROUND \
+						--pad_old_data $PAD_OLD_DATA \
+						--use_norm_consts $USE_NORM_CONSTS
 fi

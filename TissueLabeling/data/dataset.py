@@ -41,6 +41,7 @@ class HDF5Dataset(Dataset):
             mode = 'validation'
         if mode not in ['train','validation','test']:
             raise Exception("invalid mode, choose from train, validation, or test")
+        self.mode = mode
 
         random.seed(42)
 
@@ -48,7 +49,7 @@ class HDF5Dataset(Dataset):
         h5_file_paths = sorted(glob.glob(os.path.join(h5_dir, '*.h5')))
         self.h5_pointers = [h5.File(h5_path,'r') for h5_path in h5_file_paths]
 
-        slice_nonbrain_dir = '/om2/user/sabeen/kwyk_h5_nonbrains'
+        slice_nonbrain_dir = '/om/scratch/Fri/sabeen/kwyk_h5_nonbrains'
         slice_nonbrain_file_paths = sorted(glob.glob(os.path.join(slice_nonbrain_dir, '*.npy')))
         all_slice_nonbrain = [np.load(slice_nonbrain_path) for slice_nonbrain_path in slice_nonbrain_file_paths]
         all_slice_nonbrain[-1] = np.pad(all_slice_nonbrain[-1], ((0,0),(0,all_slice_nonbrain[0].shape[1] - all_slice_nonbrain[-1].shape[1]),(0,0),(0,0)),mode='constant', constant_values=65535)
@@ -169,7 +170,7 @@ class HDF5Dataset(Dataset):
         return (feature_slice, label_slice)
 
     def __len__(self):
-        self.filtered_matrix.shape[0]
+        return self.filtered_matrix.shape[0]
 
 class KWYKVolumeDataset(torch.utils.data.Dataset):
     def __init__(self, mode, config, volume_data_dir, slice_info_file):
@@ -437,11 +438,9 @@ class NoBrainerDataset(Dataset):
 
         #     self.images = shuffled_images[:num_files]
         #     self.masks = shuffled_masks[:num_files]
-        #     self.affines = []
 
             self.images = sorted(glob.glob(f"{config.data_dir}/{mode}/features/*orig*"))
             self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/labels/*aseg*"))
-            self.affines = []
 
             # correspond to exact same dataset size as Matthias's
             if config.data_size == "small":
@@ -458,9 +457,6 @@ class NoBrainerDataset(Dataset):
 
             # Get a list of all the mask files in the specified directory
             self.masks = sorted(glob.glob(f"{config.data_dir}/{mode}/mask*.npy"))
-
-            # Get a list of all the affine matrices for rigid transformations
-            self.affines = sorted(glob.glob(f"{config.aug_dir}/{mode}/affine*.npy"))
 
         # only augment the train, not validation or test
         if self.mode == "train":
@@ -499,7 +495,6 @@ class NoBrainerDataset(Dataset):
             print("debug mode")
             self.images = self.images[:100]
             self.masks = self.masks[:100]
-            self.affines = self.affines[:100]
 
         # Load the normalization constants from the file directory
         if not self.new_kwyk_data:
@@ -719,14 +714,17 @@ def get_data_loader(
     config,
     num_workers: int = 4 * torch.cuda.device_count(),
 ):
-    # if config.new_kwyk_data == 2:
-    #     train_dataset = KWYKVolumeDataset(mode="train", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
-    #     val_dataset = KWYKVolumeDataset(mode="validation", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
-    #     test_dataset = KWYKVolumeDataset(mode="test", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
-    # else:
-    train_dataset = NoBrainerDataset("train", config)
-    val_dataset = NoBrainerDataset("validation", config)
-    test_dataset = NoBrainerDataset("test", config)
+    if config.new_kwyk_data == 2:
+        # train_dataset = KWYKVolumeDataset(mode="train", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
+        # val_dataset = KWYKVolumeDataset(mode="validation", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
+        # test_dataset = KWYKVolumeDataset(mode="test", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
+        train_dataset = HDF5Dataset(mode='train',config=config)
+        val_dataset = HDF5Dataset(mode='validation',config=config)
+        test_dataset = HDF5Dataset(mode='test',config=config)
+    else:
+        train_dataset = NoBrainerDataset("train", config)
+        val_dataset = NoBrainerDataset("validation", config)
+        test_dataset = NoBrainerDataset("test", config)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=config.batch_size, shuffle=True
     )
