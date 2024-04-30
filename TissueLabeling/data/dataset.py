@@ -37,6 +37,11 @@ from TissueLabeling.brain_utils import (
 
 class HDF5Dataset(Dataset):
     def __init__(self, mode:str, config):
+        if mode == 'val':
+            mode = 'validation'
+        if mode not in ['train','validation','test']:
+            raise Exception("invalid mode, choose from train, validation, or test")
+
         random.seed(42)
 
         h5_dir = '/om2/scratch/Sat/satra/'
@@ -49,12 +54,122 @@ class HDF5Dataset(Dataset):
         all_slice_nonbrain[-1] = np.pad(all_slice_nonbrain[-1], ((0,0),(0,all_slice_nonbrain[0].shape[1] - all_slice_nonbrain[-1].shape[1]),(0,0),(0,0)),mode='constant', constant_values=65535)
         self.slice_nonbrain = np.vstack(all_slice_nonbrain) # shape = [10,1150,3,256]
 
-        # TODO: train-val-test-split
+        filter_value = 55000 # TODO: what should this be??
+        keep_indices = torch.nonzero(torch.from_numpy(self.slice_nonbrain.astype(np.int32)) < filter_value) # [num_slices, 4] - (shard_idx, shard_vol_idx, axis, slice_idx)
+
+        # train-val-test-split
+        train_indices, rem_indices = train_test_split(np.arange(0,11479),test_size = 0.2, random_state = 42)
+        val_indices, test_indices = train_test_split(rem_indices,test_size = 0.5, random_state = 42)
+
+        # data size (same as Matthias)
+        if config.data_size in ['small', 'med','medium']:
+            end_idx = 10 if config.data_size == 'small' else 1000
+            train_indices = train_indices[:int(end_idx * 0.8)]
+            val_indices = val_indices[:int(end_idx * 0.1)]
+            test_indices = test_indices[:int(end_idx * 0.1)]
+
+        mode_indices = train_indices if mode == 'train' else val_indices if mode == 'validation' else test_indices
+
+        keep_vol_indices = keep_indices[:,0] * 1150 + keep_indices[:,1]
+        self.filtered_matrix = keep_indices[np.isin(keep_vol_indices,mode_indices)]
+
+        if config.debug:
+            print("debug mode")
+            self.filtered_matrix = self.filtered_matrix[:100]
+        
+        self.nr_of_classes = config.nr_of_classes
+        self.pretrained = config.pretrained
+        if self.mode == "train":
+            self.augment = config.augment
+            self.aug_percent = config.aug_percent
+            self.aug_null_half = config.aug_null_half
+            self.aug_background_manipulation = config.aug_background_manipulation
+            self.aug_shapes_background = config.aug_shapes_background
+            self.aug_grid_background = config.aug_grid_background
+        else:
+            self.augment = 0
+            self.aug_percent = 0
+            self.aug_null_half = 0
+            self.aug_background_manipulation = 0
+            self.aug_shapes_background = 0
+            self.aug_grid_background = 0
+
+        self.class_mapping = None
+        transform_list = [
+            A.Affine(rotate=(-15,15),scale=(1-0.2,1+0.2),shear=(-0.69,0.69),interpolation=2,mask_interpolation=0,always_apply=True),
+            A.HorizontalFlip(p=0.5),
+            A.RandomBrightnessContrast(always_apply=True),
+            A.ElasticTransform(always_apply=True),
+        ]
+        if not config.aug_null_half and config.aug_mask:
+            transform_list.append(A.CoarseDropout(max_holes=config.mask_n_holes,
+                                                  max_height=config.mask_length,
+                                                  max_width=config.mask_length,
+                                                  min_holes=config.mask_n_holes,
+                                                  min_height=config.mask_length,
+                                                  min_width=config.mask_length,
+                                                  mask_fill_value=0,
+                                                  always_apply=True))
+        elif not config.aug_null_half and config.aug_cutout:
+            transform_list.append(A.CoarseDropout(max_holes=config.cutout_n_holes,
+                                                  max_height=config.cutout_length,
+                                                  max_width=config.cutout_length,
+                                                  min_holes=config.cutout_n_holes,
+                                                  min_height=config.cutout_length,
+                                                  min_width=config.cutout_length,
+                                                  mask_fill_value=None, # mask will not be affected
+                                                  always_apply=True))
+        self.transform = A.Compose(transform_list)
 
     def __getitem__(self, index):
-        return
+        shard_idx, shard_vol_idx, axis, slice_idx = self.filtered_matrix[index]
+        indices = [shard_vol_idx,slice(None),slice(None)]
+        indices.insert(axis+1,slice_idx)
+        feature_slice = (self.h5_pointers[shard_idx][f'features_axis{axis}'][tuple(indices)]).astype(np.float32) # (256, 256)
+        label_slice = (self.h5_pointers[shard_idx][f'labels_axis{axis}'][tuple(indices)]).astype(np.int16) # (256, 256)
+        feature_slice[label_slice == 0] = 0 # skull stripping?
+        feature_slice = feature_slice / 255.0 # make intensities 0 to 1 instead of 0 to 255
+
+        # add augmentations
+        augment_coin_toss = 1 if random.random() < self.aug_percent else 0
+        if self.augment and augment_coin_toss == 1:
+            transformed = self.transform(image = feature_slice, mask = label_slice)
+            feature_slice = transformed['image']
+            label_slice = transformed['mask']
+
+            # null half
+            null_coin_toss = 1 if random.random() < 0.5 else 0
+            if self.aug_null_half and null_coin_toss:
+                feature_slice, label_slice = null_half(feature_slice, label_slice, random.randint(0, 1) == 1)
+            
+            if self.aug_background_manipulation:
+                apply_background_coin_toss = random.random() < 0.5
+                if apply_background_coin_toss:
+                    shapes_background_coin_toss = random.random() < 0.5 if self.aug_grid_background == self.aug_shapes_background else self.aug_shapes_background
+                    if shapes_background_coin_toss:
+                        background = draw_random_shapes_background(feature_slice.shape)
+                    else:
+                        background = draw_random_grid_background(label_slice.shape)
+                        
+                    feature_slice = apply_background(feature_slice,label_slice,background)
+
+        label_slice, class_mapping = mapping(np.array(label_slice), nr_of_classes=self.nr_of_classes, reference_col='original', class_mapping=self.class_mapping)
+        self.class_mapping = class_mapping
+
+        feature_slice = torch.from_numpy(feature_slice)
+        label_slice = torch.from_numpy(label_slice)
+        
+        # resize image to [1,h,w] again
+        feature_slice = feature_slice.unsqueeze(dim=0)
+        label_slice = label_slice.unsqueeze(dim=0)
+
+        if self.pretrained:
+            feature_slice = feature_slice.repeat((3, 1, 1))
+
+        return (feature_slice, label_slice)
+
     def __len__(self):
-        return
+        self.filtered_matrix.shape[0]
 
 class KWYKVolumeDataset(torch.utils.data.Dataset):
     def __init__(self, mode, config, volume_data_dir, slice_info_file):
