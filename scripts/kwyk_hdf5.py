@@ -1,4 +1,5 @@
 """Contains functions to create kwyk hdf5 datasets using various strategies."""
+
 import glob
 import os
 import sys
@@ -27,14 +28,8 @@ NIFTI_DIR = "/om2/scratch/Sat/satra/rawdata"  # DO NOT CHANGE
 SLICE_INFO_FILE = "/om2/user/sabeen/kwyk_data/new_kwyk_full.npy"  # DO NOT CHANGE
 
 N_VOLS = 20
+COMPRESSION_OPTS = 2
 
-
-# # check scale factors are all nan
-# nib_files = [nib.load(file) for file in feature_files]
-# scl_slopes = np.array([file.header['scl_slope'] for file in nib_files])
-# scl_inters = np.array([file.header['scl_inter'] for file in nib_files])
-# assert np.isnan(scl_slopes).all() and np.isnan(scl_inters).all()
-# print('Assertion passed!')
 
 def main_timer(func):
     """Decorator to time any function"""
@@ -52,13 +47,19 @@ def main_timer(func):
 
     return function_wrapper
 
+
 def sort_function(item):
     return int(os.path.basename(item).split("_")[1])
 
+
 @main_timer
 def write_kwyk_chunks_to_hdf5_satra(save_path=None):
-    feature_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*orig*")), key=sort_function)[:N_VOLS]
-    label_files = sorted(glob.glob(os.path.join(NIFTI_DIR, "*aseg*")), key=sort_function)[:N_VOLS]
+    feature_files = sorted(
+        glob.glob(os.path.join(NIFTI_DIR, "*orig*")), key=sort_function
+    )[:N_VOLS]
+    label_files = sorted(
+        glob.glob(os.path.join(NIFTI_DIR, "*aseg*")), key=sort_function
+    )[:N_VOLS]
     feature_label_files = zip(feature_files, label_files)
 
     f = h5.File(save_path, "w")
@@ -68,7 +69,7 @@ def write_kwyk_chunks_to_hdf5_satra(save_path=None):
         dtype=np.uint8,
         chunks=(1, 1, 256, 256),
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
     features_dir2 = f.create_dataset(
         "kwyk_features_dir2",
@@ -76,7 +77,7 @@ def write_kwyk_chunks_to_hdf5_satra(save_path=None):
         dtype=np.uint8,
         chunks=(1, 256, 1, 256),
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
     features_dir3 = f.create_dataset(
         "kwyk_features_dir3",
@@ -84,7 +85,7 @@ def write_kwyk_chunks_to_hdf5_satra(save_path=None):
         dtype=np.uint8,
         chunks=(1, 256, 256, 1),
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     labels_dir1 = f.create_dataset(
@@ -93,7 +94,7 @@ def write_kwyk_chunks_to_hdf5_satra(save_path=None):
         dtype=np.uint16,
         chunks=(1, 1, 256, 256),
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     labels_dir2 = f.create_dataset(
@@ -102,7 +103,7 @@ def write_kwyk_chunks_to_hdf5_satra(save_path=None):
         dtype=np.uint16,
         chunks=(1, 256, 1, 256),
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     labels_dir3 = f.create_dataset(
@@ -111,7 +112,7 @@ def write_kwyk_chunks_to_hdf5_satra(save_path=None):
         dtype=np.uint16,
         chunks=(1, 256, 256, 1),
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     # # check scale factors are all nan
@@ -122,7 +123,7 @@ def write_kwyk_chunks_to_hdf5_satra(save_path=None):
     # print("Assertion passed!")
 
     for idx, (feature_file, label_file) in enumerate(feature_label_files):
-        # print(f"writing file {idx}")
+        print(f"writing file {idx}")
         img = nib.load(feature_file)
         features_dir1[idx, :, :, :] = img.dataobj
         features_dir2[idx, :, :, :] = img.dataobj
@@ -149,7 +150,7 @@ def write_kwyk_vols_to_hdf5(save_path=None):
         dtype=np.uint8,
         chunks=True,
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
     labels = f.create_dataset(
         "kwyk_labels",
@@ -157,7 +158,7 @@ def write_kwyk_vols_to_hdf5(save_path=None):
         dtype=np.uint16,
         chunks=True,
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     # TODO: parallelize
@@ -176,6 +177,7 @@ def write_kwyk_vols_to_hdf5(save_path=None):
     # print("Assertion passed!")
 
     for idx, (feature_file, label_file) in enumerate(feature_label_files):
+        print(f"writing file {idx}")
         features[idx, :, :, :] = nib.load(feature_file).dataobj
         labels[idx, :, :, :] = nib.load(label_file).dataobj
 
@@ -190,7 +192,7 @@ def write_kwyk_slices_to_hdf5_groups(save_path=None):
 
     f = h5.File(save_path, "w")
     for idx, (feature_file, label_file) in enumerate(feature_label_files):
-        # print(f"writing file {idx}")
+        print(f"writing file {idx}")
 
         feature = nib.load(feature_file).dataobj
         label = nib.load(label_file).dataobj
@@ -212,7 +214,7 @@ def write_kwyk_slices_to_hdf5_groups(save_path=None):
                     dtype=np.uint8,
                     chunks=True,
                     compression="gzip",
-                    compression_opts=9,
+                    compression_opts=COMPRESSION_OPTS,
                 )
                 slice.create_dataset(
                     "kwyk_label",
@@ -220,7 +222,7 @@ def write_kwyk_slices_to_hdf5_groups(save_path=None):
                     dtype=np.uint16,
                     chunks=True,
                     compression="gzip",
-                    compression_opts=9,
+                    compression_opts=COMPRESSION_OPTS,
                 )
 
     f.close()
@@ -239,7 +241,7 @@ def write_kwyk_slices_to_hdf5(save_path=None):
         dtype=np.uint8,
         chunks=True,
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
     features_dir2 = f.create_dataset(
         "kwyk_features_dir2",
@@ -247,7 +249,7 @@ def write_kwyk_slices_to_hdf5(save_path=None):
         dtype=np.uint8,
         chunks=True,
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
     features_dir3 = f.create_dataset(
         "kwyk_features_dir3",
@@ -255,7 +257,7 @@ def write_kwyk_slices_to_hdf5(save_path=None):
         dtype=np.uint8,
         chunks=True,
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     labels_dir1 = f.create_dataset(
@@ -264,7 +266,7 @@ def write_kwyk_slices_to_hdf5(save_path=None):
         dtype=np.uint16,
         chunks=True,
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     labels_dir2 = f.create_dataset(
@@ -273,7 +275,7 @@ def write_kwyk_slices_to_hdf5(save_path=None):
         dtype=np.uint16,
         chunks=True,
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     labels_dir3 = f.create_dataset(
@@ -282,7 +284,7 @@ def write_kwyk_slices_to_hdf5(save_path=None):
         dtype=np.uint16,
         chunks=True,
         compression="gzip",
-        compression_opts=9,
+        compression_opts=COMPRESSION_OPTS,
     )
 
     # # check scale factors are all nan
@@ -293,7 +295,7 @@ def write_kwyk_slices_to_hdf5(save_path=None):
     # print("Assertion passed!")
 
     for idx, (feature_file, label_file) in enumerate(feature_label_files):
-        # print(f"writing file {idx}")
+        print(f"writing file {idx}")
         features_dir1[idx * 256 : (idx + 1) * 256, :, :] = nib.load(
             feature_file
         ).dataobj[0:256, :, :]
@@ -642,33 +644,32 @@ def time_dataloaders():
     )
     loop_over_dataloader(config, h5slicegroups_dataset)
 
-    # # painfully slow
-    # print("time for h5 chunking from satra")
-    # h5volchunk_dataset = H5VolChunkDataset(
-    #     mode="test",
-    #     config=config,
-    #     volume_data_dir=NIFTI_DIR,
-    #     slice_info_file=SLICE_INFO_FILE,
-    # )
-    # loop_over_dataloader(config, h5volchunk_dataset)
+    print("time for h5 chunking from satra")
+    h5volchunk_dataset = H5VolChunkDataset(
+        mode="test",
+        config=config,
+        volume_data_dir=NIFTI_DIR,
+        slice_info_file=SLICE_INFO_FILE,
+    )
+    loop_over_dataloader(config, h5volchunk_dataset)
 
 
 if __name__ == "__main__":
     # TURN THESE ON OR OFF BASED ON WHAT YOU WANT TO TRY
 
     # # slices to hdf5
-    write_kwyk_slices_to_hdf5(save_path=SLICE_HDF5)
-    # read_kwyk_slice_hdf5(read_path=SLICE_HDF5)  # optional
+    # write_kwyk_slices_to_hdf5(save_path=SLICE_HDF5)
+    # # read_kwyk_slice_hdf5(read_path=SLICE_HDF5)  # optional
 
-    # # slice groups to hdf5
-    write_kwyk_slices_to_hdf5_groups(save_path=GROUP_HDF5)
-    # read_kwyk_slice_hdf5_groups(read_path=SLICE_HDF5)  # optional
+    # # # slice groups to hdf5
+    # write_kwyk_slices_to_hdf5_groups(save_path=GROUP_HDF5)
+    # # read_kwyk_slice_hdf5_groups(read_path=SLICE_HDF5)  # optional
 
-    # # volumes to hdf5
-    write_kwyk_vols_to_hdf5(save_path=VOL_HDF5)
-    # read_kwyk_vol_hdf5(read_path=VOL_HDF5)  # optional
+    # # # volumes to hdf5
+    # write_kwyk_vols_to_hdf5(save_path=VOL_HDF5)
+    # # read_kwyk_vol_hdf5(read_path=VOL_HDF5)  # optional
 
-    # # chunks to hdf5
-    write_kwyk_chunks_to_hdf5_satra(save_path=CHUNK_HDF5)
+    # # # chunks to hdf5
+    # write_kwyk_chunks_to_hdf5_satra(save_path=CHUNK_HDF5)
 
-    # time_dataloaders()
+    time_dataloaders()
