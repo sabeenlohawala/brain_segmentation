@@ -1,3 +1,4 @@
+"""Contains functions to create kwyk hdf5 datasets using various strategies."""
 import glob
 import os
 import sys
@@ -27,6 +28,13 @@ SLICE_INFO_FILE = "/om2/user/sabeen/kwyk_data/new_kwyk_full.npy"  # DO NOT CHANG
 
 N_VOLS = 20
 
+
+# # check scale factors are all nan
+# nib_files = [nib.load(file) for file in feature_files]
+# scl_slopes = np.array([file.header['scl_slope'] for file in nib_files])
+# scl_inters = np.array([file.header['scl_inter'] for file in nib_files])
+# assert np.isnan(scl_slopes).all() and np.isnan(scl_inters).all()
+# print('Assertion passed!')
 
 def main_timer(func):
     """Decorator to time any function"""
