@@ -95,6 +95,8 @@ class HDF5Dataset(Dataset):
         self.pretrained = config.pretrained
         if self.mode == "train":
             self.augment = config.augment
+            self.intensity_scale = config.intensity_scale
+            self.aug_elastic = config.aug_elastic
             self.aug_percent = config.aug_percent
             self.aug_null_half = config.aug_null_half
             self.aug_background_manipulation = config.aug_background_manipulation
@@ -102,6 +104,8 @@ class HDF5Dataset(Dataset):
             self.aug_grid_background = config.aug_grid_background
         else:
             self.augment = 0
+            self.intensity_scale = 0
+            self.aug_elastic = 0
             self.aug_percent = 0
             self.aug_null_half = 0
             self.aug_background_manipulation = 0
@@ -112,9 +116,12 @@ class HDF5Dataset(Dataset):
         transform_list = [
             A.Affine(rotate=(-15,15),scale=(1-0.2,1+0.2),shear=(-0.69,0.69),interpolation=2,mask_interpolation=0,always_apply=True),
             A.HorizontalFlip(p=0.5),
-            A.RandomBrightnessContrast(always_apply=True),
-            A.ElasticTransform(always_apply=True),
         ]
+        if self.intensity_scale:
+            transform_list.append(A.RandomBrightnessContrast(always_apply=True))
+        if self.aug_elastic:
+            transform_list.append(A.ElasticTransform(always_apply=True))
+            
         if not config.aug_null_half and config.aug_mask:
             transform_list.append(A.CoarseDropout(max_holes=config.mask_n_holes,
                                                   max_height=config.mask_length,
