@@ -1,10 +1,10 @@
 #!/.venv/bin/python
 # -*- coding: utf-8 -*-
 """
-@Author: Matthias Steiner
-@Contact: matth406@mit.edu
+@Author: Sabeen Lohawala
+@Contact: sabeen@mit.edu
 @File: dataset.py
-@Date: 2023/04/03
+@Date: 2024/04/03
 """
 import glob
 import os
@@ -49,25 +49,38 @@ class HDF5Dataset(Dataset):
         h5_file_paths = sorted(glob.glob(os.path.join(h5_dir, '*.h5')))
         self.h5_pointers = [h5.File(h5_path,'r') for h5_path in h5_file_paths]
 
-        slice_nonbrain_dir = '/om/scratch/Fri/sabeen/kwyk_h5_nonbrains'
-        slice_nonbrain_file_paths = sorted(glob.glob(os.path.join(slice_nonbrain_dir, '*.npy')))
-        all_slice_nonbrain = [np.load(slice_nonbrain_path) for slice_nonbrain_path in slice_nonbrain_file_paths]
-        all_slice_nonbrain[-1] = np.pad(all_slice_nonbrain[-1], ((0,0),(0,all_slice_nonbrain[0].shape[1] - all_slice_nonbrain[-1].shape[1]),(0,0),(0,0)),mode='constant', constant_values=65535)
-        self.slice_nonbrain = np.vstack(all_slice_nonbrain) # shape = [10,1150,3,256]
+        if config.background_percent_cutoff > 0:
+            slice_nonbrain_dir = '/om/scratch/Fri/sabeen/kwyk_h5_nonbrains'
+            slice_nonbrain_file_paths = sorted(glob.glob(os.path.join(slice_nonbrain_dir, '*nonbrain*.npy')))
+            all_slice_nonbrain = [np.load(slice_nonbrain_path) for slice_nonbrain_path in slice_nonbrain_file_paths]
+            all_slice_nonbrain[-1] = np.pad(all_slice_nonbrain[-1], ((0,0),(0,all_slice_nonbrain[0].shape[1] - all_slice_nonbrain[-1].shape[1]),(0,0),(0,0)),mode='constant', constant_values=65535)
+            self.slice_nonbrain = np.vstack(all_slice_nonbrain) # shape = [10,1150,3,256]
 
-        filter_value = 55000 # TODO: what should this be??
-        keep_indices = torch.nonzero(torch.from_numpy(self.slice_nonbrain.astype(np.int32)) < filter_value) # [num_slices, 4] - (shard_idx, shard_vol_idx, axis, slice_idx)
+            filter_value = config.background_percent_cutoff * 256*256 # TODO: what should this be??
+            keep_indices = torch.nonzero(torch.from_numpy(self.slice_nonbrain.astype(np.int32)) < filter_value) # [num_slices, 4] - (shard_idx, shard_vol_idx, axis, slice_idx)
+        else:
+            slice_nonbrain_dir = '/om/scratch/Fri/sabeen/kwyk_h5_matthias'
+            slice_nonbrain_file_paths = sorted(glob.glob(os.path.join(slice_nonbrain_dir, '*matthias*.npy')))
+            all_slice_nonbrain = [np.load(slice_nonbrain_path) for slice_nonbrain_path in slice_nonbrain_file_paths]
+            all_slice_nonbrain[-1] = np.pad(all_slice_nonbrain[-1], ((0,0),(0,all_slice_nonbrain[0].shape[1] - all_slice_nonbrain[-1].shape[1]),(0,0),(0,0)),mode='constant', constant_values=0)
+            self.slice_nonbrain = np.vstack(all_slice_nonbrain) # shape = [10,1150,3,256]
+            keep_indices = torch.nonzero(torch.from_numpy(self.slice_nonbrain.astype(np.uint8)) != 0) # [num_slices, 4] - (shard_idx, shard_vol_idx, axis, slice_idx)
 
         # train-val-test-split
-        train_indices, rem_indices = train_test_split(np.arange(0,11479),test_size = 0.2, random_state = 42)
-        val_indices, test_indices = train_test_split(rem_indices,test_size = 0.5, random_state = 42)
+        if config.data_size == 'shard':
+            train_indices = list(range(1150))
+            val_indices = list(range(1150,1150*2))
+            test_indices = list(range(1150*2,1150*3))
+        else:
+            train_indices, rem_indices = train_test_split(np.arange(0,11479),test_size = 0.2, random_state = 42)
+            val_indices, test_indices = train_test_split(rem_indices,test_size = 0.5, random_state = 42)
 
-        # data size (same as Matthias)
-        if config.data_size in ['small', 'med','medium']:
-            end_idx = 10 if config.data_size == 'small' else 1000
-            train_indices = train_indices[:int(end_idx * 0.8)]
-            val_indices = val_indices[:int(end_idx * 0.1)]
-            test_indices = test_indices[:int(end_idx * 0.1)]
+            # data size (same as Matthias)
+            if config.data_size in ['small', 'med','medium']:
+                end_idx = 10 if config.data_size == 'small' else 1000
+                train_indices = train_indices[:int(end_idx * 0.8)]
+                val_indices = val_indices[:int(end_idx * 0.1)]
+                test_indices = test_indices[:int(end_idx * 0.1)]
 
         mode_indices = train_indices if mode == 'train' else val_indices if mode == 'validation' else test_indices
 
@@ -715,6 +728,7 @@ def get_data_loader(
     num_workers: int = 4 * torch.cuda.device_count(),
 ):
     if config.new_kwyk_data == 2:
+        print("using Satra dataset")
         # train_dataset = KWYKVolumeDataset(mode="train", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
         # val_dataset = KWYKVolumeDataset(mode="validation", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
         # test_dataset = KWYKVolumeDataset(mode="test", config=config, volume_data_dir='/om2/scratch/Mon/sabeen/kwyk-volumes/rawdata/',slice_info_file='/om2/user/sabeen/kwyk_data/new_kwyk_full.npy')
