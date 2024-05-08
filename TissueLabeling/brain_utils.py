@@ -168,21 +168,47 @@ def mapping(mask: np.array, nr_of_classes=50, reference_col="original", class_ma
 
     return mask, class_mapping
 
-def null_half(image: np.array, mask: np.array, keep_left=True):
-    df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
+def null_cerebellum_brain_stem(image: np.array, mask: np.array, keep_left=True, null_classes = None):
     null_image = image.copy()
     null_mask = mask.copy()
-    if keep_left:
-        # label_mapping = {df['original'][i]: (df['original'][i] if not ('Right-' in df['label'][i] or '-rh-' in df['label'][i]) else 0) for i in df['index']}
-        null_classes = {df['original'][i] for i in df['index'] if 'Right' in df['label'][i] or '-rh-' in df['label'][i]}
-    else:
-        # label_mapping = {df['original'][i]: (df['original'][i] if not ('Left-' in df['label'][i] or '-lh-' in df['label'][i]) else 0) for i in df['index']}
-        null_classes = {df['original'][i] for i in df['index'] if 'Right' in df['label'][i] or '-rh-' in df['label'][i]}
-    for label in null_classes:
-        null_image[mask == label] = 0
-        null_mask[mask == label] = 0
+    if not null_classes:
+        df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
+        null_classes = list({df['original'][i] for i in df['index'] if 'cerebellum' in df['label'][i].lower() or 'brain-stem' in df['label'][i].lower()})
     
-    return null_image, null_mask
+    null_elts = np.isin(mask,null_classes)
+    if np.sum(null_elts) > 0:
+        null_image[null_elts] = 0.0
+        null_mask[null_elts] = 0
+
+    # prevent all-background samples
+    if (null_mask == 0).all():
+        null_image = image.copy()
+        null_mask = mask.copy()
+
+    return null_image, null_mask, null_classes
+
+def null_half(image: np.array, mask: np.array, keep_left=True, right_classes = None, left_classes = None):
+    null_image = image.copy()
+    null_mask = mask.copy()
+    if not right_classes or not left_classes:
+        df = pd.read_csv("/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv")
+        right_classes = list({df['original'][i] for i in df['index'] if 'Right' in df['label'][i] or '-rh-' in df['label'][i]})
+        left_classes = list({df['original'][i] for i in df['index'] if 'Left' in df['label'][i] or '-lh-' in df['label'][i]})
+
+    # only null half for slices that have labels from both halves
+    mask_set = np.unique(mask)
+    if np.isin(mask_set, right_classes).any() and np.isin(mask_set, left_classes).any():
+        null_classes = right_classes if keep_left else left_classes
+        null_elts = np.isin(mask, null_classes)
+        null_image[null_elts] = 0.0
+        null_mask[null_elts] = 0
+    
+    # prevent all-background samples
+    if (null_mask == 0).all():
+        null_image = image.copy()
+        null_mask = mask.copy()
+    
+    return null_image, null_mask, right_classes, left_classes
 
 # def mapping(mask: np.array, nr_of_classes=51, original=True, map_class_num = None):
 #     # if original == True, map from original --> num-class column

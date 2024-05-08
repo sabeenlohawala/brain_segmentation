@@ -33,6 +33,7 @@ from TissueLabeling.brain_utils import (
     apply_background,
     draw_random_shapes_background,
     draw_random_grid_background,
+    null_cerebellum_brain_stem
 )
 
 class HDF5Dataset(Dataset):
@@ -113,6 +114,9 @@ class HDF5Dataset(Dataset):
             self.aug_grid_background = 0
 
         self.class_mapping = None
+        self.right_classes = None
+        self.left_classes = None
+        self.null_classes = None
         transform_list = [
             A.Affine(rotate=(-15,15),scale=(1-0.2,1+0.2),shear=(-0.69,0.69),interpolation=2,mask_interpolation=0,always_apply=True),
             A.HorizontalFlip(p=0.5),
@@ -161,7 +165,11 @@ class HDF5Dataset(Dataset):
             # null half
             null_coin_toss = 1 if random.random() < 0.5 else 0
             if self.aug_null_half and null_coin_toss:
-                feature_slice, label_slice = null_half(feature_slice, label_slice, random.randint(0, 1) == 1)
+                feature_slice, label_slice, right_classes, left_classes = null_half(image=feature_slice, mask=label_slice, keep_left=random.randint(0, 1) == 1,right_classes=self.right_classes,left_classes=self.left_classes)
+                self.right_classes = right_classes
+                self.left_classes = left_classes
+                # feature_slice, label_slice, null_classes = null_cerebellum_brain_stem(image=feature_slice, mask=label_slice, keep_left=random.randint(0, 1) == 1,null_classes=self.null_classes)
+                # self.null_classes = null_classes
             
             if self.aug_background_manipulation:
                 apply_background_coin_toss = random.random() < 0.5
@@ -272,6 +280,8 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
             self.aug_grid_background = 0
 
         self.class_mapping = None
+        self.right_classes = None
+        self.left_classes = None
         transform_list = [
             A.Affine(rotate=(-15,15),scale=(1-0.2,1+0.2),shear=(-0.69,0.69),interpolation=2,mask_interpolation=0,always_apply=True),
             A.HorizontalFlip(p=0.5),
@@ -337,7 +347,9 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
             # null half
             null_coin_toss = 1 if random.random() < 0.5 else 0
             if self.aug_null_half and null_coin_toss:
-                feature_slice, label_slice = null_half(feature_slice, label_slice, random.randint(0, 1) == 1)
+                feature_slice, label_slice, right_classes, left_classes = null_half(image=feature_slice, mask=label_slice, keep_left=random.randint(0, 1) == 1,right_classes=self.right_classes,left_classes=self.left_classes)
+                self.right_classes = right_classes
+                self.left_classes = left_classes
             
             if self.aug_background_manipulation:
                 apply_background_coin_toss = random.random() < 0.5
@@ -528,6 +540,8 @@ class NoBrainerDataset(Dataset):
             self.keys = np.load(f"{config.data_dir}/{mode}/keys.npy")
         
         self.class_mapping = None
+        self.right_classes = None
+        self.left_classes = None
         transform_list = [
             A.Affine(rotate=(-15,15),scale=(1-0.2,1+0.2),shear=(-0.69,0.69),interpolation=2,mask_interpolation=0,always_apply=True),
             A.HorizontalFlip(p=0.5),
@@ -628,7 +642,9 @@ class NoBrainerDataset(Dataset):
             # null half
             null_coin_toss = 1 if random.random() < 0.5 else 0
             if self.aug_null_half and null_coin_toss:
-                image, mask = null_half(image, mask, random.randint(0, 1) == 1)
+                feature_slice, label_slice, right_classes, left_classes = null_half(image=image, mask=mask, keep_left=random.randint(0, 1) == 1,right_classes=self.right_classes,left_classes=self.left_classes)
+                self.right_classes = right_classes
+                self.left_classes = left_classes
 
             # resize image to [1,h,w] again
             image = torch.from_numpy(image)
