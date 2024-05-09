@@ -68,10 +68,26 @@ class HDF5Dataset(Dataset):
             keep_indices = torch.nonzero(torch.from_numpy(self.slice_nonbrain.astype(np.uint8)) != 0) # [num_slices, 4] - (shard_idx, shard_vol_idx, axis, slice_idx)
 
         # train-val-test-split
-        if config.data_size == 'shard':
-            train_indices = list(range(1150))
-            val_indices = list(range(1150,1150*2))
-            test_indices = list(range(1150*2,1150*3))
+        if 'shard' in config.data_size:
+            if config.data_size != 'shard': # config.data_size = 'shard-#' where # in [0,10)
+                _, shard_num = config.data_size.split('-')
+                shard_num = int(shard_num)
+                train_shard = shard_num % 10
+                val_shard = (train_shard + 1) % 10
+                test_shard = (val_shard + 1) % 10
+                train_indices = list(range(train_shard * 1150,min((train_shard+1) * 1150,11480)))
+                val_indices = list(range(val_shard*1150, min((val_shard + 1)*1150,11480)))
+                test_indices = list(range(test_shard * 1150, min((test_shard+1) * 1150,11480)))
+                random.shuffle(train_indices)
+                random.shuffle(val_indices)
+                random.shuffle(test_indices)
+                train_indices = train_indices[:80]
+                val_indices = val_indices[:10]
+                test_indices = test_indices[:10]
+            else:
+                train_indices = list(range(1150))
+                val_indices = list(range(1150,1150*2))
+                test_indices = list(range(1150*2,1150*3))
         else:
             train_indices, rem_indices = train_test_split(np.arange(0,11479),test_size = 0.2, random_state = 42)
             val_indices, test_indices = train_test_split(rem_indices,test_size = 0.5, random_state = 42)
