@@ -315,6 +315,9 @@ def draw_random_grid_background(shape=(256, 256), intensity_range=(0,1), thickne
     
     return canvas
 
+def draw_random_noise_background(shape=(256,256), intensity_range=(0,1)):
+    return np.random.rand(*shape)
+
 def create_affine_transformation_matrix(
     n_dims, scaling=None, rotation=None, shearing=None, translation=None
 ):

@@ -80,6 +80,7 @@ class Configuration:
         self.aug_background_manipulation = getattr(args,"aug_background_manipulation",0)
         self.aug_shapes_background = getattr(args,"aug_shapes_background",0) if self.aug_background_manipulation else 0
         self.aug_grid_background = getattr(args,"aug_grid_background",0) if self.aug_background_manipulation else 0
+        self.aug_noise_background = getattr(args,"aug_noise_background",0) if self.aug_background_manipulation else 0
 
         self.debug = getattr(args, "debug", 0)
 

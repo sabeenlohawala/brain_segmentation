@@ -280,6 +280,13 @@ def get_args():
         default=0
     )
     train.add_argument(
+        "--aug_noise_background",
+        help="Whether to do random noise as a background manipulation as an augmentation",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
         "--pad_old_data",
         help="Whether to pad cropped dataset to 256x256",
         type=int,

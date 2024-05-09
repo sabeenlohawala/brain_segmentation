@@ -33,6 +33,7 @@ from TissueLabeling.brain_utils import (
     apply_background,
     draw_random_shapes_background,
     draw_random_grid_background,
+    draw_random_noise_background,
     null_cerebellum_brain_stem
 )
 
@@ -121,6 +122,14 @@ class HDF5Dataset(Dataset):
             self.aug_background_manipulation = config.aug_background_manipulation
             self.aug_shapes_background = config.aug_shapes_background
             self.aug_grid_background = config.aug_grid_background
+            self.aug_noise_background = config.aug_noise_background
+            self.possible_backgrounds = set()
+            if self.aug_shapes_background:
+                self.possible_backgrounds.add(1)
+            if self.aug_grid_background:
+                self.possible_backgrounds.add(2)
+            if self.aug_noise_background:
+                self.possible_backgrounds.add(3)
         else:
             self.augment = 0
             self.intensity_scale = 0
@@ -132,6 +141,8 @@ class HDF5Dataset(Dataset):
             self.aug_background_manipulation = 0
             self.aug_shapes_background = 0
             self.aug_grid_background = 0
+            self.aug_noise_background = 0
+            self.possible_backgrounds = set()
 
         self.class_mapping = None
         self.right_classes = None
@@ -199,11 +210,13 @@ class HDF5Dataset(Dataset):
             if self.aug_background_manipulation:
                 apply_background_coin_toss = random.random() < 0.5
                 if apply_background_coin_toss:
-                    shapes_background_coin_toss = random.random() < 0.5 if self.aug_grid_background == self.aug_shapes_background else self.aug_shapes_background
-                    if shapes_background_coin_toss:
+                    background_type = random.choice(self.possible_backgrounds)
+                    if background_type == 1:
                         background = draw_random_shapes_background(feature_slice.shape)
-                    else:
+                    elif background_type == 2:
                         background = draw_random_grid_background(label_slice.shape)
+                    elif background_type == 3:
+                        background = draw_random_noise_background(label_slice.shape)
                         
                     feature_slice = apply_background(feature_slice,label_slice,background)
 
