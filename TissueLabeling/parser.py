@@ -252,6 +252,13 @@ def get_args():
         default=0,
     )
     train.add_argument(
+        "--aug_null_cerebellum_brain_stem",
+        help="Whether to null out cerebellum and brain stem when training",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
         "--aug_background_manipulation",
         help="Whether to do background manipulation as an augmentation",
         type=int,

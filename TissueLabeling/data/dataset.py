@@ -117,6 +117,7 @@ class HDF5Dataset(Dataset):
             self.aug_piecewise_affine = config.aug_piecewise_affine
             self.aug_percent = config.aug_percent
             self.aug_null_half = config.aug_null_half
+            self.aug_null_cerebellum_brain_stem = config.aug_null_cerebellum_brain_stem
             self.aug_background_manipulation = config.aug_background_manipulation
             self.aug_shapes_background = config.aug_shapes_background
             self.aug_grid_background = config.aug_grid_background
@@ -127,6 +128,7 @@ class HDF5Dataset(Dataset):
             self.aug_piecewise_affine = 0
             self.aug_percent = 0
             self.aug_null_half = 0
+            self.aug_null_cerebellum_brain_stem = 0
             self.aug_background_manipulation = 0
             self.aug_shapes_background = 0
             self.aug_grid_background = 0
@@ -189,8 +191,10 @@ class HDF5Dataset(Dataset):
                 feature_slice, label_slice, right_classes, left_classes = null_half(image=feature_slice, mask=label_slice, keep_left=random.randint(0, 1) == 1,right_classes=self.right_classes,left_classes=self.left_classes)
                 self.right_classes = right_classes
                 self.left_classes = left_classes
-                # feature_slice, label_slice, null_classes = null_cerebellum_brain_stem(image=feature_slice, mask=label_slice, keep_left=random.randint(0, 1) == 1,null_classes=self.null_classes)
-                # self.null_classes = null_classes
+                null_cerebellum_brain_stem_coin_toss = 1 if self.aug_null_cerebellum_brain_stem and random.random() < 0.5 else 0
+                if null_cerebellum_brain_stem:
+                    feature_slice, label_slice, null_classes = null_cerebellum_brain_stem(image=feature_slice, mask=label_slice, keep_left=random.randint(0, 1) == 1,null_classes=self.null_classes)
+                    self.null_classes = null_classes
             
             if self.aug_background_manipulation:
                 apply_background_coin_toss = random.random() < 0.5

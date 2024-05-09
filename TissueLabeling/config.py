@@ -76,6 +76,7 @@ class Configuration:
         self.aug_elastic = getattr(args, "aug_elastic", 0)
         self.aug_piecewise_affine = getattr(args, "aug_piecewise_affine", 0)
         self.aug_null_half = getattr(args, "aug_null_half", 0)
+        self.aug_null_cerebellum_brain_stem = getattr(args, "aug_null_cerebellum_brain_stem", 0)
         self.aug_background_manipulation = getattr(args,"aug_background_manipulation",0)
         self.aug_shapes_background = getattr(args,"aug_shapes_background",0) if self.aug_background_manipulation else 0
         self.aug_grid_background = getattr(args,"aug_grid_background",0) if self.aug_background_manipulation else 0
