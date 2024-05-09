@@ -224,6 +224,13 @@ def get_args():
         default=0,
     )
     train.add_argument(
+        "--aug_piecewise_affine",
+        help="Whether to apply piecewise affine augmentation",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
         "--new_kwyk_data",
         help="Debugging flag, remove later: whether to use new dataset",
         type=int,

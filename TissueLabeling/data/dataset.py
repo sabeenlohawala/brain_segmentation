@@ -114,6 +114,7 @@ class HDF5Dataset(Dataset):
             self.augment = config.augment
             self.intensity_scale = config.intensity_scale
             self.aug_elastic = config.aug_elastic
+            self.aug_piecewise_affine = config.aug_piecewise_affine
             self.aug_percent = config.aug_percent
             self.aug_null_half = config.aug_null_half
             self.aug_background_manipulation = config.aug_background_manipulation
@@ -123,6 +124,7 @@ class HDF5Dataset(Dataset):
             self.augment = 0
             self.intensity_scale = 0
             self.aug_elastic = 0
+            self.aug_piecewise_affine = 0
             self.aug_percent = 0
             self.aug_null_half = 0
             self.aug_background_manipulation = 0
@@ -141,6 +143,8 @@ class HDF5Dataset(Dataset):
             transform_list.append(A.RandomBrightnessContrast(always_apply=True))
         if self.aug_elastic:
             transform_list.append(A.ElasticTransform(always_apply=True))
+        if self.aug_piecewise_affine:
+            transform_list.append(A.PiecewiseAffine(always_apply=True))
             
         if not config.aug_null_half and config.aug_mask:
             transform_list.append(A.CoarseDropout(max_holes=config.mask_n_holes,
@@ -177,6 +181,7 @@ class HDF5Dataset(Dataset):
             transformed = self.transform(image = feature_slice, mask = label_slice)
             feature_slice = transformed['image']
             label_slice = transformed['mask']
+            feature_slice[label_slice == 0] = 0
 
             # null half
             null_coin_toss = 1 if random.random() < 0.5 else 0
@@ -359,6 +364,7 @@ class KWYKVolumeDataset(torch.utils.data.Dataset):
             transformed = self.transform(image = feature_slice, mask = label_slice)
             feature_slice = transformed['image']
             label_slice = transformed['mask']
+            feature_slice[label_slice == 0] = 0
 
             # null half
             null_coin_toss = 1 if random.random() < 0.5 else 0
@@ -642,6 +648,7 @@ class NoBrainerDataset(Dataset):
             transformed = self.transform(image = image.astype(np.float32), mask = mask)
             image = transformed['image']
             mask = transformed['mask']
+            image[mask == 0] = 0
             
             if self.aug_background_manipulation:
                 apply_background_coin_toss = random.random() < 0.5
