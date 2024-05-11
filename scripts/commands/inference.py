@@ -155,7 +155,13 @@ def rgb_map_for_data(nr_of_classes):
         voxmorph_label_index = f.read().splitlines()
 
     # get the last 24 lines of the readme file (format--> id: name)
-    if nr_of_classes == 51:
+    if nr_of_classes == 50:
+        voxmorph_label_index = [
+            item.strip().split(":")
+            for item in voxmorph_label_index[200:250]
+            if item != ""
+        ]  # HACK
+    elif nr_of_classes == 51:
         voxmorph_label_index = [
             item.strip().split(":")
             for item in voxmorph_label_index[200:251]
@@ -232,7 +238,8 @@ def create_plot(
 # logdir = '/om2/user/sabeen/tissue_labeling/results/20240120-multi-4gpu-Msegformer\\Ldice\\C2\\B670\\A0'
 # logdir = '/om2/user/sabeen/tissue_labeling/results/20240131-multi-4gpu-Msegformer\Ldice\C7\B670\A0'
 # logdir = "/om2/scratch/tmp/sabeen/20240314-intensity-0.2-0.2-Msegformer\Ldice\Smed\C51\B512\LR0.001\PT0\A0"
-logdir = "/om2/user/sabeen/tissue_labeling/results/20240227-cut-64-1-Msegformer\Smed\C51\B128\LR0.001\PT0\A1"
+# logdir = "/om2/user/sabeen/tissue_labeling/results/20240227-cut-64-1-Msegformer\Smed\C51\B128\LR0.001\PT0\A1"
+logdir = "/om2/scratch/tmp/sabeen/results/20240505-50-null-Msegformer\Ldice\Sshard\RV0\BC0\C50\B288\LR0.001\PT0\A1"
 config, checkpoint_paths = get_config(logdir)
 
 # writer = SummaryWriter(logdir)
@@ -244,7 +251,7 @@ model = get_model(config, checkpoint_paths[-1])
 # log = image_logger.logging(model,config.start_epoch,True)
 # writer.close()
 
-if config.nr_of_classes in [2, 7, 51, 107]:  # freesurfer colors available
+if config.nr_of_classes in [2, 7, 51, 107, 50]:  # freesurfer colors available
     colors = rgb_map_for_data(config.nr_of_classes)
 else:
     colors = plt.cm.hsv(np.linspace(0, 1, config.nr_of_classes))
@@ -252,8 +259,8 @@ else:
 color_range = np.zeros((256, 3))
 color_range[: colors.shape[0], :] = colors
 
-photo = False
-mri = True
+photo = True
+mri = False
 
 if photo:
     for remove_bg, mirror in [(False, False), (False, True), (True, False), (True, True)]:
@@ -274,7 +281,7 @@ if photo:
 
         img_files = os.listdir(img_dir)
 
-        img_shape = (162, 194)
+        img_shape = (256, 256)
         img_list = []
 
         for i, file in enumerate(img_files):

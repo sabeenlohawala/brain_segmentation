@@ -34,7 +34,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# H5_PATHS = '/om2/scratch/Sat/satra/'
+# H5_PATHS = '/om/scratch/tmp/sabeen/kwyk_chunk/'
 H5_DIR = args.h5_dir
 SHARD_IDX = args.shard_idx
 SAVE_DIR = args.slice_nonbrain_dir

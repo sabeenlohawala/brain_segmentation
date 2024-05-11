@@ -47,7 +47,7 @@ class HDF5Dataset(Dataset):
 
         random.seed(42)
 
-        h5_dir = '/om2/scratch/Sat/satra/'
+        h5_dir = '/om/scratch/tmp/sabeen/kwyk_chunk/'
         h5_file_paths = sorted(glob.glob(os.path.join(h5_dir, '*.h5')))
         self.h5_pointers = [h5.File(h5_path,'r') for h5_path in h5_file_paths]
 
@@ -95,7 +95,7 @@ class HDF5Dataset(Dataset):
 
             # data size (same as Matthias)
             if config.data_size in ['small', 'med','medium']:
-                end_idx = 10 if config.data_size == 'small' else 1000
+                end_idx = 10 if config.data_size == 'small' else 1150
                 train_indices = train_indices[:int(end_idx * 0.8)]
                 val_indices = val_indices[:int(end_idx * 0.1)]
                 test_indices = test_indices[:int(end_idx * 0.1)]
@@ -123,13 +123,13 @@ class HDF5Dataset(Dataset):
             self.aug_shapes_background = config.aug_shapes_background
             self.aug_grid_background = config.aug_grid_background
             self.aug_noise_background = config.aug_noise_background
-            self.possible_backgrounds = set()
+            self.possible_backgrounds = []
             if self.aug_shapes_background:
-                self.possible_backgrounds.add(1)
+                self.possible_backgrounds.append(1)
             if self.aug_grid_background:
-                self.possible_backgrounds.add(2)
+                self.possible_backgrounds.append(2)
             if self.aug_noise_background:
-                self.possible_backgrounds.add(3)
+                self.possible_backgrounds.append(3)
         else:
             self.augment = 0
             self.intensity_scale = 0
