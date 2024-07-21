@@ -1,3 +1,10 @@
+"""
+File: parser.py
+Author: Sabeen Lohawala
+Date: 2024-05-08
+Description: This file contains the function needed to parse all command line arguments.
+"""
+
 import argparse
 import os
 
@@ -16,6 +23,17 @@ def get_args():
     )
 
     subparsers = parser.add_subparsers(help="sub-command help")
+
+    # create subparser for "test" command
+    test = subparsers.add_parser(
+        "test", help="Use this sub-command for testing"
+    )
+    test.add_argument(
+        "--logdir",
+        type=str,
+        help="Folder containing previous checkpoints",
+    )
+    test.add_argument("--debug", action="store_true", dest="debug")
 
     # create subparser for "resume-train" command
     resume = subparsers.add_parser(

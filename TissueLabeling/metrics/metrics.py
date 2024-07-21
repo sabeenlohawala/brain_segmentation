@@ -1,3 +1,12 @@
+"""
+File: metrics.py
+Author: Sabeen Lohawala
+Date: 2024-05-11
+Description: This file contains the implementation of the Generalized Dice Score/Loss, as well as a
+             ClassificationMetrics class to keep store and log train and val metrics calculated 
+             during the training loop.
+"""
+
 import os
 
 import lightning as L
@@ -14,7 +23,7 @@ from TissueLabeling.brain_utils import mapping
 
 class Dice(Metric):
     """
-    Compute the multi-class generlized dice loss as suggested here:
+    Class to compute the multi-class generlized dice loss as suggested here:
     https://arxiv.org/abs/2004.10664
     """
 
@@ -27,8 +36,8 @@ class Dice(Metric):
         Args:
             fabric (L.Fabric | None): fabric to get right device
             config (TissueLabeling.config.Configuration): contains the experiment parameters
-            is_loss (bool): whether to return the dice loss = 1 - dice
-            class_specific_scores (bool): whether to return class_dice
+            is_loss (bool): flag whether to return the dice loss = 1 - dice in compute function
+            class_specific_scores (bool): flag whether to return class_dice in compute function
         """
         super().__init__(**kwargs)
         self.add_state(
@@ -41,9 +50,6 @@ class Dice(Metric):
         )  # want to average across all gpus
 
         self.smooth = 1e-7
-        # self.weights = torch.zeros((config.nr_of_classes,))
-        # if fabric is not None:
-        #     self.weights = fabric.to_device(self.weights)
         self.nr_of_classes = config.nr_of_classes
 
         self.is_loss = is_loss
@@ -64,6 +70,7 @@ class Dice(Metric):
             target.long().squeeze(1), num_classes=self.nr_of_classes
         ).permute(0, 3, 1, 2)
 
+        # weights = inverse of pixel counts for the batch
         weights = y_true_oh.sum(axis=(0,2,3))
         weights = 1 / (weights)
         # set inf weights (when count = 0) to max(weights)
@@ -112,10 +119,10 @@ class Classification_Metrics:
 
         Args:
             nr_of_classes (int): the number of classes to segment
-            prefix (int): 'Train' or 'Validation'?
+            prefix (str): 'Train' | 'Validation'
             wandb_on (bool): whether to log to wandb
-            loss_name (str): 'dice' or 'focal'
-            metric_name (str): 'dice'
+            loss_name (str): which loss function is being used to train the model
+            metric_name (str): which additional metric score to log
         """
         self.nr_of_classes = nr_of_classes
         self.prefix = prefix
@@ -135,7 +142,7 @@ class Classification_Metrics:
     ):  # , class_intersect, class_union):
         """
         Appends the loss, metric, and class_dice to their respective lists so they can later
-        be aggregated over the batch.
+        be aggregated over the batch and gpus.
         """
         self.loss.append(loss)
         self.metric.append(metric)
@@ -170,6 +177,9 @@ class Classification_Metrics:
                     writer.add_scalar(key, val, epoch)
 
     def reset(self):
+        """
+        Empties stored loss and metric values.
+        """
         # reset
         self.loss = []
         self.metric = []
@@ -177,6 +187,11 @@ class Classification_Metrics:
         self.Assert = torch.Tensor([1])
 
     def sync(self, fabric):
+        """
+        Aggregate values over multiple gpus.
+
+        (This may not be working properly, which is why the assert statement is commented out below.)
+        """
         self.Assert = fabric.all_reduce(self.Assert, reduce_op="sum")
 
         # self.Assert equals one for each process. The sum must thus be equal to the number of processes in ddp strategy

@@ -1,3 +1,10 @@
+"""
+File: attention_unet.py
+Author: Harshvardhan Gazula, Sabeen Lohawala
+Date: 2024-03-02
+Description: This file contains a modified implementation of a variation of the UNet called the AttentionUnet.
+"""
+
 import math
 from functools import partial
 from inspect import isfunction
@@ -210,6 +217,10 @@ class PreNorm(nn.Module):
 
 
 class AttentionUnet(nn.Module):
+    """
+    Modified AttentionUnet implementation from: 
+    https://github.com/MGH-LEMoN/ddpm-labels/blob/main/ddpm_labels/models/model2.py.
+    """
     def __init__(
         self,
         dim,

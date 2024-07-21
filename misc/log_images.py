@@ -21,6 +21,7 @@ from TissueLabeling.brain_utils import crop, load_brains, mapping
 from TissueLabeling.models.segformer import Segformer
 from TissueLabeling.models.original_unet import OriginalUnet
 from TissueLabeling.models.attention_unet import AttentionUnet
+from TissueLabeling.metrics.metrics import Dice
 
 
 def load_model(config, checkpoint_path=None):
@@ -98,7 +99,13 @@ class Log_Images_v2:
         self.model_name = config.model_name
         self.nr_of_classes = config.nr_of_classes
         self.writer = writer
-        if not config.new_kwyk_data:
+        self.metric = Dice(
+            None,
+            config,
+            is_loss=False,
+            class_specific_scores=False,
+        )
+        if not config.new_kwyk_data and not config.pad_old_data:
             if "unet" in self.model_name:
                 self.image_shape = (160, 192)
             else:
@@ -107,7 +114,7 @@ class Log_Images_v2:
             self.image_shape = (256, 256)
 
         # color map to get always the same colors for classes
-        if config.nr_of_classes in [51, 106, 7, 17, 2]:
+        if config.nr_of_classes in [51, 106, 7, 17, 2, 50, 6, 2, 16]:
             colors = self.__rgb_map_for_data(config.nr_of_classes)
             rgb = colors
         else:
@@ -127,7 +134,7 @@ class Log_Images_v2:
         mask_file = "pac_36_aseg.nii.gz"
         file_path = "/nese/mit/group/sig/users/matth406/nobrainer_data/data/SharedData/segmentation/freesurfer_asegs/"
         brain, mask, _ = load_brains(image_file, mask_file, file_path)
-        mask = mapping(mask, nr_of_classes=self.nr_of_classes)
+        mask, _ = mapping(mask, nr_of_classes=self.nr_of_classes)
 
         self.brain_slices, self.mask_slices = [], []
 
@@ -235,10 +242,22 @@ class Log_Images_v2:
     @torch.no_grad()
     def logging(self, model, e: int, commit: bool):
         model.eval()
-        probs = model(self.brain_slices)
-        probs = probs.argmax(1)
+        logits = model(self.brain_slices)
+        probs = logits.argmax(1)
         probs = probs.cpu()
         model.train()
+
+        one_hot = torch.zeros_like(logits)
+        one_hot.scatter_(1, probs.unsqueeze(1), 1)
+        logits = logits * one_hot
+        logits[logits > 0] = 1
+
+        # mismatch = torch.zeros_like(self.mask_slices)
+        # mismatch[probs.unsqueeze(1) != self.mask_slices] = 1
+        # mismatch = mismatch.squeeze(1)
+
+        # if logits.shape[2] < 256 or logits.shape[3] < 256:
+        #     self.mask_slices = torch.stack([torch.tensor(crop(self.mask_slices[i].squeeze(0), *logits.shape[2:])).unsqueeze(0) for i in range(self.mask_slices.shape[0])])
 
         i = 0
         logging_dict = {}
@@ -251,6 +270,12 @@ class Log_Images_v2:
                     color_range=self.color_range,
                     # fig_path=f'/om2/user/sabeen/test_imgs/predicted_mask_d{d}_c{slice_id}_fs.png'
                 )
+                # logging_dict[f"Mismatch Mask d{d} c{slice_id}"] = self.__create_plot(
+                #     self.wandb_on,
+                #     mismatch[i].numpy(),
+                #     caption=f"Epoch {e}"
+                # )
+                print(f"Predicted Mask d{d} c{slice_id}: {self.metric(torch.cat([self.mask_slices[i].long().unsqueeze(0)]*10), torch.cat([logits[i].unsqueeze(0)]*10))}")
                 i += 1
         current_logging_dict = self.logging_dict | logging_dict
         if self.wandb_on:
@@ -385,11 +410,12 @@ class Log_Images_v2:
         return np.array(my_colors)
 
 
-logdir = "20240120-multi-4gpu-Msegformer\Ldice\C2\B670\A0"
+logdir = "/om/scratch/tmp/sabeen/results/20240511-null-CBS1-bkgd-shapes-1-grid-1-noise-0-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
 config, checkpoint_paths = get_config(logdir)
 
 writer = None
-writer = SummaryWriter(f"results/{logdir}")
+# writer = SummaryWriter(f"results/{logdir}")
+writer = SummaryWriter(logdir)
 print("SummaryWriter created")
 
 # for i in range(len(checkpoint_paths)-1,-1,-1):
@@ -410,6 +436,7 @@ print("SummaryWriter created")
 
 checkpoint_path = checkpoint_paths[-1]
 model = load_model(config, checkpoint_path)
+model.image_dims = (256,256)
 print(f"Epoch {config.start_epoch}")
 
 image_logger = Log_Images_v2(config, writer=writer)
@@ -423,4 +450,5 @@ log = image_logger.logging(model, config.start_epoch, True)
 #     elif len(img.shape) == 2:
 #         writer.add_image(key, np.array(img), config.start_epoch, dataformats='HW')
 
-writer.close()
+if writer is not None:
+    writer.close()

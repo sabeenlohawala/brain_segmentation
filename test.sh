@@ -1,15 +1,14 @@
 #!/bin/bash
 #SBATCH --requeue
-#SBATCH -t 1-00:00:00
+#SBATCH -t 2-00:00:00
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH --ntasks-per-node=4
-#SBATCH --gres=gpu:4
-#SBATCH --constraint=volta
+#SBATCH --gres=gpu:a100-gablab:4
 #SBATCH --mem=40G # per node memory
 #SBATCH -p gablab
-#SBATCH -o ./logs/20240511/small_seg_c2.out
-#SBATCH -e ./logs/20240511/small_seg_c2.err
+#SBATCH -o ./logs/test_dice/large_nCBS_bg2.out
+#SBATCH -e ./logs/test_dice/large_nCBS_bg2.err
 #SBATCH --mail-user=sabeen@mit.edu
 #SBATCH --mail-type=FAIL
 
@@ -19,47 +18,45 @@ export PATH="/om2/user/sabeen/miniconda/bin:$PATH"
 conda init bash
 
 # General hyperparams
-BATCH_SIZE=116
-LR=0.00006
-NUM_EPOCHS=200
+BATCH_SIZE=288
+LR=0.001
+NUM_EPOCHS=300
 MODEL_NAME="segformer"
-PRETRAINED=1
-# LOSS_FN="dice"
-# DEBUG=0
-NR_OF_CLASSES=2
-# LOG_IMAGES=0
-# CLASS_SPECIFIC_SCORES=0
+PRETRAINED=0
+LOSS_FN="dice"
+DEBUG=0
+NR_OF_CLASSES=50
+LOG_IMAGES=0
+CLASS_SPECIFIC_SCORES=0
 CHECKPOINT_FREQ=2
 
 # Dataset params
-NEW_KWYK_DATA=0
+NEW_KWYK_DATA=2
 BACKGROUND_PERCENT_CUTOFF=0
-# ROTATE_VOL=0
-DATA_SIZE="small"
-PAD_OLD_DATA=1
-USE_NORM_CONSTS=0
+ROTATE_VOL=0
+DATA_SIZE="med"
 
 # Data augmentation params
-# AUGMENT=0
-# AUG_PERCENT=0.8
-# INTENSITY_SCALE=0
-# AUG_ELASTIC=0
-# AUG_PIECEWISE_AFFINE=0
+AUGMENT=1
+AUG_PERCENT=0.8
+INTENSITY_SCALE=1
+AUG_ELASTIC=0
+AUG_PIECEWISE_AFFINE=0
 
-# AUG_CUTOUT=0
-# CUTOUT_N_HOLES=1
-# CUTOUT_LENGTH=32
+AUG_CUTOUT=0
+CUTOUT_N_HOLES=1
+CUTOUT_LENGTH=32
 
-# AUG_MASK=0
-# MASK_N_HOLES=1
-# MASK_LENGTH=64
+AUG_MASK=0
+MASK_N_HOLES=1
+MASK_LENGTH=64
 
-# AUG_NULL_HALF=0
-# AUG_NULL_CEREBELLUM_BRAIN_STEM=0
-# AUG_BACKGROUND_MANIPULATION=0
-# AUG_SHAPES_BACKGROUND=0
-# AUG_GRID_BACKGROUND=0
-# AUG_NOISE_BACKGROUND=0
+AUG_NULL_HALF=0
+AUG_NULL_CEREBELLUM_BRAIN_STEM=0
+AUG_BACKGROUND_MANIPULATION=0
+AUG_SHAPES_BACKGROUND=0
+AUG_GRID_BACKGROUND=0
+AUG_NOISE_BACKGROUND=0
 
 # pre 202404 logdirs
 # LOGDIR="/om2/scratch/tmp/sabeen/20240215-grid-M$MODEL_NAME\S$DATA_SIZE\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\A0"
@@ -127,54 +124,21 @@ USE_NORM_CONSTS=0
 # LOGDIR="/om/scratch/tmp/sabeen/results/20240511-cut-$CUTOUT_LENGTH-$CUTOUT_N_HOLES-bkgd-shapes-$AUG_SHAPES_BACKGROUND-grid-$AUG_GRID_BACKGROUND-noise-$AUG_NOISE_BACKGROUND-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\BC$BACKGROUND_PERCENT_CUTOFF\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 # LOGDIR="/om/scratch/tmp/sabeen/results/20240511-null-CBS$AUG_NULL_CEREBELLUM_BRAIN_STEM-bkgd-shapes-$AUG_SHAPES_BACKGROUND-grid-$AUG_GRID_BACKGROUND-noise-$AUG_NOISE_BACKGROUND-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\BC$BACKGROUND_PERCENT_CUTOFF\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
 
-## 2 and 6 class experiments
-LOGDIR="/om/scratch/tmp/sabeen/results/20240515-grid-M$MODEL_NAME\L$LOSS_FN\S$DATA_SIZE\RV$ROTATE_VOL\BC$BACKGROUND_PERCENT_CUTOFF\C$NR_OF_CLASSES\B$BATCH_SIZE\LR$LR\PT$PRETRAINED\A$AUGMENT"
-
+# LOGDIR="/om/scratch/tmp/sabeen/results/20240513-grid-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A0"
+# LOGDIR="/om/scratch/tmp/sabeen/results/20240511-cut-32-1-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# LOGDIR="/om/scratch/tmp/sabeen/results/20240511-mask-64-1-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# LOGDIR="/om/scratch/tmp/sabeen/results/20240511-null-CBS1-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# LOGDIR="/om/scratch/tmp/sabeen/results/20240511-cut-32-1-bkgd-shapes-1-grid-1-noise-0-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# LOGDIR="/om/scratch/tmp/sabeen/results/20240511-mask-64-1-bkgd-shapes-1-grid-1-noise-0-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+LOGDIR="/om/scratch/tmp/sabeen/results/20240511-null-CBS1-bkgd-shapes-1-grid-1-noise-0-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
 
 # Check if checkpoint file exists
 if ls "$LOGDIR"/*.ckpt 1> /dev/null 2>&1; then
     echo "Checkpoint file found. Resuming training..."
     echo $LOGDIR
-    srun python -u scripts/commands/main.py resume-train \
+    srun python -u scripts/commands/test.py test \
         --logdir $LOGDIR
 else
     echo "No checkpoint file found. Starting training..."
     echo $LOGDIR
-    srun python -u scripts/commands/main.py train \
-						--model_name $MODEL_NAME \
-						--nr_of_classes $NR_OF_CLASSES \
-						--logdir $LOGDIR \
-						--num_epochs $NUM_EPOCHS \
-						--batch_size $BATCH_SIZE \
-						--lr $LR \
-						--data_size $DATA_SIZE \
-						--pretrained $PRETRAINED \
-						--new_kwyk_data $NEW_KWYK_DATA \
-						--background_percent_cutoff $BACKGROUND_PERCENT_CUTOFF \
-						--checkpoint_freq $CHECKPOINT_FREQ \
-						--pad_old_data $PAD_OLD_DATA \
-						--use_norm_consts $USE_NORM_CONSTS
 fi
-
-
-						# --loss_fn $LOSS_FN \
-						# --debug $DEBUG \
-						# --log_images $LOG_IMAGES \
-						# --augment $AUGMENT \
-						# --aug_percent $AUG_PERCENT \
-						# --aug_cutout $AUG_CUTOUT \
-						# --aug_mask $AUG_MASK \
-						# --cutout_n_holes $CUTOUT_N_HOLES \
-						# --cutout_length $CUTOUT_LENGTH \
-						# --mask_n_holes $MASK_N_HOLES \
-						# --mask_length $MASK_LENGTH \
-						# --intensity_scale $INTENSITY_SCALE \
-						# --aug_elastic $AUG_ELASTIC \
-						# --aug_piecewise_affine $AUG_PIECEWISE_AFFINE \
-						# --aug_null_half $AUG_NULL_HALF \
-						# --aug_null_cerebellum_brain_stem $AUG_NULL_CEREBELLUM_BRAIN_STEM \
-						# --class_specific_scores $CLASS_SPECIFIC_SCORES \
-						# --aug_background_manipulation $AUG_BACKGROUND_MANIPULATION \
-						# --aug_shapes_background $AUG_SHAPES_BACKGROUND \
-						# --aug_grid_background $AUG_GRID_BACKGROUND \
-						# --aug_noise_background $AUG_NOISE_BACKGROUND \

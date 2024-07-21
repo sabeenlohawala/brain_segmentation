@@ -179,6 +179,12 @@ def rgb_map_for_data(nr_of_classes):
             for item in voxmorph_label_index[253:260]
             if item != ""
         ]  # HACK
+    elif nr_of_classes == 6:
+        voxmorph_label_index = [
+            item.strip().split(":")
+            for item in voxmorph_label_index[253:259]
+            if item != ""
+        ]  # HACK
     elif nr_of_classes == 2:
         voxmorph_label_index = [
             item.strip().split(":")
@@ -239,7 +245,17 @@ def create_plot(
 # logdir = '/om2/user/sabeen/tissue_labeling/results/20240131-multi-4gpu-Msegformer\Ldice\C7\B670\A0'
 # logdir = "/om2/scratch/tmp/sabeen/20240314-intensity-0.2-0.2-Msegformer\Ldice\Smed\C51\B512\LR0.001\PT0\A0"
 # logdir = "/om2/user/sabeen/tissue_labeling/results/20240227-cut-64-1-Msegformer\Smed\C51\B128\LR0.001\PT0\A1"
-logdir = "/om2/scratch/tmp/sabeen/results/20240505-50-null-Msegformer\Ldice\Sshard\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# logdir = "/om2/scratch/tmp/sabeen/results/20240505-50-null-Msegformer\Ldice\Sshard\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+
+# logdir = "/om/scratch/tmp/sabeen/results/20240513-grid-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A0"
+# logdir = "/om/scratch/tmp/sabeen/results/20240514-grid-Msegformer\Ldice\Ssmall\RV0\BC0\C2\B116\LR0.00006\PT1\A0"
+# logdir = "/om/scratch/tmp/sabeen/results/20240514-grid-Msegformer\Ldice\Ssmall\RV0\BC0\C6\B116\LR0.00006\PT1\A0"
+# logdir = "/om/scratch/tmp/sabeen/results/20240511-cut-32-1-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# logdir = "/om/scratch/tmp/sabeen/results/20240511-mask-64-1-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# logdir = "/om/scratch/tmp/sabeen/results/20240511-null-CBS1-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# logdir = "/om/scratch/tmp/sabeen/results/20240511-cut-32-1-bkgd-shapes-1-grid-1-noise-0-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+# logdir = "/om/scratch/tmp/sabeen/results/20240511-mask-64-1-bkgd-shapes-1-grid-1-noise-0-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
+logdir = "/om/scratch/tmp/sabeen/results/20240511-null-CBS1-bkgd-shapes-1-grid-1-noise-0-Msegformer\Ldice\Smed\RV0\BC0\C50\B288\LR0.001\PT0\A1"
 config, checkpoint_paths = get_config(logdir)
 
 # writer = SummaryWriter(logdir)
@@ -251,7 +267,7 @@ model = get_model(config, checkpoint_paths[-1])
 # log = image_logger.logging(model,config.start_epoch,True)
 # writer.close()
 
-if config.nr_of_classes in [2, 7, 51, 107, 50]:  # freesurfer colors available
+if config.nr_of_classes in [2, 7, 51, 107, 50,6]:  # freesurfer colors available
     colors = rgb_map_for_data(config.nr_of_classes)
 else:
     colors = plt.cm.hsv(np.linspace(0, 1, config.nr_of_classes))

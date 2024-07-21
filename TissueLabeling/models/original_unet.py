@@ -1,4 +1,10 @@
-import math
+"""
+File: original_unet.py
+Author: Sabeen Lohawala
+Date: 2024-04-03
+Description: This file contains the implementation of the original unet architecture 
+as described in: https://arxiv.org/pdf/1505.04597.
+"""
 
 import torch
 from torch import nn
@@ -6,7 +12,19 @@ from torchinfo import summary
 
 
 class Block(nn.Module):
+    """
+    Class implementation of a convolutional block in the UNet architecture.
+    """
     def __init__(self, in_ch, out_ch, up=False):
+        """
+        Constructor.
+
+        Args:
+            in_ch (int): the number of channels in the input
+            out_ch (int): the number of channels in the output
+            up (bool, optional): flag to indicate whether this should be an up-convolutional block
+                                 or down-convolutional block; default = False
+        """
         super().__init__()
         if up:
             # self.conv1 = nn.Conv2d(2 * in_ch, out_ch, 3, padding=1)
@@ -25,6 +43,15 @@ class Block(nn.Module):
         self,
         x,
     ):
+        """
+        Implements the forward pass of the input x through the convolutional block.
+
+        Args:
+            x (torch.Tensor): the input tensor to the convolutional block
+        
+        Returns:
+            torch.Tensor: the result of the convolutional block operations
+        """
         # First Conv
         h = self.bnorm1(self.relu(self.conv1(x)))
         # Second Conv
@@ -35,19 +62,30 @@ class Block(nn.Module):
 
 class OriginalUnet(nn.Module):
     """
-    A simplified variant of the Unet architecture.
+    The Unet architecture based on: https://arxiv.org/pdf/1505.04597.
     """
 
-    def __init__(self, image_channels, nr_of_classes):
+    def __init__(self, image_channels, nr_of_classes, n_base_filters=64, n_blocks=5):
+        """
+        Constructor.
+        This has only been trained with n_base_filters = 64 and n_blocks = 5.
+
+        Args:
+            image_channels (int): the number of channels in the images that the model is trained on
+            nr_of_classes (int): the number of segmentation classes
+            n_base_filters (int, optional): the base number of filters; default = 64
+            n_blocks (int, optional): the number of convolutional blocks in the unet; default = 5
+        """
         super().__init__()
         self.image_channels = image_channels
         self.nr_of_classes = nr_of_classes
 
-        # self.n_base_filters = 64
-        # down_channels = tuple([self.n_base_filters * (2**i) for i in range(5)])
-        # up_channels = tuple([self.n_base_filters * (2**i) for i in range(4, -1, -1)])
-        down_channels = [1, 64, 128, 256, 512, 1024]
-        up_channels = [1024, 512, 256, 128, 64]
+        self.n_base_filters = n_base_filters
+        self.n_blocks = n_blocks
+        down_channels = (self.image_channels,) + tuple([self.n_base_filters * (2**i) for i in range(self.n_blocks)])
+        up_channels = tuple([self.n_base_filters * (2**i) for i in range(self.n_blocks-1, -1, -1)])
+        # down_channels = [1, 64, 128, 256, 512, 1024]
+        # up_channels = [1024, 512, 256, 128, 64]
         out_dim = 1
 
         # Downsample
@@ -76,6 +114,15 @@ class OriginalUnet(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
+        """
+        Implements the forward pass of the input tensor x through the model.
+
+        Args:
+            x (torch.Tensor): the input to the model
+        
+        Returns:
+            torch.Tensor: the softmax output of the UNet model.
+        """
         # Unet
         residual_inputs = []
         for down in self.downs:
@@ -95,12 +142,12 @@ class OriginalUnet(nn.Module):
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     image_channels = 1
-    image_size = (160, 192)  # (28, 28)
-    batch_size = 128
+    image_size = (256,256)#(160, 192)  # (28, 28)
+    batch_size = 288
 
     # Note: For (28, 28), remove 2 up/down channels.
 
-    model = OriginalUnet(image_channels=image_channels, nr_of_classes=50).to(device)
+    model = OriginalUnet(image_channels=image_channels, nr_of_classes=50, n_base_filters=64, n_blocks=5).to(device)
     summary(
         model,
         input_size=(batch_size, image_channels, *image_size),

@@ -1,9 +1,13 @@
-import csv
+"""
+File: utils.py
+Author: Sabeen Lohawala
+Date: 2024-04-28
+Description: This file contains helper functions.
+"""
+
 from datetime import datetime
 import os
-import random
 import shutil
-import numpy as np
 
 import lightning as L
 import torch
@@ -11,6 +15,18 @@ import wandb
 from lightning.fabric import Fabric, seed_everything
 
 def center_pad_tensor(input_tensor, new_height, new_width):
+    """
+    This function center pads the input_tensor to the new dimensions with 0s such that an odd split 
+    results in the extra padding being applied to the bottom and right sides of the tensor.
+
+    Args:
+        input_tensor (torch.Tensor): a 3D tensor
+        new_height (int): the height of output, padded tensor; requires that new_height >= input_tensor.size()[1]
+        new_width (int): the width of the output padded tensor; requires that new_width >= input_tensor.size()[2]
+    
+    Returns:
+        padded_tensor (torch.Tensor): a 3D tensor of size [input_tensor.size()[0], new_height, new_width]
+    """
     # Get the dimensions of the input tensor
     _, height, width = input_tensor.size()
 
@@ -30,7 +46,9 @@ def center_pad_tensor(input_tensor, new_height, new_width):
     return padded_tensor
 
 def main_timer(func):
-    """Decorator to time any function"""
+    """
+    Decorator to time any function.
+    """
 
     def function_wrapper(*args,**kwargs):
         start_time = datetime.now()
@@ -49,7 +67,8 @@ def main_timer(func):
 
 
 def set_seed(seed: int = 0) -> None:
-    """Set the seed before GPU training
+    """
+    Set the seed before GPU training.
 
     Args:
         seed (int, optional): seed. Defaults to 0.
@@ -67,6 +86,9 @@ def set_seed(seed: int = 0) -> None:
 
 
 def init_cuda() -> None:
+    """
+    Initializes cuda configuration before training.
+    """
     torch.cuda.empty_cache()
 
     if torch.cuda.is_available():
@@ -97,6 +119,15 @@ def init_wandb(
     model_params: dict,
     description: str,
 ) -> None:
+    """
+    Initializes Weights and Biases log.
+
+    Args:
+        project_name (str): name of the W&B project where the run is to be logged.
+        fabric (L.fabric): initialized torch lightning fabric object
+        model_params (dict): the model parameters
+        description (str): description of the run to be recorded in W&B
+    """
     # check if staged artifacts exist:
     if os.path.exists(f"/home/{os.environ['USER']}/.local/share/wandb"):
         shutil.rmtree(f"/home/{os.environ['USER']}/.local/share/wandb")
@@ -127,6 +158,12 @@ def init_wandb(
 
 
 def init_fabric(**kwargs) -> L.fabric:
+    """
+    Initializes and launches the fabric object based on the arguments passed in.
+
+    Returns:
+        fabric (L.fabric): the initialized fabric object.
+    """
     fabric = Fabric(**kwargs)
     fabric.launch()
 
@@ -146,7 +183,7 @@ def init_fabric(**kwargs) -> L.fabric:
 
 def finish_wandb(out_file: str) -> None:
     """
-    Finish Weights and Biases
+    Finish Weights and Biases.
 
     Args:
         out_file (str): name of the .out file of the run

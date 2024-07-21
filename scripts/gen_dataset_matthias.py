@@ -27,8 +27,8 @@ from TissueLabeling.utils import main_timer
 # )
 # args = parser.parse_args()
 
-# H5_PATHS = '/om2/scratch/Sat/satra/'
-H5_DIR = '/om2/scratch/Sat/satra/' #args.h5_dir
+# H5_PATHS = '/om/scratch/tmp/sabeen/kwyk_chunk/'
+H5_DIR = '/om/scratch/tmp/sabeen/kwyk_chunk/' #args.h5_dir
 SHARD_IDX = 0 #args.shard_idx
 SAVE_DIR = '/om/scratch/Fri/sabeen/kwyk_h5_matthias/'#args.slice_nonbrain_dir
 FIND_MATTHIAS_FILTER = 1

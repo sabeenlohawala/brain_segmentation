@@ -1,3 +1,10 @@
+"""
+File: brain_utils.py
+Author: Sabeen Lohawala
+Date: 2024-05-08
+Description: This file contains helpful functions for operating on brain images.
+"""
+
 import csv
 import os
 from typing import Tuple
@@ -9,6 +16,23 @@ import torch
 import cv2
 
 def load_brains(image_file: str, mask_file: str, file_path: str):
+    """
+    Loads the feature and label volumes corresponding to the specified file path and names.
+    
+    Requires both files to be located in the directory specified by file_path and for the file nameing
+    convention to be something like brain_04.nii.gz and mask_04.nii.gz where the ending number of the brain
+    and mask files is used to determine which files belong together.
+
+    Args:
+        image_file (str): filename of the feature volume
+        mask_file (str): filename of the label volume
+        file_path (str): directory where both volumes are located
+    
+    Returns:
+        brain (torch.Tensor): the loaded skull-stripped feature volume
+        brain_mask (torch.Tensor): the loaded label volume containing the freesurfer labels
+        image_nr (int): the number used to identify the feature and label pair in the filename
+    """
     # ensure that mask and image numbers match
     image_nr = image_file.split("_")[1]
     mask_nr = mask_file.split("_")[1]
@@ -30,6 +54,23 @@ def load_brains(image_file: str, mask_file: str, file_path: str):
 
 
 def crop(image: np.array, height: int, width: int) -> np.array:
+    """
+    Determines whether the image can be cropped to heigh and width without resulting in 
+    any loss of tissue pixels.
+
+    Args:
+        image (np.array): an array of size (256,256) where all background pixels contain the value 0
+                          and all non-background pixels contain a value other than 0
+        height (int): the height to which the image should be cropped
+        width (int): the width to which the image should be cropped
+
+    Returns:
+        image (np.array): the input array cropped to size (height, width)
+
+    Throws:
+        AssertionError if the image cannot be cropped to size (height, width) without
+        resulting in loss of non-background pixels or the crop results in an all-background image.
+    """
     # find image-optimal crop
     for j in range(256):
         if (image[j] != 0).any():
@@ -141,6 +182,25 @@ def brain_area(slice: torch.tensor) -> torch.tensor:
 
 
 def mapping(mask: np.array, nr_of_classes=50, reference_col="original", class_mapping=None):
+    """
+    Maps the labels in the input mask to the labels corresponding to the specified nr_of_classes
+    based on a mapping table if a mapping is not passed in.
+
+    Args:
+        mask (np.array): a 2D array where each cell contains an integer label that is to be
+                         mapped to a new label according to the mapping table
+        nr_of_classes (int): the number of classes to segment, which determines the mapping table
+        reference_col (str): (optional) the name of the column that corresponds to the labels 
+                             in the input mask
+        class_mapping (dict | None): (optional) a dictionary containing the mapping table from
+                                     reference_col to the nr_of_classes
+    
+    Returns:
+        mask (np.array): The same mask with all pixel values now mapped to new pixel values specified
+                         in the mapping table.
+        class_mapping (dict): A dictionary containing the mapping, where keys are the old pixel values
+                              and the values are the new values to map to.
+    """
     if class_mapping is None:
         new_col = "index" if nr_of_classes==106 else f"{nr_of_classes}-class"
         class_mapping = {}
@@ -163,12 +223,29 @@ def mapping(mask: np.array, nr_of_classes=50, reference_col="original", class_ma
     # mask = np.array([class_mapping[int(x)] if x in labels else len(labels) for x in u])[inv].reshape(mask.shape)
     for old, new in class_mapping.items():
         mask[mask == old] = -1 * new
-    mask[mask > 0] = 0
+    mask[mask > 0] = 0 # all unknown classes are mapped to 0
     mask = mask * -1
 
     return mask, class_mapping
 
-def null_cerebellum_brain_stem(image: np.array, mask: np.array, keep_left=True, null_classes = None):
+def null_cerebellum_brain_stem(image: np.array, mask: np.array, null_classes = None):
+    """
+    This function is used to set any pixels belonging to the cerebellum or brain stem to 0 in the image
+    and its corresponding mask if this operation does not result in an image containing all 0s.
+
+    Requires that the mask contains the original freesurfer labels.
+
+    Args:
+        image (np.array): the feature slice in which to null the cerebellum and brain stem
+        mask (np.array): the label slice in which to null the cerebellum and brain stem
+        null_classes (list | None): a list containing which labels correspond to the cerebellum and brain stem
+    
+    Returns:
+        null_image (np.array): the feature slice after the cerebellum and brain stem have been nulled
+        null_mask (np.array): the label slice after the cerebellum and brain stem have been nulled
+        null_classes (list | None): a list containing which labels correspond to the cerebellum and brain stem
+
+    """
     null_image = image.copy()
     null_mask = mask.copy()
     if not null_classes:
@@ -188,6 +265,26 @@ def null_cerebellum_brain_stem(image: np.array, mask: np.array, keep_left=True, 
     return null_image, null_mask, null_classes
 
 def null_half(image: np.array, mask: np.array, keep_left=True, right_classes = None, left_classes = None):
+    """
+    This function is used to set pixels belonging to one hemisphere of the brain to 0 in the image
+    and its corresponding mask if this operation does not result in an image containing all 0s.
+
+    Requires that the mask contains the original freesurfer labels.
+
+    Args:
+        image (np.array): the feature slice in which to null half of the brain
+        mask (np.array): the label slice in which to null half of the brain
+        keep_left (bool): a flag to indicate whether to null the left hemisphere
+        right_classes (list | None): a list containing which labels correspond to right hemisphere labels
+        left_classes (list | None): a list containing which labels correspond to left hemisphere labels
+    
+    Returns:
+        null_image (np.array): the feature slice after half of the brain has been nulled
+        null_mask (np.array): the label slice after half of the brain has been nulled
+        right_classes (list | None): a list containing which labels correspond to right hemisphere labels
+        left_classes (list | None): a list containing which labels correspond to left hemisphere labels
+
+    """
     null_image = image.copy()
     null_mask = mask.copy()
     if not right_classes or not left_classes:
@@ -210,64 +307,39 @@ def null_half(image: np.array, mask: np.array, keep_left=True, right_classes = N
     
     return null_image, null_mask, right_classes, left_classes
 
-# def mapping(mask: np.array, nr_of_classes=51, original=True, map_class_num = None):
-#     # if original == True, map from original --> num-class column
-#     # if original == False, map from index --> num-class column
-
-#     # TODO: handle binary case!!
-
-#     class_mapping = {}
-#     # labels = []
-#     with open(
-#         "/om2/user/sabeen/nobrainer_data_norm/class_mapping.csv", newline=""
-#     ) as csvfile:
-#         spamreader = csv.reader(csvfile, delimiter=",", quotechar="|")
-#         # skip header
-#         header = next(spamreader, None)
-#         original_index = header.index("original")  # original numbered segments
-#         new_index = header.index("index")  # 107-class numbered segments
-#         class_num_index = None
-#         if map_class_num is not None:
-#             if f'{map_class_num}-class' in header:
-#                 class_num_index = header.index(f'{map_class_num}-class')
-#             else:
-#                 class_num_index = header.index(f'{map_class_num-1}-class')
-#         map_index = original_index if original else class_num_index if class_num_index is not None else new_index
-
-#         col_index = (
-#             new_index
-#             if nr_of_classes == 107
-#             else (
-#                 header.index("2-class")
-#                 if nr_of_classes == 2
-#                 else header.index(f"{nr_of_classes-1}-class")
-#             )
-#         )
-
-#         for row in spamreader:
-#             class_mapping[int(row[map_index])] = int(row[col_index])
-
-#     # class_mapping = {value.item(): index for index, value in enumerate(labels)}
-#     u, inv = np.unique(mask, return_inverse=True)
-#     # num_classes = 50  # len(class_mapping)
-#     for x in u:
-#         if x not in class_mapping:
-#             class_mapping[x] = nr_of_classes - 1
-
-#     # we collect all classes not in the mapping table as an additional "other" class
-#     # mask = np.array([class_mapping[int(x)] if x in labels else len(labels) for x in u])[inv].reshape(mask.shape)
-#     for old, new in class_mapping.items():
-#         mask[mask == old] = -1 * new
-#     mask = mask * -1
-
-#     return mask
-
 def apply_background(image,mask,background):
+    """
+    This function is used to apply new background behind the tissue on the feature image ONLY.
+    Requires that image, mask, and background are all the same shape.
+
+    Args:
+        image (np.array): the feature slice on which the new background will be applied
+        mask (np.array): the label slice, which will remain unmodified
+        background (np.array): the new background for the feature slice
+
+    Returns:
+        combined (np.array): the feature slice with the new background
+    
+    Throws:
+        AssertionError if the image and background are not of the same shape
+    """
     assert image.shape == background.shape
     combined = np.where(mask == 0, background, image)
     return combined
 
 def draw_random_shapes_background(shape=(256, 256), num_shapes=5):
+    """
+    This function is used to draw random lines, rectangles, ellipses, and polygons
+    on a canvas specified by shape.
+
+    Args:
+        shape (tuple): a tuple containing 2 ints specifying the shape of the canvas
+        num_shapes (int): the number of random shapes to draw on the canvas
+    
+    Returns:
+        canvas (np.array): the canvas containing the random shapes with all intensity
+                           values as floats normalized between 0 to 1.0 instead of 0 to 255
+    """
     canvas = np.zeros(shape, dtype=np.uint8)  # Create a blank canvas
     
     for _ in range(num_shapes):
@@ -300,6 +372,22 @@ def draw_random_shapes_background(shape=(256, 256), num_shapes=5):
     return canvas.astype(np.float32) / 255.0  # Normalize to range [0, 1]
 
 def draw_random_grid_background(shape=(256, 256), intensity_range=(0,1), thickness_range=(1, 5), spacing_range=(5, 20)):
+    """
+    This function is used to draw a grid background with randomized cell and line intensities, thickness, and spacing.
+
+    Args:
+        shape (tuple): a tuple containing 2 ints specifying the shape of the canvas
+        intensity_range (tuple): contains two float values between 0 to 1 that specify the range from which the
+                                 intensities for the grid cells and lines will be drawn uniformly at random
+        thickness_range (tuple): contains two numerical values that specify the range from which the thickness
+                                 of the lines of the grid will be drawn uniformly at random
+        spacing_range (tuple): contains two numerical values that specify the range from which the spacing between
+                               the grid lines (which corresponds to the size of the grid cells) will be drawn
+                               uniformly at random
+    
+    Returns:
+        canvas (np.array): the canvas containing the random grid background
+    """
     background_intensity = np.random.uniform(*intensity_range)  # Random background intensity
     line_intensity = np.random.uniform(*intensity_range)  # Random line intensity
     line_thickness = np.random.randint(*thickness_range)  # Random line thickness
@@ -315,14 +403,21 @@ def draw_random_grid_background(shape=(256, 256), intensity_range=(0,1), thickne
     
     return canvas
 
-def draw_random_noise_background(shape=(256,256), intensity_range=(0,1)):
+def draw_random_noise_background(shape=(256,256)):
+    """
+    This function is used to fill a canvas with random values between 0 and 1.
+
+    Args:
+        shape (tuple): a tuple containing 2 ints specifying the shape of the canvas
+
+    """
     return np.random.rand(*shape)
 
 def create_affine_transformation_matrix(
     n_dims, scaling=None, rotation=None, shearing=None, translation=None
 ):
     """
-    From https://github.com/MGH-LEMoN/photo-reconstruction/blob/main/scripts/hcp_replicate_photos.py#L85C40-L85C40.
+    From https://github.com/MGH-LEMoN/photo-reconstruction/blob/e788e21c38193bdc0043466b1ee8dc66deb6f54b/ext/lab2im/utils.py#L803.
     Create a 4x4 affine transformation matrix from specified values
     :param n_dims: integer
     :param scaling: list of 3 scaling values
@@ -404,7 +499,9 @@ def draw_value_from_distribution(
     return_as_tensor=False,
     batchsize=None,
 ):
-    """Sample values from a uniform, or normal distribution of given hyperparameters.
+    """
+    From https://github.com/MGH-LEMoN/photo-reconstruction/blob/e788e21c38193bdc0043466b1ee8dc66deb6f54b/ext/lab2im/utils.py#L1317.
+    Sample values from a uniform, or normal distribution of given hyperparameters.
     These hyperparameters are to the number of 2 in both uniform and normal cases.
     :param hyperparameter: values of the hyperparameters. Can either be:
     1) None, in each case the two hyperparameters are given by [center-default_range, center+default_range],

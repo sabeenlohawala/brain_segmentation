@@ -1,3 +1,10 @@
+"""
+File: losses.py
+Author: Sabeen Lohawala
+Date: 2024-03-21
+Description: This file contains the functional and class implementations of the softmax focal loss.
+"""
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -17,11 +24,11 @@ class SoftmaxFocalLoss(nn.Module):
         Constructor.
 
         Args:
-            alpha: (optional) Weighting factor in range (0,1) to balance
+            alpha (float): (optional) Weighting factor in range (0,1) to balance
                     positive vs negative examples. Default = -1 (no weighting).
-            gamma: Exponent of the modulating factor (1 - p_t) to
+            gamma (float): Exponent of the modulating factor (1 - p_t) to
                    balance easy vs hard examples.
-            reduction: 'none' | 'mean' | 'sum'
+            reduction (str): 'none' | 'mean' | 'sum'
                        'none': No reduction will be applied to the output.
                        'mean': The output will be averaged.
                        'sum': The output will be summed.
@@ -61,15 +68,15 @@ def softmax_focal_loss(
 
     Loss used in RetinaNet for dense detection: https://arxiv.org/abs/1708.02002.
     Args:
-        mask: A tensor of shape (batch_size, nr_of_classes, height, width) containing
+        mask (torch.Tensor): A tensor of shape (batch_size, nr_of_classes, height, width) containing
               integer class numbers for each pixel.
-        probs: A float tensor with the same shape as inputs. Stores the softmax output
+        probs (torch.Tensor): A float tensor with the same shape as inputs. Stores the softmax output
                probabilities for each class.
-        alpha: (optional) Weighting factor in range (0,1) to balance
+        alpha (float): (optional) Weighting factor in range (0,1) to balance
                 positive vs negative examples. Default = -1 (no weighting).
-        gamma: Exponent of the modulating factor (1 - p_t) to
+        gamma (float): Exponent of the modulating factor (1 - p_t) to
                balance easy vs hard examples.
-        reduction: 'none' | 'mean' | 'sum'
+        reduction (str): 'none' | 'mean' | 'sum'
                  'none': No reduction will be applied to the output.
                  'mean': The output will be averaged.
                  'sum': The output will be summed.

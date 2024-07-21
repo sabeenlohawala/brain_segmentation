@@ -130,6 +130,7 @@ def main():
 
     # get model
     model = select_model(config, image_dims)
+    print(f'Model image dims: {model.image_dims}')
 
     # optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)

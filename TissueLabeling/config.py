@@ -1,3 +1,10 @@
+"""
+File: config.py
+Author: Sabeen Lohawala
+Date: 2024-05-08
+Description: This file contains the Configuration class to store experiment parameters.
+"""
+
 import argparse
 import json
 import os
@@ -12,19 +19,22 @@ import ext.utils as ext_utils
 
 class Configuration:
     """
-    Initializes an instance of the class.
-
-    Parameters:
-        args (object): An object containing arguments.
-        config_file_name (str, optional): The name of the configuration file. Defaults to None.
-
-    Returns:
-        None
+    Class to store experiment parameters.
     """
 
     data_root_dir = "/om2/user/sabeen/nobrainer_data_norm"
 
     def __init__(self, args=None, config_file_name=None):
+        """
+        Initializes an instance of the class.
+
+        Args:
+            args: An object containing command-line arguments that determine the experiment parameters.
+            config_file_name (str | None): (optional) The name of the configuration file. Defaults to None.
+
+        Returns:
+            None
+        """
         self.logdir = getattr(args, "logdir", os.getcwd())
         if not os.path.isabs(self.logdir):
             self.logdir = os.path.join(
@@ -107,9 +117,12 @@ class Configuration:
         self.write_config(config_file_name)
 
     def write_config(self, file_name=None):
-        """Write configuration to a file
+        """
+        Write configuration to a file.
+        Requires that file_name ends in the extension .json.
+
         Args:
-            CONFIG (dict): configuration
+            file_name (str): (optional) The filename where to write the config file to.
         """
         file_name = file_name if file_name else "config.json"
 
@@ -131,19 +144,25 @@ class Configuration:
 
     @classmethod
     def read_config(cls, file_name):
-        """Read configuration from a file"""
+        """
+        Read configuration from a file.
+
+        Args:
+            file_name (str): filename of the config json to read in.
+        """
         with open(file_name, "r", encoding="utf-8") as fh:
             config_dict = json.load(fh)
 
         return argparse.Namespace(**config_dict)
 
     def _update_data_dir(self):
-        """Update the data directory based on the number of classes"""
-        if self.new_kwyk_data:
-            # self.data_dir = "/om2/scratch/Mon/sabeen/kwyk_slice_split_250/"
+        """
+        Update the data directory based on the number of classes.
+        """
+        if self.new_kwyk_data: # slices stored in HDF5 files
             self.data_dir = "/om/scratch/Fri/sabeen/kwyk_slice_split_250"
             self.aug_dir = ""
-        else: # these prob don't work anymore
+        else: # slices stored as individual .npy files
             if self.data_size == "small":
                 folder_map = {
                     107: "new_small_aug_107",
@@ -175,6 +194,7 @@ class Configuration:
                     f"No dataset found for {self.nr_of_classes} classes, {self.data_size} size"
                 )
 
+            # this is probably not necessary anymore since augmentations are applied in TissueLabeling/data/dataset.py
             if self.augment and not self.new_kwyk_data:
                 if self.nr_of_classes == 51 and self.data_size == "small":
                     self.aug_dir = os.path.join(
