@@ -2,6 +2,7 @@
 
 import glob
 import os
+import random
 import sys
 from argparse import Namespace
 from datetime import datetime
@@ -29,6 +30,32 @@ SLICE_INFO_FILE = "/om2/user/sabeen/kwyk_data/new_kwyk_full.npy"  # DO NOT CHANG
 
 N_VOLS = 20
 COMPRESSION_OPTS = 2
+
+
+def combine_hdf5s():
+    """Combine multiple hdf5 files into a single hdf5 file."""
+    h5_files = sorted(glob.glob(os.path.join("/om2/scratch/Sat/satra/", "*.h5")))
+    # pprint(h5_files)
+
+    f = h5.File("/tmp/combined.h5", "w")
+    for idx, h5_file in enumerate(h5_files):
+        f[str(idx)] = h5.ExternalLink(h5_file, "/")
+    f.close()
+
+    file_idx = random.choice(range(len(h5_files)))
+    slice_dir = random.choice(["features_axis0", "features_axis1", "features_axis2"])
+
+    fa = h5.File("/tmp/combined.h5", "r")
+    volumes = fa[str(file_idx)][slice_dir]
+    slice_idx = random.choice(range(volumes.shape[0]))
+    A = volumes[slice_idx]
+    fa.close()
+
+    fb = h5.File(h5_files[file_idx], "r")
+    B = fb[slice_dir][slice_idx]
+    fb.close()
+
+    assert np.array_equal(A, B) is True, "Something is wrong"
 
 
 def main_timer(func):
