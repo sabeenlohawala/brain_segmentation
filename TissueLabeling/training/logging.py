@@ -13,12 +13,24 @@ from TissueLabeling.brain_utils import crop, load_brains, mapping
 
 
 class Log_Images:
+    """
+    A class used to log images to tensorboard or wandb.
+    """
     def __init__(
         self,
         fabric: L.Fabric,
         config,
         writer=None,
     ):
+        """
+        Constructor.
+
+        Args:
+            fabric (L.fabric): fabric object
+            config (TissueLabeling.config.Configuration): configuration with the experiment parameters
+            writer (SummaryWriter | None, optional): SummaryWriter object where images should be logged. Images are
+                                                     not logged to Tensorboard if None.
+        """
         self.wandb_on = config.wandb_on
         self.pretrained = config.pretrained
         self.model_name = config.model_name
@@ -123,6 +135,18 @@ class Log_Images:
 
     @torch.no_grad()
     def logging(self, model, epoch: int, commit: bool):
+        """
+        This function is used to log the model's predicted segmentations to Tensorboard and/or W&B.
+
+        Args:
+            model (nn.Module): The ML model that's being trained
+            epoch (int): the current epoch of training
+            commit (bool): a flag for the wandb log
+        
+        Returns:
+            current_logging_dict (dict): a dictionary mapping the MRI image, True mask, and predicted mask
+                                         to the relevant tensors.
+        """
         model.eval()
         probs = model(self.brain_slices)
         probs = probs.argmax(1)
@@ -177,6 +201,19 @@ class Log_Images:
         color_range=None,
         fig_path: str = None,
     ):
+        """
+        This function is used to create a plot of the image.
+
+        Args:
+            wandb_on (bool): flag to indicate whether the result is being logged to wandb
+            image (np.array): the image to plot
+            caption (str): a caption for the image
+            color_range: the color for each label
+            fig_path (str | None, optional): if fig_path is a str, the plot is written to fig_path
+
+        Returns:
+            image (PIL.Image): the plot of the image
+        """
         if fig_path is not None and len(fig_path.split(".")) == 1:
             fig_path = fig_path + ".png"
 
@@ -262,6 +299,15 @@ class Log_Images:
         return numbers, names, colors
 
     def __rgb_map_for_data(self, nr_of_classes):
+        """
+        Uses the FreeSurferColorLUT.txt to create the color map for the given number of segmentation classes.
+
+        Args:
+            nr_of_classes (int): the number of classes that are being segmented
+
+        Returns:
+            np.array: the color map
+        """
         _, fs_names, fs_colors = self.__extract_numbers_names_colors(
             "/om2/user/sabeen/freesurfer/distribution/FreeSurferColorLUT.txt"
         )

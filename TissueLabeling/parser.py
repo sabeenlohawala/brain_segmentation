@@ -78,7 +78,7 @@ def get_args():
         default=64,
     )
     train.add_argument(
-        "--lr", help="Learning for training", type=float, required=False, default=1e-3
+        "--lr", help="Learning rate for training", type=float, required=False, default=1e-3
     )
     train.add_argument(
         "--data_dir",
@@ -117,14 +117,14 @@ def get_args():
     )
     train.add_argument(
         "--save_checkpoint",
-        help="Frequency at which to save checkpoints",
+        help="Flag for whether to save checkpoints",
         type=int,
         required=False,
         default=1,
     )
     train.add_argument(
         "--log_images",
-        help="Frequency at which to log images",
+        help="Flag for whether to log images to tensorboard",
         type=int,
         required=False,
         default=0,
@@ -250,7 +250,7 @@ def get_args():
     )
     train.add_argument(
         "--new_kwyk_data",
-        help="Debugging flag, remove later: whether to use new dataset",
+        help="Whether to use the HDF5 dataset",
         type=int,
         required=False,
         default=0,
