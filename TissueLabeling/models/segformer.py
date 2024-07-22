@@ -6,7 +6,9 @@ from transformers import SegformerConfig, SegformerForSemanticSegmentation
 
 # segformer model
 class Segformer(nn.Module):
-    def __init__(self, nr_of_classes: int, pretrained: bool = False):
+    def __init__(
+        self, nr_of_classes: int, pretrained: bool = False, image_dims=(162, 194)
+    ):
         """
         Initialize Segformer mit-b1 calibration
 
@@ -15,6 +17,8 @@ class Segformer(nn.Module):
             pretrained (bool, optional): use transfer learning. Defaults to False.
         """
         super().__init__()
+
+        self.image_dims = image_dims
 
         if pretrained:
             self.segformer = SegformerForSemanticSegmentation.from_pretrained(
@@ -36,7 +40,7 @@ class Segformer(nn.Module):
     def forward(self, x: torch.tensor):
         self.logits = self.segformer(x).logits
         self.logits = torch.nn.functional.interpolate(
-            self.logits, size=(162, 194), mode="bilinear"
+            self.logits, size=self.image_dims, mode="bilinear"
         )
         self.probs = self.softmax(self.logits)
 
@@ -46,7 +50,7 @@ class Segformer(nn.Module):
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = Segformer(51, pretrained=True)
+    model = Segformer(50, pretrained=False, image_dims=(256,256))
 
     summary(
         model,

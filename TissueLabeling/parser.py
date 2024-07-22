@@ -1,3 +1,10 @@
+"""
+File: parser.py
+Author: Sabeen Lohawala
+Date: 2024-05-08
+Description: This file contains the function needed to parse all command line arguments.
+"""
+
 import argparse
 import os
 
@@ -16,6 +23,17 @@ def get_args():
     )
 
     subparsers = parser.add_subparsers(help="sub-command help")
+
+    # create subparser for "test" command
+    test = subparsers.add_parser(
+        "test", help="Use this sub-command for testing"
+    )
+    test.add_argument(
+        "--logdir",
+        type=str,
+        help="Folder containing previous checkpoints",
+    )
+    test.add_argument("--debug", action="store_true", dest="debug")
 
     # create subparser for "resume-train" command
     resume = subparsers.add_parser(
@@ -60,7 +78,7 @@ def get_args():
         default=64,
     )
     train.add_argument(
-        "--lr", help="Learning for training", type=float, required=False, default=1e-3
+        "--lr", help="Learning rate for training", type=float, required=False, default=1e-3
     )
     train.add_argument(
         "--data_dir",
@@ -72,7 +90,7 @@ def get_args():
         help="Flag for whether to use pretrained model",
         type=int,
         required=False,
-        default=1,
+        default=0,
     )
     train.add_argument(
         "--nr_of_classes",
@@ -85,58 +103,220 @@ def get_args():
         "--seed", help="Random seed value", type=int, required=False, default=42
     )
     train.add_argument(
-        "--debug", help='Flag for whether code is being debugged', type=int, required=False, default=0
+        "--debug",
+        help="Flag for whether code is being debugged",
+        type=int,
+        required=False,
+        default=0,
     )
     train.add_argument(
-        "--wandb_description", help='Description for wandb run', type=str, required=False
+        "--wandb_description",
+        help="Description for wandb run",
+        type=str,
+        required=False,
     )
     train.add_argument(
-        "--save_checkpoint", help='Frequency at which to save checkpoints', type=int, required=False, default=1
+        "--save_checkpoint",
+        help="Flag for whether to save checkpoints",
+        type=int,
+        required=False,
+        default=1,
     )
     train.add_argument(
-        "--log_images", help='Frequency at which to log images', type=int, required=False, default=0
+        "--log_images",
+        help="Flag for whether to log images to tensorboard",
+        type=int,
+        required=False,
+        default=0,
     )
     train.add_argument(
-        "--checkpoint_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
+        "--checkpoint_freq",
+        help="Frequency at which to save checkpoints",
+        type=int,
+        required=False,
+        default=10,
     )
     train.add_argument(
-        "--image_log_freq", help='Frequency at which to save checkpoints', type=int, required=False, default=10
+        "--image_log_freq",
+        help="Frequency at which to save checkpoints",
+        type=int,
+        required=False,
+        default=10,
     )
     train.add_argument(
-        "--data_size", help='Whether to use the small or medium sized dataset', type=str, required=False, default='small'
+        "--data_size",
+        help="Whether to use the small or medium sized dataset",
+        type=str,
+        required=False,
+        default="small",
     )
     train.add_argument(
-        "--augment", help='Flag for whether to train on augmented data', type=int, required=False, default=0
+        "--augment",
+        help="Flag for whether to train on augmented data",
+        type=int,
+        required=False,
+        default=0,
     )
     train.add_argument(
-        "--aug_mask", help="Flag for whether to augment the data by masking", type=int, required=False, default=0
+        "--aug_percent",
+        help="What fraction of the data should be augmented (between 0 and 1)",
+        type=float,
+        required=False,
+        default=0.8
     )
     train.add_argument(
-        "--aug_cutout", help="Flag for whether to augment the data by adding cutouts", type=int, required=False, default=0
+        "--aug_mask",
+        help="Flag for whether to augment the data by masking",
+        type=int,
+        required=False,
+        default=0,
     )
     train.add_argument(
-        "--cutout_n_holes", help="Number of cutouts to make during augmentation", type=int, required=False, default=1
+        "--aug_cutout",
+        help="Flag for whether to augment the data by adding cutouts",
+        type=int,
+        required=False,
+        default=0,
     )
     train.add_argument(
-        "--cutout_length", help="Side length of cutout to make during augmentation", type=int, required=False, default=32
+        "--cutout_n_holes",
+        help="Number of cutouts to make during augmentation",
+        type=int,
+        required=False,
+        default=1,
     )
     train.add_argument(
-        "--mask_n_holes", help="Number of masks to make during augmentation", type=int, required=False, default=1
+        "--cutout_length",
+        help="Side length of cutout to make during augmentation",
+        type=int,
+        required=False,
+        default=32,
     )
     train.add_argument(
-        "--mask_length", help="Side length of mask to make during augmentation", type=int, required=False, default=32
+        "--mask_n_holes",
+        help="Number of masks to make during augmentation",
+        type=int,
+        required=False,
+        default=1,
     )
     train.add_argument(
-        "--loss_fn", help="Which loss function to use: dice or focal", type=str, required=False, default="dice"
+        "--mask_length",
+        help="Side length of mask to make during augmentation",
+        type=int,
+        required=False,
+        default=32,
     )
     train.add_argument(
-        "--metric", help="Which metric to use (currently only supports dice)", type=str, required=False, default="dice"
+        "--loss_fn",
+        help="Which loss function to use: dice or focal",
+        type=str,
+        required=False,
+        default="dice",
     )
     train.add_argument(
-        "--class_specific_scores", help="Whether to log class-specific dice", type=int, required=False, default=0
+        "--metric",
+        help="Which metric to use (currently only supports dice)",
+        type=str,
+        required=False,
+        default="dice",
     )
     train.add_argument(
-        "--intensity_scale", help="Whether to apply intensity scaling", type=int, required=False, default=0
+        "--class_specific_scores",
+        help="Whether to log class-specific dice",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
+        "--intensity_scale",
+        help="Whether to apply intensity scaling",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
+        "--aug_elastic",
+        help="Whether to apply elastic transformation augmentation",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
+        "--aug_piecewise_affine",
+        help="Whether to apply piecewise affine augmentation",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
+        "--new_kwyk_data",
+        help="Whether to use the HDF5 dataset",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
+        "--background_percent_cutoff",
+        help="Max percent of slice that can be background",
+        type=float,
+        required=False,
+        default=0.99,
+    )
+    train.add_argument(
+        "--aug_null_half",
+        help="Whether to null out half of the brain when training",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
+        "--aug_null_cerebellum_brain_stem",
+        help="Whether to null out cerebellum and brain stem when training",
+        type=int,
+        required=False,
+        default=0,
+    )
+    train.add_argument(
+        "--aug_background_manipulation",
+        help="Whether to do background manipulation as an augmentation",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
+        "--aug_shapes_background",
+        help="Whether to do random shapes as a background manipulation as an augmentation",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
+        "--aug_grid_background",
+        help="Whether to do random grid as a background manipulation as an augmentation",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
+        "--aug_noise_background",
+        help="Whether to do random noise as a background manipulation as an augmentation",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
+        "--pad_old_data",
+        help="Whether to pad cropped dataset to 256x256",
+        type=int,
+        required=False,
+        default=0
+    )
+    train.add_argument(
+        "--use_norm_consts",
+        help="Whether to use Matthias's normalization constants or to divide image intensities by 255.0",
+        type=int,
+        required=False,
+        default=0
     )
 
     # Parse the command line arguments

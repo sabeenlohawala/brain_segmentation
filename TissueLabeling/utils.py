@@ -1,7 +1,12 @@
-import csv
+"""
+File: utils.py
+Author: Sabeen Lohawala
+Date: 2024-04-28
+Description: This file contains helper functions.
+"""
+
 from datetime import datetime
 import os
-import random
 import shutil
 
 import lightning as L
@@ -9,25 +14,61 @@ import torch
 import wandb
 from lightning.fabric import Fabric, seed_everything
 
-def main_timer(func):
-    """Decorator to time any function"""
+def center_pad_tensor(input_tensor, new_height, new_width):
+    """
+    This function center pads the input_tensor to the new dimensions with 0s such that an odd split 
+    results in the extra padding being applied to the bottom and right sides of the tensor.
 
-    def function_wrapper():
+    Args:
+        input_tensor (torch.Tensor): a 3D tensor
+        new_height (int): the height of output, padded tensor; requires that new_height >= input_tensor.size()[1]
+        new_width (int): the width of the output padded tensor; requires that new_width >= input_tensor.size()[2]
+    
+    Returns:
+        padded_tensor (torch.Tensor): a 3D tensor of size [input_tensor.size()[0], new_height, new_width]
+    """
+    # Get the dimensions of the input tensor
+    _, height, width = input_tensor.size()
+
+    # Calculate the amount of padding needed on each side
+    pad_height = max(0, (new_height - height) // 2)
+    pad_width = max(0, (new_width - width) // 2)
+
+    # Calculate the total amount of padding needed
+    pad_top = pad_height
+    pad_bottom = new_height - height - pad_top
+    pad_left = pad_width
+    pad_right = new_width - width - pad_left
+
+    # Apply padding
+    padded_tensor = torch.nn.functional.pad(input_tensor, (pad_left, pad_right, pad_top, pad_bottom))
+
+    return padded_tensor
+
+def main_timer(func):
+    """
+    Decorator to time any function.
+    """
+
+    def function_wrapper(*args,**kwargs):
         start_time = datetime.now()
         # print(f'Start Time: {start_time.strftime("%A %m/%d/%Y %H:%M:%S")}')
 
-        func()
+        result = func(*args,**kwargs)
 
         end_time = datetime.now()
         # print(f'End Time: {end_time.strftime("%A %m/%d/%Y %H:%M:%S")}')
         print(
             f"Function: {func.__name__} Total runtime: {end_time - start_time} (HH:MM:SS)"
         )
-
+        return result
+    
     return function_wrapper
 
+
 def set_seed(seed: int = 0) -> None:
-    """Set the seed before GPU training
+    """
+    Set the seed before GPU training.
 
     Args:
         seed (int, optional): seed. Defaults to 0.
@@ -43,7 +84,11 @@ def set_seed(seed: int = 0) -> None:
         # False = Always same algo --> slower but reproducible
         torch.backends.cudnn.benchmark = True
 
+
 def init_cuda() -> None:
+    """
+    Initializes cuda configuration before training.
+    """
     torch.cuda.empty_cache()
 
     if torch.cuda.is_available():
@@ -67,12 +112,22 @@ def init_cuda() -> None:
             torch.backends.cudnn.benchmark,
         )
 
+
 def init_wandb(
     project_name: str,
     fabric: L.fabric,
     model_params: dict,
     description: str,
 ) -> None:
+    """
+    Initializes Weights and Biases log.
+
+    Args:
+        project_name (str): name of the W&B project where the run is to be logged.
+        fabric (L.fabric): initialized torch lightning fabric object
+        model_params (dict): the model parameters
+        description (str): description of the run to be recorded in W&B
+    """
     # check if staged artifacts exist:
     if os.path.exists(f"/home/{os.environ['USER']}/.local/share/wandb"):
         shutil.rmtree(f"/home/{os.environ['USER']}/.local/share/wandb")
@@ -101,7 +156,14 @@ def init_wandb(
         include_fn=lambda path: path.endswith(".py") or path.endswith(".ipynb"),
     )
 
+
 def init_fabric(**kwargs) -> L.fabric:
+    """
+    Initializes and launches the fabric object based on the arguments passed in.
+
+    Returns:
+        fabric (L.fabric): the initialized fabric object.
+    """
     fabric = Fabric(**kwargs)
     fabric.launch()
 
@@ -118,9 +180,10 @@ def init_fabric(**kwargs) -> L.fabric:
 
     return fabric
 
+
 def finish_wandb(out_file: str) -> None:
     """
-    Finish Weights and Biases
+    Finish Weights and Biases.
 
     Args:
         out_file (str): name of the .out file of the run
