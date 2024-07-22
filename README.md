@@ -49,7 +49,7 @@ Ensure python is installed. The code in this project was tested and run using Py
 
 # Dataset
 
-This models in this project were trained on slices from the [KWYK dataset](https://www.frontiersin.org/journals/neuroinformatics/articles/10.3389/fninf.2019.00067/full). The KWYK dataset consists of 11480 MRI scans (called feature volumes) and their corresponding anatomical segmentation volumes (called label volumes). The feature volumes consist of intensity values ranging from 0 to 255, which are then normalized to be floats between 0 to 1 in [dataset.py](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/data/dataset.py#L219). The label volumes consist of integer values corresponding to their freesurfer labels. The [class_mapping.csv](https://github.com/sabeenlohawala/tissue_labeling/blob/new_prepare_data/misc/class_mapping.csv) shows which freesurfer labels correspond to which regions.
+This models in this project were trained on slices from the [KWYK dataset](https://www.frontiersin.org/journals/neuroinformatics/articles/10.3389/fninf.2019.00067/full). The KWYK dataset consists of 11480 MRI scans (called feature volumes) and their corresponding anatomical segmentation volumes (called label volumes). The feature volumes consist of intensity values ranging from 0 to 255, which are then normalized to be floats between 0 to 1 in [TissueLabeling/data/dataset.py](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/TissueLabeling/data/dataset.py#L219). The label volumes consist of integer values corresponding to their freesurfer labels. The [class_mapping.csv](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/misc/class_mapping.csv#L1) shows which freesurfer labels correspond to which regions.
 
 The goal in this project is to segment 2D images of the brain, not 3D volumes. So, individual slices were extracted from the volumes to build the dataset. Continue reading below to learn how to generate the slice dataset from the volumes.
 
@@ -60,26 +60,26 @@ Storing the dataset as HDF5 files is recommended, as it is more efficient and sc
 
 When using the HDF5 dataset structure, make sure to include the  command line argument `--new_kwyk_data 1` when the `main.py` script is run.
 
-The .npy dataset can be generated using the script at [`scripts/gen_dataset.py`](https://github.com/sabeenlohawala/tissue_labeling/blob/new_prepare_data/scripts/gen_dataset.py). Additionally, run the script at [`scripts/gen_dataset_nonbrain.py`](https://github.com/sabeenlohawala/tissue_labeling/blob/new_prepare_data/scripts/gen_dataset_nonbrain.py) for .hf5 shard saved to store information about the percentage of pixels that are background (i.e. equal to 0) for each slice in the dataset; this information can be used for filtering the dataset during experiments. See [`submit_gen_dataset_nonbrain.sh`](https://github.com/sabeenlohawala/tissue_labeling/blob/new_prepare_data/submit_gen_dataset_nonbrain.sh) for an example of how to run this script.
+The .npy dataset can be generated using the script at [`scripts/gen_dataset.py`](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/scripts/gen_dataset.py#L1). Additionally, run the script at [`scripts/gen_dataset_nonbrain.py`](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/scripts/gen_dataset_nonbrain.py#L1) for .hf5 shard saved to store information about the percentage of pixels that are background (i.e. equal to 0) for each slice in the dataset; this information can be used for filtering the dataset during experiments. See [`submit_gen_dataset_nonbrain.sh`](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/submit_gen_dataset_nonbrain.sh#L1) for an example of how to run this script.
 
 **!!! IMPORTANT: Change the paths in the following locations to point to your dataset**
-1. Set the `OUTDIR` ([scripts/gen_dataset.py, line 46](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/scripts/gen_dataset.py#L46)) to point to the directory where you would like to write the .hf5 shards.
-2. Set `NIFTIDIR` ([scripts/gen_dataset.py, line 50](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/scripts/gen_dataset.py#L50)) to point to the directory where the .nii.gz volumes are saved. Note: the feature volumes and label volumes must be located in the same directory.
-3. Set `self.data_dir` ([TissueLabeling/config.py line 163](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/config.py#L163)) to point to directory where `.hf5` shards are stored.
-4. Set `h5_dir` ([TissueLabeling/data/dataset.py, line 62](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/data/dataset.py#L62)) to point to directory where `.hf5` shards are stored.
-5. Set `slice_nonbrain_dir` ([TissueLabeling/data/dataset.py, line 67](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/data/dataset.py#L67)) to point to the directory where the output from `scripts/gen_dataset_nonbrain.py` are stored.
+1. Set the `OUTDIR` ([scripts/gen_dataset.py, line 46](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/scripts/gen_dataset.py#L46)) to point to the directory where you would like to write the .hf5 shards.
+2. Set `NIFTIDIR` ([scripts/gen_dataset.py, line 50](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/scripts/gen_dataset.py#L50)) to point to the directory where the .nii.gz volumes are saved. Note: the feature volumes and label volumes must be located in the same directory.
+3. Set `self.data_dir` ([TissueLabeling/config.py line 163](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/TissueLabeling/config.py#L163)) to point to directory where `.hf5` shards are stored.
+4. Set `h5_dir` ([TissueLabeling/data/dataset.py, line 62](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/TissueLabeling/data/dataset.py#L62)) to point to directory where `.hf5` shards are stored.
+5. Set `slice_nonbrain_dir` ([TissueLabeling/data/dataset.py, line 67](https://github.com/sabeenlohawala/tissue_labeling/blob/bb9a5a56f0449ddc742c384e6e011204d22cee41/TissueLabeling/data/dataset.py#L67)) to point to the directory where the output from `scripts/gen_dataset_nonbrain.py` are stored.
 
 ### .npy Dataset
 In the earliest version, each MRI feature slice and its corresponding label slice was stored as an individual .npy file. This version of the dataset may still be helpful for initial explorations of this repo or new datasets, but it is less efficient and scalable, and not all of the functions or augmentations are kept as up-to-date as those in the HDF5 dataset.
 
 When using a .npy dataset structure, make sure to include the command line argument `--new_kwyk_data 0` when the `main.py` script is run.
 
-These .npy datasets can be generated using the script at [`scripts/mit_kwyk_data_optimized.py`](https://github.com/sabeenlohawala/tissue_labeling/blob/new_prepare_data/scripts/mit_kwyk_data_optimized.py). See [`job_prepare_new_data.sh`](https://github.com/sabeenlohawala/tissue_labeling/blob/new_prepare_data/job_prepare_new_kwyk_data.sh) for an example of how to run this script.
+These .npy datasets can be generated using the script at [`scripts/mit_kwyk_data_optimized.py`](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/scripts/mit_kwyk_data_optimized.py#L1). See [`job_prepare_new_data.sh`](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/job_prepare_new_kwyk_data.sh#L1) for an example of how to run this script.
 
 The overall directory structure for the .npy files is shown below. The various .npy datasets (e.g. `new_med_no_aug_51`, `new_small_aug_107`) are all contained within the `data_root_dir` (e.g. `nobrainer_data_norm`).
 
 **!!! IMPORTANT: Change the paths in the following locations to point to your dataset**
-1. Set the `data_root_dir` in [TissueLabeling/config.py, line 25](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/config.py#L25) to the path to your `data_root_dir`.
+1. Set the `data_root_dir` in [TissueLabeling/config.py, line 25](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/config.py#L25) to the path to your `data_root_dir`.
 
 #### .npy Dataset Structure
 
@@ -112,17 +112,17 @@ nobrainer_data_norm
 ```
 
 ### Setting Other Hardcoded Paths
-1. [TissueLabeling/training/logging.py, line 312](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/training/logging.py#L312): modify the path to point to the location of misc/FreeSurferColorLUT.txt
-2. [TissueLabeling/training/logging.py, line 315](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/training/logging.py#L315): modify the path to point to the location of misc/readme
-3. [TissueLabeling/brain_utils.py, line 207](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/brain_utils.py#L207): modify the path to point to the location of misc/class_mapping.csv
-4. [TissueLabeling/brain_utils.py, line 252](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/brain_utils.py#L252): modify the path to point to the location of misc/class_mapping.csv
-5. [TissueLabeling/brain_utils.py, line 291](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/brain_utils.py#L291): modify the path to point to the location of misc/class_mapping.csv
-6. [TissueLabeling/training/logging.py, line 60](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/training/logging.py#L60): set `file_path` to point to the directory where the .nii.gz volumes are saved. Note: the feature volumes and label volumes must be located in the same directory.
-7. [TissueLabeling/training/logging.py, line 58-59](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/training/logging.py#L58-L59): set `image_file` and `mask_file` to the feature volume and its corresponding label volume that you will log the model predictions for.
+1. [TissueLabeling/training/logging.py, line 312](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/training/logging.py#L312): modify the path to point to the location of misc/FreeSurferColorLUT.txt
+2. [TissueLabeling/training/logging.py, line 315](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/training/logging.py#L315): modify the path to point to the location of misc/readme
+3. [TissueLabeling/brain_utils.py, line 207](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/brain_utils.py#L207): modify the path to point to the location of misc/class_mapping.csv
+4. [TissueLabeling/brain_utils.py, line 252](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/brain_utils.py#L252): modify the path to point to the location of misc/class_mapping.csv
+5. [TissueLabeling/brain_utils.py, line 291](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/brain_utils.py#L291): modify the path to point to the location of misc/class_mapping.csv
+6. [TissueLabeling/training/logging.py, line 60](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/training/logging.py#L60): set `file_path` to point to the directory where the .nii.gz volumes are saved. Note: the feature volumes and label volumes must be located in the same directory.
+7. [TissueLabeling/training/logging.py, line 58-59](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/training/logging.py#L58C9-L59C41): set `image_file` and `mask_file` to the feature volume and its corresponding label volume that you will log the model predictions for.
 
 ## How to Run
 
-The model training is run using the script in [scripts/commands/main.py](https://github.com/sabeenlohawala/tissue_labeling/blob/new_prepare_data/scripts/commands/main.py). There are three main options when running the script using the command line. The basic commands that use default experiment parameters, as well as a table listing the possible command line arguments, their description, and their possible values are included below:
+The model training is run using the script in [scripts/commands/main.py](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/scripts/commands/main.py#L1). See [submit_requeue.sh](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/submit_requeue.sh#L1) for an example of how to submit an experiment as a batch job on the SLURM. There are three main options when running the script using the command line. The basic commands that use default experiment parameters, as well as a table listing the possible command line arguments, their description, and their possible values are included below:
 1. Train a new model.
     
     `python scripts/commands/main.py train`
@@ -139,7 +139,7 @@ The model training is run using the script in [scripts/commands/main.py](https:/
 | Argument Name    | Possible Values   | Description
 | -------- | ------- |------- |
 | --logdir  | any str    | Path to the directory where config.json, all Tensorboard logs, and model checkpoints are saved for the run. |
-| --model_name | 'segformer', 'original_unet', 'attention_unet'    | Name of the ML model that will be trained for the segmentation task. Modify [`select_model()`](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/scripts/commands/main.py#L36C1-L61C17) function in scripts/commands/main.py if you add new models. |
+| --model_name | 'segformer', 'original_unet', 'attention_unet'    | Name of the ML model that will be trained for the segmentation task. Modify [`select_model()`](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/scripts/commands/main.py#L36C1-L68C17) function in scripts/commands/main.py if you add new models. |
 | --num_epochs    | any int    | The number of epochs to train during the run. |
 | --batch_size  | any int    | The batch size for a single GPU. If training across multiple GPUs (which the code is already set-up to do with PyTorch Lightning Fabric), the effective batch size for the run becomes batch_size * num_gpus.|
 | --lr  | any float    | This is the learning rate for training. Experiments we ran for this project were most successful with lr = 1e-3. |
@@ -193,7 +193,7 @@ The model training is run using the script in [scripts/commands/main.py](https:/
 
 ## Weights & Biases
 
-If you plan on using Weights & Biases to log runs, you will need to change the default paths in the [`init_wandb()`](https://github.com/sabeenlohawala/tissue_labeling/blob/eca7e31843f4bd1eb2699604bdcee28f9b8a6cf1/TissueLabeling/utils.py#L135C5-L145C6) function in TissueLabeling/utils.py. Change the values passed into the `entity` and `dir` parameters in the call to `wandb.init()` to match those of your W&B account and your local machine, respectively.
+If you plan on using Weights & Biases to log runs, you will need to change the default paths in the [`init_wandb()`](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/TissueLabeling/utils.py#L135C5-L145C6) function in TissueLabeling/utils.py. Change the values passed into the `entity` and `dir` parameters in the call to `wandb.init()` to match those of your W&B account and your local machine, respectively.
 
 # Augmentations
 The argument `--augment 1` must be included in the command line in order for any augmentations to be applied during training.
@@ -248,4 +248,4 @@ In this project, we compared the UNet model, which has achieved state-of-the-art
 
 # Contributions
 
-The majority of the code in this repository was written by me ([@sabeenlohawala](https://github.com/sabeenlohawala)). I received invaluable guidance and mentorship on this project, and help with structuring and debugging this code from my advisor Dr. Satrajit Ghosh ([@satra](https://github.com/satra)) and Dr. Harshvardhan Gazula ([@hvgazula](https://github.com/hvgazula)). The earliest version of this code was adapted from a repository by Matthias Steiner ([@batschoni](https://github.com/batschoni)).
+The majority of the code in this repository was written by me ([@sabeenlohawala](https://github.com/sabeenlohawala)). I received invaluable guidance and mentorship on this project, and help with structuring and debugging this code from my advisor Drs. Satrajit Ghosh ([@satra](https://github.com/satra)) and Harsha Gazula ([@hvgazula](https://github.com/hvgazula)). The earliest version of this code was adapted from a repository by Matthias Steiner ([@batschoni](https://github.com/batschoni)).
