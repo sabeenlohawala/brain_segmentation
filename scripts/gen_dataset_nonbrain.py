@@ -1,3 +1,10 @@
+"""
+File: gen_dataset_nonbrain.py
+Author: Sabeen Lohawala
+Date: 2024-05-11
+Description: This script is used to obtain the slice filtering files for the HDF5 shards.
+"""
+
 import os
 import glob
 import h5py as h5
@@ -47,6 +54,17 @@ h5_file_paths = glob.glob(os.path.join(H5_DIR, '*.h5'))
 h5_pointers = [h5.File(h5_path,'r') for h5_path in h5_file_paths]
 
 def get_vol_feature_sum(shard_idx,vol_shape,shard_vol_idx):
+    """
+    Computes the sum of the brain tissue for all slices of a volume within a shard.
+
+    Args:
+        shard_idx (int): which shard index
+        vol_shape (tuple): the shape of the volume
+        shard_vol_index: the index of the volume within the shard
+    
+    Returns:
+        slice_nonbrain (np.array): the sum of the slices in the volume
+    """
     print(f'Processing shard {shard_idx} volume {shard_vol_idx}')
     f = h5_pointers[shard_idx]
     vol_shape = f['features_axis0'].shape
@@ -62,6 +80,17 @@ def get_vol_feature_sum(shard_idx,vol_shape,shard_vol_idx):
     return slices_nonbrain
 
 def get_vol_matthias(shard_idx,vol_shape,shard_vol_idx):
+    """
+    Implements the old filtering strategy by Matthias for a volume within a shard.
+
+    Args:
+        shard_idx (int): which shard index
+        vol_shape (tuple): the shape of the volume
+        shard_vol_index: the index of the volume within the shard
+    
+    Returns:
+        slice_nonbrain (np.array): the sum of the slices in the volume
+    """
     print(f'Processing shard {shard_idx} volume {shard_vol_idx}')
     f = h5_pointers[shard_idx]
     vol_shape = f['features_axis0'].shape
@@ -84,6 +113,17 @@ def get_vol_matthias(shard_idx,vol_shape,shard_vol_idx):
     return slices_nonbrain
 
 def get_vol_nonzero(shard_idx,vol_shape,shard_vol_idx):
+    """
+    Counts the number of cells equal to 0 in the volume of this shard.
+
+    Args:
+        shard_idx (int): which shard index
+        vol_shape (tuple): the shape of the volume
+        shard_vol_index: the index of the volume within the shard
+    
+    Returns:
+        slice_nonbrain (np.array): the sum of the slices in the volume
+    """
     print(f'Processing shard {shard_idx} volume {shard_vol_idx}')
     f = h5_pointers[shard_idx]
     vol_shape = f['labels_axis0'].shape
@@ -98,6 +138,15 @@ def get_vol_nonzero(shard_idx,vol_shape,shard_vol_idx):
 
 @main_timer
 def get_shard_nonzero(shard_idx):
+    """
+    Applies the volume filtering functions to the entire shard.
+
+    Args:
+        shard_idx (int): which shard index
+
+    Returns:
+        np.array: the output of the volume filtering function for all volumes within a shard
+    """
     # slices_nonbrain = np.ones((1150,3,256), dtype=np.uint16)
     vol_shape = h5_pointers[shard_idx]['labels_axis0'].shape
     # for shard_vol_idx in range(vol_shape[0]):

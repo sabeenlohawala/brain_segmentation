@@ -36,6 +36,13 @@ from TissueLabeling.utils import (
 def select_model(config, image_dims):
     """
     Selects the model based on the model name provided in the config file.
+
+    Args:
+        config (TissueLabeling.config.Configuration): config object containing experiment parameters
+        image_dims (tuple): tuple containing two ints for the two dimensions of the images in the dataset
+    
+    Returns:
+        resulting model
     """
     if config.model_name == "segformer":
         model = Segformer(
@@ -64,6 +71,12 @@ def select_model(config, image_dims):
 def update_config(config):
     """
     Updates the config file based on the command line arguments.
+    
+    Args:
+        config (TissueLabeling.config.Configuration): config object containing experiment parameters
+    
+    Returns:
+        updated config object
     """
     if sys.argv[1] == "train":
         config = Configuration(config)

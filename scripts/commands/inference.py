@@ -1,8 +1,8 @@
 """
-Created Date: Thursday, February 29, 2024
+File: inference.py
 Author: Sabeen Lohawala
-
-Copyright (c) 2023, Sabeen Lohawala. MIT
+Date: 2024-05-17
+Description: This script is used to run inference on various images for a trained model.
 """
 import argparse
 import glob
@@ -35,6 +35,13 @@ from TissueLabeling.metrics.metrics import Dice
 def get_config(logdir):
     """
     Gets the config file based on the command line arguments.
+
+    Args:
+        logdir: the path to the directory where the config.json files are written.
+    
+    Returns:
+        config (TissueLabeling.config.Configuration): the latest config object read from logdir
+        checkpoitn_paths (list): a list of paths of all model checkpoints saved in logdir
     """
     chkpt_folder = os.path.join("results/", logdir)
 
@@ -60,6 +67,16 @@ def get_config(logdir):
 
 
 def get_model(config, checkpoint_path=None):
+    """
+    Initializes a model based on the config and loads weights from checkpoint if it's specified.
+
+    Args:
+        config (TissueLabeling.config.Configuration): config object with experiment parameters
+        checkpoint_path (str | None, optional): checkpoint to load
+    
+    Returns:
+        resulting model
+    """
     if config.model_name == "segformer":
         model = Segformer(config.nr_of_classes, pretrained=config.pretrained)
     elif config.model_name == "original_unet":

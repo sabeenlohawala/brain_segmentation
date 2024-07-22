@@ -1,4 +1,9 @@
-"""Example code to read slices from kwyk volumes directly."""
+"""
+File: mit_kwyk_data_optimized.py
+Author: Sabeen Lohawala
+Date: 2024-04-30
+Description: This script is used to generate the .npy kwyk slice dataset.
+"""
 import glob
 import os
 from datetime import datetime
@@ -56,6 +61,16 @@ def main_timer(func):
 
 
 def calculate_bg(label_file):
+    """
+    This function calculates the percentage of pixels that are background (equal to 0) for all three axes
+    of the volume at label_file:
+
+    Args:
+        label_file (str): path to the file whose percent background is to be calculated
+    
+    Returns:
+        np.array: the percent background for each of the three axes
+    """
     print(os.path.basename(label_file))
     label_vol = nib.load(label_file).get_fdata().astype(np.int16)
 

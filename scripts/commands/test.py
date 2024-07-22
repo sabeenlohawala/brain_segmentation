@@ -1,10 +1,8 @@
 """
-Filename: tissue_labeling/scripts/main.py
-Created Date: Friday, December 8th 2023
+File: test.py
 Author: Sabeen Lohawala
-Description: Training code of TissueLabeling
-
-Copyright (c) 2023, Sabeen Lohawala. MIT
+Date: 2024-05-17
+Description: This script is used to obtain the loss and dice score of a trained model on the test dataset.
 """
 import argparse
 import glob
@@ -36,6 +34,13 @@ from TissueLabeling.utils import (
 def select_model(config, image_dims):
     """
     Selects the model based on the model name provided in the config file.
+
+    Args:
+        config (TissueLabeling.config.Configuration): config object containing experiment parameters
+        image_dims (tuple): tuple containing two ints for the two dimensions of the images in the dataset
+    
+    Returns:
+        resulting model
     """
     if config.model_name == "segformer":
         model = Segformer(
@@ -67,6 +72,12 @@ def select_model(config, image_dims):
 def update_config(config):
     """
     Updates the config file based on the command line arguments.
+    
+    Args:
+        config (TissueLabeling.config.Configuration): config object containing experiment parameters
+    
+    Returns:
+        updated config object
     """
     if sys.argv[1] == "train":
         config = Configuration(config)
@@ -132,7 +143,7 @@ def main():
     )
 
     # get data loader
-    train_loader, _, val_loader, image_dims = get_data_loader(config) # val_loader is actully equal to test_loader (notice _)
+    train_loader, _, test_loader, image_dims = get_data_loader(config) # val_loader is actully equal to test_loader (notice _)
 
     # get model
     model = select_model(config, image_dims)
@@ -142,7 +153,7 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
 
     # fabric setup
-    train_loader, val_loader = fabric.setup_dataloaders(train_loader, val_loader)
+    train_loader, test_loader = fabric.setup_dataloaders(train_loader, test_loader)
     model, optimizer = fabric.setup(model, optimizer)
 
     # init WandB
@@ -168,7 +179,7 @@ def main():
     trainer = Trainer(
         model=model,
         train_loader=train_loader,
-        val_loader=val_loader,
+        val_loader=test_loader,
         loss_fn=loss_fn,
         metric=metric,
         optimizer=optimizer,

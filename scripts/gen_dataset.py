@@ -1,3 +1,10 @@
+"""
+File: gen_dataset.py
+Author: Satrajit Ghosh
+Date: 2024-04-29
+Description: This script is used to generate the HDF5 shards for the KWYK dataset.
+"""
+
 import glob
 import os
 from pathlib import Path

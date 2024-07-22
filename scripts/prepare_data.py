@@ -1,3 +1,10 @@
+"""
+File: test.py
+Author: Matthias Steiner, Sabeen Lohawala
+Date: 2024-02-29
+Description: This is an old script used to generate the .npy KWYK slice dataset.
+"""
+
 import argparse
 import os
 import pickle
