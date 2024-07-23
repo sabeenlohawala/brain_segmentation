@@ -122,7 +122,7 @@ nobrainer_data_norm
 
 ## How to Run
 
-The model training is run using the script in [scripts/commands/main.py](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/scripts/commands/main.py#L1). See [submit_requeue.sh](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/submit_requeue.sh#L1) for an example of how to submit an experiment as a batch job on the SLURM. There are three main options when running the script using the command line. The basic commands that use default experiment parameters, as well as a table listing the possible command line arguments, their description, and their possible values are included below:
+The model training is run using the script in [scripts/commands/main.py](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/scripts/commands/main.py#L1). See [submit_requeue.sh](https://github.com/sabeenlohawala/tissue_labeling/blob/e49946030e41d4117ee800fb7d7d4c8d4be72425/submit_requeue.sh#L1) for an example of how to submit an experiment as a batch job on the SLURM. There are two main options when running the script using the command line. The basic commands that use default experiment parameters, as well as a table listing the possible command line arguments, their description, and their possible values are included below:
 1. Train a new model.
     
     `python scripts/commands/main.py train`
@@ -131,9 +131,8 @@ The model training is run using the script in [scripts/commands/main.py](https:/
 
     `python scripts/commands/main.py resume-train --logdir directory_where_checkpoints_are_saved`
 
-3. Run the test set through the model to obtain the loss and metrics on the held-out test dataset.
-
-    `python scripts/commands/main.py test --logdir directory_where_checkpoints_are_saved`
+To obtain the loss and metrics for the held-out test script, you can use a similar type of command for with the scripts/commands/test.py file:
+    `python scripts/commands/test.py test --logdir directory_where_checkpoints_are_saved`
 
 ### `train` Command-line Arguments
 | Argument Name    | Possible Values   | Description
